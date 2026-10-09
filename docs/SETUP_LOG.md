@@ -145,3 +145,20 @@ No `GEMINI_API_KEY` or other API-key occurrence was found under `web/`. Both occ
 - No scope or layout deviations from the request. The workspace-resolution ambiguity was resolved as instructed: web uses npm workspace package resolution, while TypeScript `paths` applies to server/shared; `web/tsconfig.json` was not edited.
 - The first Docker, typecheck, lint, and server-start attempts exposed environment/setup issues documented above. Each was corrected and the acceptance command then passed.
 - Nothing remains incomplete.
+
+## Follow-up: requested Vite URL
+
+The initial scaffold kept the AI Studio dev port 3000. Changed only the `web` dev script to port 5173 so the supplied URL works directly; the server route and `/api` proxy were already implemented. Updated the README to match.
+
+```text
+COMMAND: npm run dev
+VITE v8.3.3 ready
+Local: http://localhost:5173/
+Flight delay API listening on port 3001
+
+COMMAND: curl.exe -sS -i http://localhost:5173/api/health
+HTTP/1.1 200 OK
+{"status":"ok","mongo":"up","modelLoaded":false}
+```
+
+The dev processes were left running after this successful check.

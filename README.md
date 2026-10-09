@@ -28,7 +28,7 @@ Start the Express API and Vite frontend together:
 npm run dev
 ```
 
-The API listens on `http://localhost:3001`; the frontend listens on `http://localhost:3000` and proxies `/api` requests to the API.
+The API listens on `http://localhost:3001`; the frontend listens on `http://localhost:5173` and proxies `/api` requests to the API.
 
 ## Useful commands
 
