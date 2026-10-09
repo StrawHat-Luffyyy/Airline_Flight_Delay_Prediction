@@ -1,0 +1,21 @@
+{
+  "name": "flight-delay-project",
+  "private": true,
+  "type": "module",
+  "workspaces": ["web", "server", "shared"],
+  "scripts": {
+    "dev": "concurrently -k -n server,web \"npm:dev --workspace=@flight-delay/server\" \"npm:dev --workspace=@flight-delay/web\"",
+    "lint": "eslint server/src shared/src",
+    "typecheck": "npm run typecheck --workspace=@flight-delay/server && npm run typecheck --workspace=@flight-delay/shared && tsc --noEmit -p web/tsconfig.json",
+    "test": "vitest run",
+    "build:web": "npm run build --workspace=@flight-delay/web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.2",
+    "vitest": "^3.2.4"
+  }
+}
