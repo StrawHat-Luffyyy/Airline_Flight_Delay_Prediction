@@ -1,0 +1,6 @@
+{
+  "name": "Holding Pattern",
+  "description": "Full-screen cinematic flight delay prediction platform with atmospheric video background, staggered typography, and liquid glass styling.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

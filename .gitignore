@@ -1,0 +1,29 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+
+# Dataset files — keep locally, do not commit
+data/
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+# Local Claude Code and MCP configuration
+.claude/
+.mcp.json
+
+# Large local datasets
+data/

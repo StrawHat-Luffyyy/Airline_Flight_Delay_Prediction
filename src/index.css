@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+html {
+  scroll-behavior: auto !important; /* Managed by Lenis smooth scroll */
+  color-scheme: dark;
+}
+
+body {
+  background-color: #010101;
+  color: #ffffff;
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Lenis standard setup */
+html.lenis, html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.font-serif-display {
+  font-family: 'Instrument Serif', 'Times New Roman', serif;
+}
+
+.mobile-menu-glass {
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.01);
+  background-blend-mode: luminosity;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: none;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.4px;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 20%,
+    rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0) 60%,
+    rgba(255, 255, 255, 0.15) 80%, rgba(255, 255, 255, 0.45) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.liquid-glass:hover {
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.15);
+}
+
+.liquid-glass:active {
+  transform: scale(0.98);
+}
+
+/* Keyframes for Slow Continuous Video Breath */
+@keyframes videoBreath {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.08);
+  }
+}
+
+.animate-video-breath {
+  animation: videoBreath 20s ease-in-out infinite alternate;
+}
+
+/* Diagonal Shimmer Sweep */
+@keyframes shimmerSweep {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  35%, 100% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+}
+
+.animate-shimmer-sweep {
+  animation: shimmerSweep 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Soft Pulsing Glow for Closing CTA */
+@keyframes softPulseGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.35);
+  }
+  70% {
+    box-shadow: 0 0 0 16px rgba(255, 255, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.animate-pulse-glow {
+  animation: softPulseGlow 3s infinite;
+}
+
+/* Ambient airplane drift across predictor section */
+@keyframes planeDrift1 {
+  0% {
+    transform: translate(-10vw, 15vh) rotate(12deg);
+  }
+  100% {
+    transform: translate(110vw, 5vh) rotate(12deg);
+  }
+}
+
+@keyframes planeDrift2 {
+  0% {
+    transform: translate(-15vw, 65vh) rotate(-8deg);
+  }
+  100% {
+    transform: translate(110vw, 55vh) rotate(-8deg);
+  }
+}
+
+@keyframes planeDrift3 {
+  0% {
+    transform: translate(-10vw, 35vh) rotate(6deg);
+  }
+  100% {
+    transform: translate(115vw, 42vh) rotate(6deg);
+  }
+}
+
+.animate-plane-drift-1 {
+  animation: planeDrift1 28s linear infinite;
+}
+
+.animate-plane-drift-2 {
+  animation: planeDrift2 38s linear infinite 5s;
+}
+
+.animate-plane-drift-3 {
+  animation: planeDrift3 48s linear infinite 14s;
+}
+
+/* Marquee outlined typography */
+.stroke-marquee {
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.08);
+  color: transparent;
+}

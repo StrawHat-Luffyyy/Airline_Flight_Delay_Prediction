@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>
+      (function() {
+        try {
+          var currentFetch = window.fetch;
+          var descriptor = {
+            get: function() { return currentFetch; },
+            set: function(val) { currentFetch = val; },
+            configurable: true,
+            enumerable: true
+          };
+          try { Object.defineProperty(window, 'fetch', descriptor); } catch (e) {}
+          try { Object.defineProperty(Window.prototype, 'fetch', descriptor); } catch (e) {}
+        } catch (_) {}
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Holding Pattern — Flight Delay Prediction</title>
+    <meta name="description" content="Millions of historical flights, decoded to predict delays and reveal what truly causes them." />
+    <meta property="og:title" content="Holding Pattern — Flight Delay Prediction" />
+    <meta property="og:description" content="Millions of historical flights, decoded to predict delays and reveal what truly causes them." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-[#010101] text-white antialiased overflow-x-clip selection:bg-white/20 selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
