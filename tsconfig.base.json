@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@flight-delay/shared": ["shared/src/index.ts"]
+    }
+  }
+}
