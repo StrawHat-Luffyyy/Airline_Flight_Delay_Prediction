@@ -25,6 +25,16 @@ describe('error responses', () => {
     expect(ErrorResponseSchema.parse(response.body).error.code).toBe('BAD_REQUEST');
   });
 
+  it('returns 413 PAYLOAD_TOO_LARGE for a body over the JSON limit', async () => {
+    const response = await request(app)
+      .post('/api/health')
+      .set('content-type', 'application/json')
+      .send(JSON.stringify({ padding: 'x'.repeat(200_000) }));
+
+    expect(response.status).toBe(413);
+    expect(ErrorResponseSchema.parse(response.body).error.code).toBe('PAYLOAD_TOO_LARGE');
+  });
+
   it('returns a generic 500 without leaking the internal error message', async () => {
     const failing = express();
     failing.get('/boom', () => {

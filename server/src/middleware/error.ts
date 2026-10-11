@@ -2,6 +2,14 @@ import type { ErrorRequestHandler, RequestHandler } from 'express';
 import type { ErrorResponse } from '@flight-delay/shared';
 import { logger } from '../logger.js';
 
+const DEFAULT_CLIENT_ERROR: [string, string] = ['BAD_REQUEST', 'Malformed request'];
+
+const CLIENT_ERRORS: Record<number, [string, string]> = {
+  400: DEFAULT_CLIENT_ERROR,
+  413: ['PAYLOAD_TOO_LARGE', 'Request body too large'],
+  415: ['UNSUPPORTED_MEDIA_TYPE', 'Unsupported request encoding'],
+};
+
 function errorBody(code: string, message: string): ErrorResponse {
   return { error: { code, message } };
 }
@@ -21,8 +29,9 @@ export const notFoundHandler: RequestHandler = (_request, response) => {
 export const errorHandler: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
   const status = clientErrorStatus(error);
   if (status !== undefined) {
-    // Body-parser errors (malformed JSON, payload too large) carry a 4xx status.
-    response.status(status).json(errorBody('BAD_REQUEST', 'Malformed request'));
+    // Body-parser errors (malformed JSON, payload too large, bad charset) carry a 4xx status.
+    const [code, message] = CLIENT_ERRORS[status] ?? DEFAULT_CLIENT_ERROR;
+    response.status(status).json(errorBody(code, message));
     return;
   }
 

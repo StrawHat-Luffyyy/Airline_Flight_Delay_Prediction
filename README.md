@@ -35,6 +35,7 @@ The API listens on `http://localhost:3001`; the frontend listens on `http://loca
 ```sh
 npm run typecheck
 npm run lint
+npm run format:check   # npm run format to fix
 npm test
 npm run build:web
 ```
