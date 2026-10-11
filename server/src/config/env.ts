@@ -9,6 +9,8 @@ const envSchema = z.object({
   MONGODB_DB: z.string().min(1),
   PORT: z.coerce.number().int().min(1).max(65535),
   NODE_ENV: z.enum(['development', 'test', 'production']),
+  // Browser origin allowed by CORS. The Vite dev server proxies /api, so this only matters for direct calls.
+  CORS_ORIGIN: z.string().url().default('http://localhost:5173'),
 });
 
 export type Env = z.infer<typeof envSchema>;

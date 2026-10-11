@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const HealthResponseSchema = z.object({
-  status: z.literal('ok'),
+  status: z.enum(['ok', 'degraded']),
   mongo: z.enum(['up', 'down']),
-  modelLoaded: z.literal(false),
+  modelLoaded: z.boolean(),
 });
 
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
