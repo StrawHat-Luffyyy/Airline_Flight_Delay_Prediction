@@ -91,3 +91,53 @@ The user approved keeping the out-of-scope fixes above: the Mongo race fix, `par
 - A wrong mapping is possible in principle, for example if an airline reused a flight number and schedule on another route in October only. The 99% / 20-vote thresholds and the per-id evidence in `docs/airport-id-map.json` make such errors unlikely and auditable, but this is not an official BTS crosswalk.
 - Analytics and lookups (Phases 3-4) should still exclude the remaining 0.34% (`originIsIata` / `destIsIata: false`) from airport-keyed results.
 - Re-running `ingest -- --drop` brings the numeric ids back, so `resolve:airport-ids -- --apply` must be re-run after every re-ingest (see the README order).
+
+## Phase 2: indexes
+
+**Index set: exactly PROJECT_OVERVIEW §6.2.** It is defined in `server/src/db/indexes.ts` and built by `npm run build:indexes` after the load (§6.4). Each index has an explicit name:
+
+| Index | Key | Serves |
+|---|---|---|
+| `date_1` | `{ date: 1 }` | date ranges, daily/monthly trends, the stats_daily build |
+| `airline_1_date_1` | `{ airline: 1, date: 1 }` | one airline over a date range (equality, then range) |
+| `origin_1_schedDepHour_1` | `{ origin: 1, schedDepHour: 1 }` | one airport, optionally by hour |
+| `route_1` | `{ route: 1 }` | one route |
+| `isDelayed_1_month_1` | `{ isDelayed: 1, month: 1 }` | delayed/on-time counts by month (answered from the index alone with a COUNT_SCAN) |
+| `month_1_airline_1_with_causes` | `{ month: 1, airline: 1 }`, partial on `{ causes: { $type: "object" } }` | cause analysis. It only holds flights with causes (1,063,439 of 5,819,079). Queries must repeat `causes: { $type: "object" }` to use it. |
+
+**Idempotent, never destructive.**
+- Every spec is checked before anything is built.
+- An index that exists with the same key order and partial filter is skipped.
+- A name or key clash with a different definition stops the run with an error. It is never dropped automatically.
+- A second run on the full collection reported all six as `exists` in 5 ms.
+
+**Build evidence.** `npm run build:indexes`, 2026-10-11, 5,819,079 documents, MongoDB 7.0.43 in Docker with 7.6 GiB available to the container. The container stayed healthy throughout.
+
+| Index | Build time | Size |
+|---|---|---|
+| `date_1` | 13.8 s | 27.7 MB |
+| `airline_1_date_1` | 13.8 s | 48.5 MB |
+| `origin_1_schedDepHour_1` | 18.4 s | 37.9 MB |
+| `route_1` | 16.1 s | 45.8 MB |
+| `isDelayed_1_month_1` | 16.4 s | 26.8 MB |
+| `month_1_airline_1_with_causes` | 8.4 s | 5.7 MB |
+| **Total** | **86.9 s** | |
+
+`db.flights.stats()` before and after (read with `$collStats`):
+
+| | Data size | Storage size | Total index size |
+|---|---|---|---|
+| Before | 3,742.6 MB | 861.6 MB | 61.7 MB (`_id_` only) |
+| After | 3,742.6 MB | 861.6 MB | 254.1 MB |
+
+The six indexes add 192.4 MB, 29.5% of the compressed storage size.
+
+**Indexes considered and not added** (based on the mongo-query-optimizer review, measured 2026-10-11):
+- **`dest`:** not added. `{ dest: "ORD", destIsIata: true }` is a collection scan, about 4.6 s for 313,514 rows. But no §9 endpoint reads by destination: delay-rate is by airline, origin, route, dow or hour. Destination statistics and `delay_lookup` by dest (Phase 4) are built from one full `$group` pass, which an index would not speed up. Revisit only if a per-destination API read appears. `{ dest: 1, schedDepHour: 1 }` would cost about 38 MB.
+- **`split`:** not added. It has two values, and `train` covers 4,385,712 rows (75%). `export:training` reads most of the collection anyway: `{ split: "train" }` scans in about 6.8 s, and the equivalent `date_1` range took about 6.3 s through an index while fetching the same 4.39M documents. The export will stream a projected cursor instead.
+- **`originIsIata` in an index:** not added. Only 1,632 rows (0.03% of all flights) are `false`. Airport queries filter it after the `origin` index match at negligible cost: on Q2 and Q3, every fetched document passed the filter.
+- **A covering index for airport-by-hour delay rates** (`{ origin, schedDepHour, isDelayed }`): not added. Q3 (ORD, 313,536 documents fetched) only improves 4.6 s -> 2.3 s, because `isDelayed` must be fetched. That workload is served by the Phase 3 pre-aggregation `stats_airport_hour`; a fourth wide index would cost RAM on every write.
+
+**Explain evidence.** See `docs/EXPLAIN_RESULTS.md` (`npm run explain:report`). There are 8 queries. Q1-Q7 each use their intended index: 7 of 7 pass, with server-time speedups between 2.0x (Q3) and 147x (Q6). Q8 is a whole-collection ranking control with no index, and is a collection scan in both modes. The baseline uses `.hint({ $natural: 1 })`, so no index is dropped to get it.
+
+**Representative queries live in TypeScript** (`server/src/db/representative-queries.ts`), not in a mongosh script, because CLAUDE.md allows no non-TS code besides `ml/train.py`. Phase 3 will add the real analytics pipelines to this set.

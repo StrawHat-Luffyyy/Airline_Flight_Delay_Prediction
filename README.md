@@ -37,11 +37,13 @@ Run these in order after downloading the data (later steps arrive with later pha
 
 1. `npm run ingest -- --drop`: load the CSVs.
 2. `npm run resolve:airport-ids -- --apply`: map October's numeric BTS airport ids to IATA codes. Without `--apply` it only reports. The raw ids are kept in `originAirportId` / `destAirportId`. The mapping and its evidence are written to `docs/airport-id-map.json` and the `resolve_runs` collection.
-3. `npm run build:indexes`
+3. `npm run build:indexes`: create the PROJECT_OVERVIEW §6.2 indexes on `flights`. This is idempotent: existing indexes are skipped and none is ever dropped. It logs the build time per index and the collection sizes before and after.
 4. `npm run build:stats`
 5. `npm run build:lookup`
 
-Re-running `ingest -- --drop` brings back the numeric ids, so run step 2 again after every re-ingest.
+Re-running `ingest -- --drop` drops `flights` along with its indexes and brings back the numeric ids, so run steps 2 and 3 again after every re-ingest.
+
+`npm run explain:report` runs the representative queries with `explain("executionStats")`, once as a forced collection scan and once with the default plan. It then rewrites `docs/EXPLAIN_RESULTS.md` from the measured numbers. Run it after `build:indexes`.
 
 Start the Express API and Vite frontend together:
 
