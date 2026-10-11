@@ -10,7 +10,7 @@ const valid = {
 
 describe('parseEnv', () => {
   it('accepts the documented contract and coerces PORT to a number', () => {
-    expect(parseEnv(valid)).toEqual({ ...valid, PORT: 3001 });
+    expect(parseEnv(valid)).toEqual({ ...valid, PORT: 3001, CORS_ORIGIN: 'http://localhost:5173' });
   });
 
   it('names every missing variable in the error', () => {

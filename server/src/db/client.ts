@@ -9,7 +9,7 @@ export function connectToMongo(): Promise<void> {
   if (client) return Promise.resolve();
   // Cache the in-flight connect so concurrent callers share one client.
   connecting ??= (async () => {
-    const nextClient = new MongoClient(env.MONGODB_URI);
+    const nextClient = new MongoClient(env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
     try {
       await nextClient.connect();
     } catch (error) {
