@@ -114,7 +114,7 @@ export const REPRESENTATIVE_QUERIES: readonly RepresentativeQuery[] = [
       { $group: { _id: '$route', ...delayRateGroup } },
       { $match: { flights: { $gte: 500 } } },
       { $addFields: { delayRate: { $divide: ['$delayed', '$withOutcome'] } } },
-      { $sort: { delayRate: -1 } },
+      { $sort: { delayRate: -1, _id: 1 } },
       { $limit: 20 },
     ],
     expectedIndex: null,

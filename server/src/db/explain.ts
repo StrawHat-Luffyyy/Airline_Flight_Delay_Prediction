@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import type { Db, Document } from 'mongodb';
 import { z } from 'zod';
 import { collections } from './collections.js';
@@ -107,4 +108,62 @@ export async function measure(
   }
   if (!last) throw new Error('runs must be >= 1');
   return { ...last, wallMs: Math.round(median(wall)), serverMs: median(server) };
+}
+
+export interface ResultCheck {
+  /** find queries compare counts; aggregations compare the full result documents. */
+  compared: 'count' | 'documents';
+  collscan: number;
+  indexed: number;
+  identical: boolean;
+}
+
+/** Runs the query for real under both plans and checks that the index changes nothing but speed. */
+export async function checkSameResults(db: Db, query: RepresentativeQuery): Promise<ResultCheck> {
+  const flights = collections.flights(db);
+  const natural = { $natural: 1 } as const;
+  if (query.kind === 'find') {
+    const collscan = await flights.countDocuments(query.filter, { hint: natural });
+    const indexed = await flights.countDocuments(query.filter);
+    return { compared: 'count', collscan, indexed, identical: collscan === indexed };
+  }
+  const collscan = await flights
+    .aggregate(query.pipeline, { hint: natural, allowDiskUse: true })
+    .toArray();
+  const indexed = await flights.aggregate(query.pipeline, { allowDiskUse: true }).toArray();
+  return {
+    compared: 'documents',
+    collscan: collscan.length,
+    indexed: indexed.length,
+    identical: isDeepStrictEqual(collscan, indexed),
+  };
+}
+
+export interface MonthlyCount {
+  month: number;
+  flights: number;
+}
+
+/**
+ * Independent check for Q1: an airline's flights per month, read by collection scan (so not
+ * through the airline/date index), plus the airline's total.
+ */
+export async function airlineMonthlyCounts(
+  db: Db,
+  airline: string,
+): Promise<{ months: MonthlyCount[]; total: number }> {
+  const flights = collections.flights(db);
+  const months = await flights
+    .aggregate<MonthlyCount>(
+      [
+        { $match: { airline } },
+        { $group: { _id: '$month', flights: { $sum: 1 } } },
+        { $project: { _id: 0, month: '$_id', flights: 1 } },
+        { $sort: { month: 1 } },
+      ],
+      { hint: { $natural: 1 } },
+    )
+    .toArray();
+  const total = await flights.countDocuments({ airline }, { hint: { $natural: 1 } });
+  return { months, total };
 }
