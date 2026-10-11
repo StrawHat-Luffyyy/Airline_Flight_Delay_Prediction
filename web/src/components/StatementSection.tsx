@@ -25,6 +25,7 @@ const Word: React.FC<WordProps> = ({ word, range, progress, shouldReduceMotion }
         opacity: shouldReduceMotion ? 1 : opacity,
         filter: shouldReduceMotion ? 'none' : filter,
       }}
+      aria-hidden="true"
       className="inline-block mr-[0.25em] select-none [will-change:opacity,filter]"
     >
       {word}
@@ -134,6 +135,7 @@ export const StatementSection: React.FC = () => {
         <div className="relative z-10 w-full max-w-5xl mx-auto flex flex-col items-center justify-center">
           {/* Statement: Words light up over first 45%, then moves up 60px and dims to 0.5 opacity */}
           <motion.h2
+            aria-label={STATEMENT_TEXT}
             style={{
               y: shouldReduceMotion ? 0 : statementY,
               opacity: shouldReduceMotion ? 1 : statementOpacity,

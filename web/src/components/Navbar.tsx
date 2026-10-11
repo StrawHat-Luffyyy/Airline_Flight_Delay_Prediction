@@ -121,7 +121,7 @@ export const Navbar: React.FC = () => {
         <button
           type="button"
           onClick={() => setMenuOpen(!menuOpen)}
-          className="md:hidden text-white/90 hover:text-white p-1 transition-colors cursor-pointer focus:outline-none"
+          className="md:hidden text-white/90 hover:text-white p-2 -m-1 transition-colors cursor-pointer"
           aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
         >
           {menuOpen ? <X size={22} /> : <Menu size={22} />}
@@ -154,7 +154,7 @@ export const Navbar: React.FC = () => {
                   e.preventDefault();
                   handleLinkClick(link.id);
                 }}
-                className="text-white/90 tracking-[0.25em] uppercase font-light text-sm hover:text-white transition-colors duration-300 py-1"
+                className="text-white/90 tracking-[0.25em] uppercase font-light text-sm hover:text-white transition-colors duration-300 py-3"
               >
                 {link.name}
               </motion.a>

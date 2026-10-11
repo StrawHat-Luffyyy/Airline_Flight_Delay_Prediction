@@ -1,11 +1,5 @@
 import React, { useRef } from 'react';
-import {
-  motion,
-  useScroll,
-  useTransform,
-  useReducedMotion,
-  MotionValue,
-} from 'framer-motion';
+import { motion, useScroll, useTransform, useReducedMotion, MotionValue } from 'framer-motion';
 import { Plane } from 'lucide-react';
 import { useLenis } from '../context/LenisContext';
 import { useVideoVisibility } from '../hooks/useVideoVisibility';
@@ -19,15 +13,10 @@ interface WordSpanProps {
   word: string;
   index: number;
   progress: MotionValue<number>;
-  shouldReduceMotion: boolean | null;
+  shouldReduceMotion: boolean;
 }
 
-const WordSpan: React.FC<WordSpanProps> = ({
-  word,
-  index,
-  progress,
-  shouldReduceMotion,
-}) => {
+const WordSpan: React.FC<WordSpanProps> = ({ word, index, progress, shouldReduceMotion }) => {
   const start = 0.25 + index * 0.035;
   const end = start + 0.06;
   const y = useTransform(progress, [start, end], [40, 0]);
@@ -49,9 +38,9 @@ const WordSpan: React.FC<WordSpanProps> = ({
 };
 
 export const FinalSection: React.FC = () => {
-  const sectionRef = useRef<HTMLElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const shouldReduceMotion = useReducedMotion();
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const shouldReduceMotion = useReducedMotion() ?? false;
   const { scrollTo } = useLenis();
 
   // Pause video when fully off-screen & enforce slower 0.7 playbackRate
@@ -67,15 +56,11 @@ export const FinalSection: React.FC = () => {
   const clipPathVal = useTransform(
     scrollYProgress,
     [0, 0.25, 1],
-    ['inset(10% 8% round 40px)', 'inset(0% 0% round 0px)', 'inset(0% 0% round 0px)']
+    ['inset(10% 8% round 40px)', 'inset(0% 0% round 0px)', 'inset(0% 0% round 0px)'],
   );
 
   // Video scales 1.2 to 1.0 over first 25%, and last 15% scales to 1.08
-  const videoScale = useTransform(
-    scrollYProgress,
-    [0, 0.25, 0.85, 1.0],
-    [1.2, 1.0, 1.0, 1.08]
-  );
+  const videoScale = useTransform(scrollYProgress, [0, 0.25, 0.85, 1.0], [1.2, 1.0, 1.0, 1.08]);
 
   // 45-60%: Button fades in with pulsing glow
   const buttonY = useTransform(scrollYProgress, [0.45, 0.58], [16, 0]);
@@ -84,16 +69,8 @@ export const FinalSection: React.FC = () => {
   // 50-90%: SVG flight path arc draws itself with pathLength tied to scroll
   const arcPathLength = useTransform(scrollYProgress, [0.5, 0.88], [0, 1]);
   const planeX = useTransform(scrollYProgress, [0.5, 0.88], ['5%', '95%']);
-  const planeY = useTransform(
-    scrollYProgress,
-    [0.5, 0.69, 0.88],
-    ['70%', '18%', '65%']
-  );
-  const planeOpacity = useTransform(
-    scrollYProgress,
-    [0.49, 0.53, 0.88, 0.95],
-    [0, 1, 1, 0.4]
-  );
+  const planeY = useTransform(scrollYProgress, [0.5, 0.69, 0.88], ['70%', '18%', '65%']);
+  const planeOpacity = useTransform(scrollYProgress, [0.49, 0.53, 0.88, 0.95], [0, 1, 1, 0.4]);
 
   // City labels ("Departure", "Arrival") appear at each end (50-58%)
   const cityLabelsOpacity = useTransform(scrollYProgress, [0.5, 0.58], [0, 1]);
@@ -171,7 +148,7 @@ export const FinalSection: React.FC = () => {
             className="[will-change:transform,opacity]"
           >
             <a
-              href="https://github.com"
+              href="https://github.com/StrawHat-Luffyyy/Airline_Flight_Delay_Prediction"
               target="_blank"
               rel="noopener noreferrer"
               className="liquid-glass rounded-full px-10 py-4 text-white/90 uppercase tracking-[0.2em] text-xs font-light hover:text-white transition-all cursor-pointer inline-flex items-center justify-center !bg-white/[0.06] animate-pulse-glow"
@@ -239,7 +216,7 @@ export const FinalSection: React.FC = () => {
           style={{
             opacity: shouldReduceMotion ? 1 : footerOpacity,
           }}
-          className="absolute bottom-10 inset-x-0 z-20 flex items-center justify-center gap-8 text-xs uppercase tracking-[0.2em] font-light text-white/50 text-center px-6 [will-change:opacity]"
+          className="absolute bottom-10 inset-x-0 z-20 flex items-center justify-center gap-8 text-xs uppercase tracking-[0.2em] font-light text-white/50 text-center px-6 will-change-[opacity]"
         >
           <a
             href="#data"
@@ -274,9 +251,10 @@ export const FinalSection: React.FC = () => {
           style={{
             opacity: shouldReduceMotion ? 1 : footerOpacity,
           }}
-          className="absolute bottom-5 inset-x-0 z-20 text-white/40 text-xs font-light tracking-wide text-center px-6 max-w-3xl mx-auto truncate [will-change:opacity]"
+          className="absolute bottom-5 inset-x-0 z-20 text-white/60 text-xs font-light tracking-wide text-center px-6 max-w-3xl mx-auto truncate [will-change:opacity]"
         >
-          Data sourced from U.S. Bureau of Transportation Statistics, FAA National Airspace System, and NOAA Aviation Weather Center.
+          Data sourced from U.S. Bureau of Transportation Statistics, FAA National Airspace System,
+          and NOAA Aviation Weather Center.
         </motion.p>
       </motion.div>
     </section>

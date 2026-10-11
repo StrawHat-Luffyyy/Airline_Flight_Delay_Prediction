@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion } from 'framer-motion';
 import { Plane } from 'lucide-react';
 import { MagneticButton } from './MagneticButton';
@@ -88,10 +88,12 @@ const MinimalInput: React.FC<MinimalInputProps> = ({
   required = false,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const inputId = useId();
 
   return (
     <div className="relative flex flex-col">
       <motion.label
+        htmlFor={inputId}
         animate={{
           y: isFocused ? -2 : 0,
           color: isFocused ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.6)',
@@ -102,6 +104,7 @@ const MinimalInput: React.FC<MinimalInputProps> = ({
         {label}
       </motion.label>
       <input
+        id={inputId}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -109,7 +112,7 @@ const MinimalInput: React.FC<MinimalInputProps> = ({
         onBlur={() => setIsFocused(false)}
         placeholder={placeholder}
         required={required}
-        className="w-full bg-transparent text-white text-base py-3 transition-colors placeholder:text-white/25 rounded-none focus:outline-none"
+        className="w-full bg-transparent text-white text-base py-3 transition-colors placeholder:text-white/55 rounded-none focus:outline-none"
       />
       {/* Base border */}
       <div className="relative w-full h-[1px] bg-white/20 overflow-hidden">
@@ -364,6 +367,8 @@ export const PredictorSection: React.FC = () => {
             opacity: shouldReduceMotion ? 1 : panelOpacity,
             scale: shouldReduceMotion ? 1 : panelScale,
           }}
+          aria-live="polite"
+          aria-busy={status === 'analyzing'}
           className="liquid-glass rounded-3xl w-full max-w-2xl mx-auto p-8 sm:p-12 relative z-20 [will-change:transform,opacity]"
         >
         <AnimatePresence mode="wait">
@@ -582,7 +587,7 @@ export const PredictorSection: React.FC = () => {
                       className="flex items-center justify-between text-xs sm:text-sm font-light text-white/70 mb-2"
                     >
                       <span>{cause.label}</span>
-                      <span className="text-white/40 text-xs">
+                      <span className="text-white/60 text-xs">
                         {cause.percentage}% (illustrative)
                       </span>
                     </motion.div>
@@ -612,7 +617,7 @@ export const PredictorSection: React.FC = () => {
               <button
                 type="button"
                 onClick={handleReset}
-                className="text-white/50 hover:text-white uppercase tracking-[0.2em] text-xs font-light transition-colors duration-200 mt-10 pt-6 border-t border-white/10 w-full text-center cursor-pointer"
+                className="text-white/60 hover:text-white focus-visible:text-white uppercase tracking-[0.2em] text-xs font-light transition-colors duration-200 mt-10 pt-6 border-t border-white/10 w-full text-center cursor-pointer"
               >
                 Try another flight
               </button>

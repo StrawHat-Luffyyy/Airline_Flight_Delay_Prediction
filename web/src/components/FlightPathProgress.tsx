@@ -56,7 +56,7 @@ export const FlightPathProgress: React.FC = () => {
               type="button"
               onClick={() => handleStageClick(stage.target)}
               className={`text-[10px] uppercase tracking-[0.2em] font-light transition-colors duration-300 cursor-pointer pointer-events-auto ${
-                isActive ? 'text-white font-normal' : 'text-white/40 hover:text-white/70'
+                isActive ? 'text-white font-normal' : 'text-white/60 hover:text-white'
               }`}
             >
               {stage.name}

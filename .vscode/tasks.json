@@ -1,14 +1,21 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "Run TypeScript checks",
-			"type": "shell",
-			"command": "npm run typecheck",
-			"isBackground": false,
-			"problemMatcher": [
-				"$tsc"
-			]
-		}
-	]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run TypeScript checks",
+      "type": "shell",
+      "command": "npm run typecheck",
+      "isBackground": false,
+      "problemMatcher": [
+        "$tsc"
+      ]
+    },
+    {
+      "label": "Run web app",
+      "type": "shell",
+      "command": "npm run dev --workspace=@flight-delay/web",
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
 }
