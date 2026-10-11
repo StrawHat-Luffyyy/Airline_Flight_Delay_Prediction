@@ -26,10 +26,16 @@ export interface FlightDoc {
   origin: string;
   /** False when the source used a numeric BTS airport id instead of an IATA code (§3). */
   originIsIata: boolean;
+  /** Raw 5-digit BTS airport id from the source when it had no IATA code; null otherwise. Never overwritten. */
+  originAirportId: string | null;
+  /** True when `origin` was derived from `originAirportId` by resolve:airport-ids. */
+  originIataDerived: boolean;
   originCity: string | null;
   originState: string | null;
   dest: string;
   destIsIata: boolean;
+  destAirportId: string | null;
+  destIataDerived: boolean;
   destCity: string | null;
   destState: string | null;
   route: string;
@@ -83,9 +89,36 @@ export interface IngestRunDoc {
   error?: string;
 }
 
+/** One run of resolve:airport-ids (PROJECT_OVERVIEW has no spec; modelled on ingest_runs). */
+export interface ResolveRunDoc {
+  startedAt: Date;
+  finishedAt: Date;
+  status: 'completed' | 'failed';
+  mode: 'dry-run' | 'apply';
+  thresholds: { minVotes: number; minTopShare: number };
+  referenceMonths: number[];
+  referenceRows: number;
+  referenceKeys: number;
+  ambiguousKeys: number;
+  rowsWithNumericIds: number;
+  rowsMatched: number;
+  distinctIds: number;
+  mappedIds: number;
+  unmappedIds: string[];
+  /** Rows (with any numeric id) whose origin and dest are both IATA after the mapping. */
+  rowsFullyResolved: number;
+  rowsOriginResolved: number;
+  rowsDestResolved: number;
+  /** Documents actually modified by this run (0 for a dry run or an unchanged re-apply). */
+  rowsUpdated: number;
+  peakRssMb: number;
+  error?: string;
+}
+
 export const collections = {
   flights: (db: Db): Collection<FlightDoc> => db.collection<FlightDoc>('flights'),
   airlines: (db: Db): Collection<AirlineDoc> => db.collection<AirlineDoc>('airlines'),
   airports: (db: Db): Collection<AirportDoc> => db.collection<AirportDoc>('airports'),
   ingestRuns: (db: Db): Collection<IngestRunDoc> => db.collection<IngestRunDoc>('ingest_runs'),
+  resolveRuns: (db: Db): Collection<ResolveRunDoc> => db.collection<ResolveRunDoc>('resolve_runs'),
 };
