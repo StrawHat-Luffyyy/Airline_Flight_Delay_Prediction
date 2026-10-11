@@ -11,3 +11,8 @@ ml/artifacts/*.tmp
 coverage/
 .DS_Store
 atlas-credentials.env
+__pycache__/
+*.pyc
+
+# Personal Claude Code settings (project .claude/ config is tracked)
+.claude/settings.local.json
