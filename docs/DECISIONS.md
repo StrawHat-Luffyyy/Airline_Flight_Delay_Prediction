@@ -141,3 +141,21 @@ The six indexes add 192.4 MB, 29.5% of the compressed storage size.
 **Explain evidence.** See `docs/EXPLAIN_RESULTS.md` (`npm run explain:report`). There are 8 queries. Q1-Q7 each use their intended index: 7 of 7 pass, with server-time speedups between 2.0x (Q3) and 147x (Q6). Q8 is a whole-collection ranking control with no index, and is a collection scan in both modes. The baseline uses `.hint({ $natural: 1 })`, so no index is dropped to get it.
 
 **Representative queries live in TypeScript** (`server/src/db/representative-queries.ts`), not in a mongosh script, because CLAUDE.md allows no non-TS code besides `ml/train.py`. Phase 3 will add the real analytics pipelines to this set.
+
+### Phase 2 follow-up fixes (2026-10-11)
+
+- **`explain:report` proves that indexes change only the speed.** Each query also runs for real under the `$natural`-hinted plan and the default plan:
+  - Find queries compare `countDocuments` with and without `hint: { $natural: 1 }`.
+  - Aggregations compare their complete result arrays with a deep-equality check. Q8's sort gained an `_id` tiebreak so ties cannot reorder.
+  - The report prints a per-query "Same result" column and a PASS/FAIL line, and the command exits non-zero on any mismatch.
+  - On the full data, 8 of 8 queries are identical. For example, Q1 counts 45,966 under both plans, and Q3 returns 20 identical documents under both.
+- **Query listings print dates as `ISODate("...")`**, so they can be pasted into mongosh (`server/src/db/shell-format.ts`).
+- **Q1 sanity check:** the report now counts AA flights by month via a collection scan, independent of `airline_1_date_1`.
+  - The monthly counts sum to 725,984, which equals `countDocuments({ airline: "AA" })`.
+  - March is 45,966, exactly what Q1 returned.
+  - AA's monthly volume roughly doubles from July (44,360 in June, 81,434 in July). That is consistent with US Airways flights being reported under AA after the 2015 merger. This is an observation, not something verified here.
+- **`GET /api/flights` requires an index-backed filter.** The query must include at least one of `airline` (`airline_1_date_1`), `origin` (`origin_1_schedDepHour_1`), `route` (`route_1`), or a closed `from` + `to` date range (`date_1`). Otherwise it is rejected with 400.
+  - Why: `dest` has no index (see "Indexes considered and not added"), so `dest` alone, or an open-ended date, would scan 5.8M documents. A `dest` filter is still allowed on top of a selective filter.
+  - Codes must be IATA. A 5-digit unresolved BTS id is rejected, consistent with excluding unresolved airports from airport-keyed reads.
+  - `limit` defaults to 20 and is capped at 100 (§9).
+  - The rule lives in the shared zod schema `FlightsQuerySchema` (`shared/src/flights.ts`) and is unit-tested. The route itself does not exist yet: the user chose to add the rule now and have Phase 3's `/flights` route validate with this schema and return `400 { error: { code, message, details } }`.
