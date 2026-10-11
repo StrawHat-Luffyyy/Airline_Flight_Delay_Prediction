@@ -10,9 +10,4 @@ ml/artifacts/*.tmp
 *.log
 coverage/
 .DS_Store
-
-# Local Claude Code and MCP configuration
-.claude/
-.mcp.json
-
 atlas-credentials.env
