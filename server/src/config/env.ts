@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
-dotenv.config({ path: fileURLToPath(new URL('../../../.env', import.meta.url)) });
+dotenv.config({ path: fileURLToPath(new URL('../../../.env', import.meta.url)), quiet: true });
 
 const envSchema = z.object({
   MONGODB_URI: z.string().url(),
@@ -11,13 +11,16 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']),
 });
 
-const result = envSchema.safeParse(process.env);
+export type Env = z.infer<typeof envSchema>;
 
-if (!result.success) {
+export function parseEnv(source: Record<string, string | undefined>): Env {
+  const result = envSchema.safeParse(source);
+  if (result.success) return result.data;
+
   const details = result.error.issues
     .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
     .join('\n');
   throw new Error(`Invalid environment configuration:\n${details}`);
 }
 
-export const env = result.data;
+export const env = parseEnv(process.env);

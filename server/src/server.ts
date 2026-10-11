@@ -1,18 +1,21 @@
 import { createApp } from './app.js';
 import { closeMongo, connectToMongo } from './db/client.js';
 import { env } from './config/env.js';
+import { logger } from './logger.js';
 
 const app = createApp();
 
 async function start(): Promise<void> {
   await connectToMongo();
   const server = app.listen(env.PORT, () => {
-    console.info(`Flight delay API listening on port ${env.PORT}`);
+    logger.info({ port: env.PORT }, 'Flight delay API listening');
   });
 
   const shutdown = (): void => {
     server.close(() => {
-      void closeMongo().then(() => process.exit(0));
+      closeMongo()
+        .catch((error: unknown) => logger.error({ err: error }, 'Error closing MongoDB'))
+        .finally(() => process.exit(0));
     });
   };
 
@@ -21,8 +24,7 @@ async function start(): Promise<void> {
 }
 
 start().catch(async (error: unknown) => {
-  const message = error instanceof Error ? error.message : 'Unknown startup error';
-  console.error(`Unable to start server: ${message}`);
-  await closeMongo();
-  process.exitCode = 1;
+  logger.fatal({ err: error }, 'Unable to start server');
+  await closeMongo().catch(() => undefined);
+  process.exit(1);
 });
