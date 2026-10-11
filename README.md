@@ -22,6 +22,15 @@ Start the local MongoDB service:
 docker compose up -d mongo
 ```
 
+Download the dataset into `data/raw/` (see [scripts/download-data.md](scripts/download-data.md)), then load it into MongoDB:
+
+```sh
+npm run ingest            # first load; refuses if flights already has data
+npm run ingest -- --drop  # rebuild from scratch
+```
+
+Other flags: `--append` adds to existing data, `--limit N` loads only the first N flight rows, and `--dir PATH` reads the CSVs from another folder. Each run is recorded in the `ingest_runs` collection.
+
 Start the Express API and Vite frontend together:
 
 ```sh
@@ -40,4 +49,4 @@ npm test
 npm run build:web
 ```
 
-The dataset is kept under `data/` and is not tracked by Git. Download and add it there manually when a later project phase needs it.
+The dataset is kept under `data/` and is not tracked by Git.

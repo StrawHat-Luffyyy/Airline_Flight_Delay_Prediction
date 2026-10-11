@@ -14,7 +14,8 @@
     "test": "vitest run",
     "build:web": "npm run build --workspace=@flight-delay/web",
     "format": "prettier --write server shared vitest.config.ts eslint.config.js",
-    "format:check": "prettier --check server shared vitest.config.ts eslint.config.js"
+    "format:check": "prettier --check server shared vitest.config.ts eslint.config.js",
+    "ingest": "npm run ingest --workspace=@flight-delay/server --"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
