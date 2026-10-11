@@ -1,0 +1,4295 @@
+{
+  "description": "Numeric BTS airport ids in flights.csv resolved to IATA codes by resolve:airport-ids. Derived offline from schedule matches, not from an official crosswalk.",
+  "method": "Key = (airline, flightNumber, schedDepMin, schedArrMin). Reference months with IATA codes give key -> (origin, dest); keys seen with more than one pair are discarded. Each row with a numeric id whose key matches votes id -> IATA (origin and dest roles counted together).",
+  "thresholds": {
+    "minVotes": 20,
+    "minTopShare": 0.99
+  },
+  "referenceMonths": [9, 11],
+  "counts": {
+    "referenceRows": 932918,
+    "referenceKeys": 127099,
+    "ambiguousKeys": 32,
+    "rowsWithNumericIds": 486165,
+    "rowsMatched": 357575,
+    "distinctIds": 307,
+    "mappedIds": 282,
+    "rowsFullyResolved": 483018
+  },
+  "mappings": {
+    "10135": "ABE",
+    "10136": "ABI",
+    "10140": "ABQ",
+    "10154": "ACK",
+    "10155": "ACT",
+    "10157": "ACV",
+    "10158": "ACY",
+    "10170": "ADQ",
+    "10185": "AEX",
+    "10208": "AGS",
+    "10257": "ALB",
+    "10268": "ALO",
+    "10279": "AMA",
+    "10299": "ANC",
+    "10372": "ASE",
+    "10397": "ATL",
+    "10408": "ATW",
+    "10423": "AUS",
+    "10431": "AVL",
+    "10434": "AVP",
+    "10469": "AZO",
+    "10529": "BDL",
+    "10551": "BET",
+    "10561": "BFL",
+    "10599": "BHM",
+    "10620": "BIL",
+    "10627": "BIS",
+    "10631": "BJI",
+    "10685": "BMI",
+    "10693": "BNA",
+    "10713": "BOI",
+    "10721": "BOS",
+    "10728": "BPT",
+    "10732": "BQN",
+    "10739": "BRD",
+    "10747": "BRO",
+    "10754": "BRW",
+    "10779": "BTM",
+    "10781": "BTR",
+    "10785": "BTV",
+    "10792": "BUF",
+    "10800": "BUR",
+    "10821": "BWI",
+    "10849": "BZN",
+    "10868": "CAE",
+    "10874": "CAK",
+    "10918": "CDC",
+    "10926": "CDV",
+    "10980": "CHA",
+    "10990": "CHO",
+    "10994": "CHS",
+    "11003": "CID",
+    "11042": "CLE",
+    "11049": "CLL",
+    "11057": "CLT",
+    "11066": "CMH",
+    "11067": "CMI",
+    "11076": "CMX",
+    "11097": "COD",
+    "11109": "COS",
+    "11111": "COU",
+    "11122": "CPR",
+    "11140": "CRP",
+    "11146": "CRW",
+    "11193": "CVG",
+    "11203": "CWA",
+    "11252": "DAB",
+    "11259": "DAL",
+    "11267": "DAY",
+    "11274": "DBQ",
+    "11278": "DCA",
+    "11292": "DEN",
+    "11298": "DFW",
+    "11308": "DHN",
+    "11337": "DLH",
+    "11413": "DRO",
+    "11423": "DSM",
+    "11433": "DTW",
+    "11447": "DVL",
+    "11471": "EAU",
+    "11481": "ECP",
+    "11525": "EKO",
+    "11537": "ELM",
+    "11540": "ELP",
+    "11577": "ERI",
+    "11603": "EUG",
+    "11612": "EVV",
+    "11617": "EWN",
+    "11618": "EWR",
+    "11624": "EYW",
+    "11630": "FAI",
+    "11637": "FAR",
+    "11638": "FAT",
+    "11641": "FAY",
+    "11648": "FCA",
+    "11695": "FLG",
+    "11697": "FLL",
+    "11721": "FNT",
+    "11775": "FSD",
+    "11778": "FSM",
+    "11823": "FWA",
+    "11865": "GCC",
+    "11867": "GCK",
+    "11884": "GEG",
+    "11905": "GGG",
+    "11921": "GJT",
+    "11953": "GNV",
+    "11973": "GPT",
+    "11977": "GRB",
+    "11980": "GRI",
+    "11982": "GRK",
+    "11986": "GRR",
+    "11995": "GSO",
+    "11996": "GSP",
+    "12003": "GTF",
+    "12007": "GTR",
+    "12016": "GUM",
+    "12094": "HDN",
+    "12156": "HLN",
+    "12173": "HNL",
+    "12177": "HOB",
+    "12191": "HOU",
+    "12197": "HPN",
+    "12206": "HRL",
+    "12217": "HSV",
+    "12255": "HYS",
+    "12264": "IAD",
+    "12265": "IAG",
+    "12266": "IAH",
+    "12278": "ICT",
+    "12280": "IDA",
+    "12323": "ILM",
+    "12339": "IND",
+    "12389": "ISN",
+    "12391": "ISP",
+    "12402": "ITO",
+    "12441": "JAC",
+    "12448": "JAN",
+    "12451": "JAX",
+    "12478": "JFK",
+    "12511": "JLN",
+    "12519": "JMS",
+    "12523": "JNU",
+    "12758": "KOA",
+    "12819": "KTN",
+    "12884": "LAN",
+    "12888": "LAR",
+    "12889": "LAS",
+    "12891": "LAW",
+    "12892": "LAX",
+    "12896": "LBB",
+    "12898": "LBE",
+    "12915": "LCH",
+    "12945": "LEX",
+    "12951": "LFT",
+    "12953": "LGA",
+    "12954": "LGB",
+    "12982": "LIH",
+    "12992": "LIT",
+    "13029": "LNK",
+    "13061": "LRD",
+    "13076": "LSE",
+    "13127": "LWS",
+    "13158": "MAF",
+    "13184": "MBS",
+    "13198": "MCI",
+    "13204": "MCO",
+    "13230": "MDT",
+    "13232": "MDW",
+    "13241": "MEI",
+    "13244": "MEM",
+    "13256": "MFE",
+    "13264": "MFR",
+    "13277": "MGM",
+    "13290": "MHK",
+    "13296": "MHT",
+    "13303": "MIA",
+    "13342": "MKE",
+    "13344": "MKG",
+    "13367": "MLI",
+    "13377": "MLU",
+    "13422": "MOB",
+    "13433": "MOT",
+    "13459": "MQT",
+    "13476": "MRY",
+    "13485": "MSN",
+    "13486": "MSO",
+    "13487": "MSP",
+    "13495": "MSY",
+    "13541": "MVY",
+    "13577": "MYR",
+    "13796": "OAK",
+    "13830": "OGG",
+    "13851": "OKC",
+    "13871": "OMA",
+    "13873": "OME",
+    "13891": "ONT",
+    "13930": "ORD",
+    "13931": "ORF",
+    "13933": "ORH",
+    "13964": "OTH",
+    "13970": "OTZ",
+    "14006": "PAH",
+    "14025": "PBG",
+    "14027": "PBI",
+    "14057": "PDX",
+    "14100": "PHL",
+    "14107": "PHX",
+    "14108": "PIA",
+    "14109": "PIB",
+    "14113": "PIH",
+    "14122": "PIT",
+    "14193": "PNS",
+    "14252": "PSC",
+    "14254": "PSE",
+    "14256": "PSG",
+    "14262": "PSP",
+    "14307": "PVD",
+    "14321": "PWM",
+    "14457": "RAP",
+    "14487": "RDD",
+    "14489": "RDM",
+    "14492": "RDU",
+    "14524": "RIC",
+    "14543": "RKS",
+    "14570": "RNO",
+    "14574": "ROA",
+    "14576": "ROC",
+    "14588": "ROW",
+    "14633": "RST",
+    "14635": "RSW",
+    "14674": "SAF",
+    "14679": "SAN",
+    "14683": "SAT",
+    "14685": "SAV",
+    "14689": "SBA",
+    "14696": "SBN",
+    "14698": "SBP",
+    "14709": "SCC",
+    "14711": "SCE",
+    "14730": "SDF",
+    "14747": "SEA",
+    "14771": "SFO",
+    "14783": "SGF",
+    "14794": "SGU",
+    "14814": "SHV",
+    "14828": "SIT",
+    "14831": "SJC",
+    "14842": "SJT",
+    "14843": "SJU",
+    "14869": "SLC",
+    "14893": "SMF",
+    "14905": "SMX",
+    "14908": "SNA",
+    "14952": "SPI",
+    "14960": "SPS",
+    "14986": "SRQ",
+    "15016": "STL",
+    "15024": "STT",
+    "15027": "STX",
+    "15041": "SUN",
+    "15048": "SUX",
+    "15070": "SWF",
+    "15096": "SYR",
+    "15249": "TLH",
+    "15295": "TOL",
+    "15304": "TPA",
+    "15356": "TTN",
+    "15370": "TUL",
+    "15376": "TUS",
+    "15380": "TVC",
+    "15389": "TWF",
+    "15401": "TXK",
+    "15411": "TYR",
+    "15412": "TYS",
+    "15497": "UST",
+    "15607": "VLD",
+    "15624": "VPS",
+    "15841": "WRG",
+    "15919": "XNA",
+    "15991": "YAK",
+    "16218": "YUM"
+  },
+  "details": [
+    {
+      "id": "10135",
+      "iata": "ABE",
+      "accepted": true,
+      "votes": 151,
+      "topVotes": 151,
+      "topShare": 1,
+      "originVotes": 75,
+      "destVotes": 76,
+      "candidates": {
+        "ABE": 151
+      }
+    },
+    {
+      "id": "10136",
+      "iata": "ABI",
+      "accepted": true,
+      "votes": 402,
+      "topVotes": 402,
+      "topShare": 1,
+      "originVotes": 201,
+      "destVotes": 201,
+      "candidates": {
+        "ABI": 402
+      }
+    },
+    {
+      "id": "10140",
+      "iata": "ABQ",
+      "accepted": true,
+      "votes": 3006,
+      "topVotes": 3006,
+      "topShare": 1,
+      "originVotes": 1509,
+      "destVotes": 1497,
+      "candidates": {
+        "ABQ": 3006
+      }
+    },
+    {
+      "id": "10141",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "10146",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "10154",
+      "iata": "ACK",
+      "accepted": true,
+      "votes": 50,
+      "topVotes": 50,
+      "topShare": 1,
+      "originVotes": 25,
+      "destVotes": 25,
+      "candidates": {
+        "ACK": 50
+      }
+    },
+    {
+      "id": "10155",
+      "iata": "ACT",
+      "accepted": true,
+      "votes": 293,
+      "topVotes": 293,
+      "topShare": 1,
+      "originVotes": 145,
+      "destVotes": 148,
+      "candidates": {
+        "ACT": 293
+      }
+    },
+    {
+      "id": "10157",
+      "iata": "ACV",
+      "accepted": true,
+      "votes": 216,
+      "topVotes": 216,
+      "topShare": 1,
+      "originVotes": 118,
+      "destVotes": 98,
+      "candidates": {
+        "ACV": 216
+      }
+    },
+    {
+      "id": "10158",
+      "iata": "ACY",
+      "accepted": true,
+      "votes": 496,
+      "topVotes": 496,
+      "topShare": 1,
+      "originVotes": 248,
+      "destVotes": 248,
+      "candidates": {
+        "ACY": 496
+      }
+    },
+    {
+      "id": "10165",
+      "iata": "ADK",
+      "accepted": false,
+      "reason": "too_few_votes",
+      "votes": 16,
+      "topVotes": 16,
+      "topShare": 1,
+      "originVotes": 8,
+      "destVotes": 8,
+      "candidates": {
+        "ADK": 16
+      }
+    },
+    {
+      "id": "10170",
+      "iata": "ADQ",
+      "accepted": true,
+      "votes": 62,
+      "topVotes": 62,
+      "topShare": 1,
+      "originVotes": 31,
+      "destVotes": 31,
+      "candidates": {
+        "ADQ": 62
+      }
+    },
+    {
+      "id": "10185",
+      "iata": "AEX",
+      "accepted": true,
+      "votes": 340,
+      "topVotes": 340,
+      "topShare": 1,
+      "originVotes": 170,
+      "destVotes": 170,
+      "candidates": {
+        "AEX": 340
+      }
+    },
+    {
+      "id": "10208",
+      "iata": "AGS",
+      "accepted": true,
+      "votes": 23,
+      "topVotes": 23,
+      "topShare": 1,
+      "originVotes": 23,
+      "destVotes": 0,
+      "candidates": {
+        "AGS": 23
+      }
+    },
+    {
+      "id": "10257",
+      "iata": "ALB",
+      "accepted": true,
+      "votes": 1003,
+      "topVotes": 1003,
+      "topShare": 1,
+      "originVotes": 507,
+      "destVotes": 496,
+      "candidates": {
+        "ALB": 1003
+      }
+    },
+    {
+      "id": "10268",
+      "iata": "ALO",
+      "accepted": true,
+      "votes": 107,
+      "topVotes": 107,
+      "topShare": 1,
+      "originVotes": 54,
+      "destVotes": 53,
+      "candidates": {
+        "ALO": 107
+      }
+    },
+    {
+      "id": "10279",
+      "iata": "AMA",
+      "accepted": true,
+      "votes": 564,
+      "topVotes": 563,
+      "topShare": 0.9982,
+      "originVotes": 284,
+      "destVotes": 280,
+      "candidates": {
+        "AMA": 563,
+        "MAF": 1
+      }
+    },
+    {
+      "id": "10299",
+      "iata": "ANC",
+      "accepted": true,
+      "votes": 1999,
+      "topVotes": 1999,
+      "topShare": 1,
+      "originVotes": 978,
+      "destVotes": 1021,
+      "candidates": {
+        "ANC": 1999
+      }
+    },
+    {
+      "id": "10333",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "10372",
+      "iata": "ASE",
+      "accepted": true,
+      "votes": 115,
+      "topVotes": 115,
+      "topShare": 1,
+      "originVotes": 59,
+      "destVotes": 56,
+      "candidates": {
+        "ASE": 115
+      }
+    },
+    {
+      "id": "10397",
+      "iata": "ATL",
+      "accepted": true,
+      "votes": 17176,
+      "topVotes": 17176,
+      "topShare": 1,
+      "originVotes": 7932,
+      "destVotes": 9244,
+      "candidates": {
+        "ATL": 17176
+      }
+    },
+    {
+      "id": "10408",
+      "iata": "ATW",
+      "accepted": true,
+      "votes": 269,
+      "topVotes": 269,
+      "topShare": 1,
+      "originVotes": 135,
+      "destVotes": 134,
+      "candidates": {
+        "ATW": 269
+      }
+    },
+    {
+      "id": "10423",
+      "iata": "AUS",
+      "accepted": true,
+      "votes": 6666,
+      "topVotes": 6666,
+      "topShare": 1,
+      "originVotes": 3311,
+      "destVotes": 3355,
+      "candidates": {
+        "AUS": 6666
+      }
+    },
+    {
+      "id": "10431",
+      "iata": "AVL",
+      "accepted": true,
+      "votes": 274,
+      "topVotes": 274,
+      "topShare": 1,
+      "originVotes": 126,
+      "destVotes": 148,
+      "candidates": {
+        "AVL": 274
+      }
+    },
+    {
+      "id": "10434",
+      "iata": "AVP",
+      "accepted": true,
+      "votes": 119,
+      "topVotes": 119,
+      "topShare": 1,
+      "originVotes": 58,
+      "destVotes": 61,
+      "candidates": {
+        "AVP": 119
+      }
+    },
+    {
+      "id": "10469",
+      "iata": "AZO",
+      "accepted": true,
+      "votes": 238,
+      "topVotes": 238,
+      "topShare": 1,
+      "originVotes": 119,
+      "destVotes": 119,
+      "candidates": {
+        "AZO": 238
+      }
+    },
+    {
+      "id": "10529",
+      "iata": "BDL",
+      "accepted": true,
+      "votes": 2297,
+      "topVotes": 2297,
+      "topShare": 1,
+      "originVotes": 1140,
+      "destVotes": 1157,
+      "candidates": {
+        "BDL": 2297
+      }
+    },
+    {
+      "id": "10551",
+      "iata": "BET",
+      "accepted": true,
+      "votes": 168,
+      "topVotes": 168,
+      "topShare": 1,
+      "originVotes": 84,
+      "destVotes": 84,
+      "candidates": {
+        "BET": 168
+      }
+    },
+    {
+      "id": "10561",
+      "iata": "BFL",
+      "accepted": true,
+      "votes": 360,
+      "topVotes": 360,
+      "topShare": 1,
+      "originVotes": 179,
+      "destVotes": 181,
+      "candidates": {
+        "BFL": 360
+      }
+    },
+    {
+      "id": "10577",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "10581",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "10599",
+      "iata": "BHM",
+      "accepted": true,
+      "votes": 1433,
+      "topVotes": 1433,
+      "topShare": 1,
+      "originVotes": 736,
+      "destVotes": 697,
+      "candidates": {
+        "BHM": 1433
+      }
+    },
+    {
+      "id": "10620",
+      "iata": "BIL",
+      "accepted": true,
+      "votes": 277,
+      "topVotes": 277,
+      "topShare": 1,
+      "originVotes": 160,
+      "destVotes": 117,
+      "candidates": {
+        "BIL": 277
+      }
+    },
+    {
+      "id": "10627",
+      "iata": "BIS",
+      "accepted": true,
+      "votes": 377,
+      "topVotes": 377,
+      "topShare": 1,
+      "originVotes": 175,
+      "destVotes": 202,
+      "candidates": {
+        "BIS": 377
+      }
+    },
+    {
+      "id": "10631",
+      "iata": "BJI",
+      "accepted": true,
+      "votes": 57,
+      "topVotes": 57,
+      "topShare": 1,
+      "originVotes": 57,
+      "destVotes": 0,
+      "candidates": {
+        "BJI": 57
+      }
+    },
+    {
+      "id": "10666",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "10685",
+      "iata": "BMI",
+      "accepted": true,
+      "votes": 383,
+      "topVotes": 383,
+      "topShare": 1,
+      "originVotes": 202,
+      "destVotes": 181,
+      "candidates": {
+        "BMI": 383
+      }
+    },
+    {
+      "id": "10693",
+      "iata": "BNA",
+      "accepted": true,
+      "votes": 7268,
+      "topVotes": 7268,
+      "topShare": 1,
+      "originVotes": 3695,
+      "destVotes": 3573,
+      "candidates": {
+        "BNA": 7268
+      }
+    },
+    {
+      "id": "10713",
+      "iata": "BOI",
+      "accepted": true,
+      "votes": 1436,
+      "topVotes": 1436,
+      "topShare": 1,
+      "originVotes": 722,
+      "destVotes": 714,
+      "candidates": {
+        "BOI": 1436
+      }
+    },
+    {
+      "id": "10721",
+      "iata": "BOS",
+      "accepted": true,
+      "votes": 16986,
+      "topVotes": 16986,
+      "topShare": 1,
+      "originVotes": 8610,
+      "destVotes": 8376,
+      "candidates": {
+        "BOS": 16986
+      }
+    },
+    {
+      "id": "10728",
+      "iata": "BPT",
+      "accepted": true,
+      "votes": 169,
+      "topVotes": 169,
+      "topShare": 1,
+      "originVotes": 86,
+      "destVotes": 83,
+      "candidates": {
+        "BPT": 169
+      }
+    },
+    {
+      "id": "10731",
+      "iata": "BQK",
+      "accepted": false,
+      "reason": "too_few_votes",
+      "votes": 5,
+      "topVotes": 5,
+      "topShare": 1,
+      "originVotes": 5,
+      "destVotes": 0,
+      "candidates": {
+        "BQK": 5
+      }
+    },
+    {
+      "id": "10732",
+      "iata": "BQN",
+      "accepted": true,
+      "votes": 150,
+      "topVotes": 150,
+      "topShare": 1,
+      "originVotes": 75,
+      "destVotes": 75,
+      "candidates": {
+        "BQN": 150
+      }
+    },
+    {
+      "id": "10739",
+      "iata": "BRD",
+      "accepted": true,
+      "votes": 48,
+      "topVotes": 48,
+      "topShare": 1,
+      "originVotes": 26,
+      "destVotes": 22,
+      "candidates": {
+        "BRD": 48
+      }
+    },
+    {
+      "id": "10747",
+      "iata": "BRO",
+      "accepted": true,
+      "votes": 368,
+      "topVotes": 368,
+      "topShare": 1,
+      "originVotes": 194,
+      "destVotes": 174,
+      "candidates": {
+        "BRO": 368
+      }
+    },
+    {
+      "id": "10754",
+      "iata": "BRW",
+      "accepted": true,
+      "votes": 162,
+      "topVotes": 162,
+      "topShare": 1,
+      "originVotes": 81,
+      "destVotes": 81,
+      "candidates": {
+        "BRW": 162
+      }
+    },
+    {
+      "id": "10779",
+      "iata": "BTM",
+      "accepted": true,
+      "votes": 53,
+      "topVotes": 53,
+      "topShare": 1,
+      "originVotes": 31,
+      "destVotes": 22,
+      "candidates": {
+        "BTM": 53
+      }
+    },
+    {
+      "id": "10781",
+      "iata": "BTR",
+      "accepted": true,
+      "votes": 910,
+      "topVotes": 910,
+      "topShare": 1,
+      "originVotes": 453,
+      "destVotes": 457,
+      "candidates": {
+        "BTR": 910
+      }
+    },
+    {
+      "id": "10785",
+      "iata": "BTV",
+      "accepted": true,
+      "votes": 466,
+      "topVotes": 466,
+      "topShare": 1,
+      "originVotes": 243,
+      "destVotes": 223,
+      "candidates": {
+        "BTV": 466
+      }
+    },
+    {
+      "id": "10792",
+      "iata": "BUF",
+      "accepted": true,
+      "votes": 2521,
+      "topVotes": 2521,
+      "topShare": 1,
+      "originVotes": 1263,
+      "destVotes": 1258,
+      "candidates": {
+        "BUF": 2521
+      }
+    },
+    {
+      "id": "10800",
+      "iata": "BUR",
+      "accepted": true,
+      "votes": 3235,
+      "topVotes": 3235,
+      "topShare": 1,
+      "originVotes": 1629,
+      "destVotes": 1606,
+      "candidates": {
+        "BUR": 3235
+      }
+    },
+    {
+      "id": "10821",
+      "iata": "BWI",
+      "accepted": true,
+      "votes": 13745,
+      "topVotes": 13745,
+      "topShare": 1,
+      "originVotes": 6916,
+      "destVotes": 6829,
+      "candidates": {
+        "BWI": 13745
+      }
+    },
+    {
+      "id": "10849",
+      "iata": "BZN",
+      "accepted": true,
+      "votes": 348,
+      "topVotes": 348,
+      "topShare": 1,
+      "originVotes": 178,
+      "destVotes": 170,
+      "candidates": {
+        "BZN": 348
+      }
+    },
+    {
+      "id": "10868",
+      "iata": "CAE",
+      "accepted": true,
+      "votes": 336,
+      "topVotes": 336,
+      "topShare": 1,
+      "originVotes": 165,
+      "destVotes": 171,
+      "candidates": {
+        "CAE": 336
+      }
+    },
+    {
+      "id": "10874",
+      "iata": "CAK",
+      "accepted": true,
+      "votes": 711,
+      "topVotes": 711,
+      "topShare": 1,
+      "originVotes": 344,
+      "destVotes": 367,
+      "candidates": {
+        "CAK": 711
+      }
+    },
+    {
+      "id": "10918",
+      "iata": "CDC",
+      "accepted": true,
+      "votes": 104,
+      "topVotes": 104,
+      "topShare": 1,
+      "originVotes": 52,
+      "destVotes": 52,
+      "candidates": {
+        "CDC": 104
+      }
+    },
+    {
+      "id": "10926",
+      "iata": "CDV",
+      "accepted": true,
+      "votes": 124,
+      "topVotes": 124,
+      "topShare": 1,
+      "originVotes": 62,
+      "destVotes": 62,
+      "candidates": {
+        "CDV": 124
+      }
+    },
+    {
+      "id": "10980",
+      "iata": "CHA",
+      "accepted": true,
+      "votes": 178,
+      "topVotes": 178,
+      "topShare": 1,
+      "originVotes": 89,
+      "destVotes": 89,
+      "candidates": {
+        "CHA": 178
+      }
+    },
+    {
+      "id": "10990",
+      "iata": "CHO",
+      "accepted": true,
+      "votes": 248,
+      "topVotes": 248,
+      "topShare": 1,
+      "originVotes": 124,
+      "destVotes": 124,
+      "candidates": {
+        "CHO": 248
+      }
+    },
+    {
+      "id": "10994",
+      "iata": "CHS",
+      "accepted": true,
+      "votes": 1615,
+      "topVotes": 1615,
+      "topShare": 1,
+      "originVotes": 841,
+      "destVotes": 774,
+      "candidates": {
+        "CHS": 1615
+      }
+    },
+    {
+      "id": "11003",
+      "iata": "CID",
+      "accepted": true,
+      "votes": 669,
+      "topVotes": 669,
+      "topShare": 1,
+      "originVotes": 350,
+      "destVotes": 319,
+      "candidates": {
+        "CID": 669
+      }
+    },
+    {
+      "id": "11013",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "11042",
+      "iata": "CLE",
+      "accepted": true,
+      "votes": 5288,
+      "topVotes": 5288,
+      "topShare": 1,
+      "originVotes": 2653,
+      "destVotes": 2635,
+      "candidates": {
+        "CLE": 5288
+      }
+    },
+    {
+      "id": "11049",
+      "iata": "CLL",
+      "accepted": true,
+      "votes": 445,
+      "topVotes": 444,
+      "topShare": 0.9978,
+      "originVotes": 223,
+      "destVotes": 222,
+      "candidates": {
+        "CLL": 444,
+        "SHV": 1
+      }
+    },
+    {
+      "id": "11057",
+      "iata": "CLT",
+      "accepted": true,
+      "votes": 17115,
+      "topVotes": 17115,
+      "topShare": 1,
+      "originVotes": 8818,
+      "destVotes": 8297,
+      "candidates": {
+        "CLT": 17115
+      }
+    },
+    {
+      "id": "11066",
+      "iata": "CMH",
+      "accepted": true,
+      "votes": 3365,
+      "topVotes": 3365,
+      "topShare": 1,
+      "originVotes": 1654,
+      "destVotes": 1711,
+      "candidates": {
+        "CMH": 3365
+      }
+    },
+    {
+      "id": "11067",
+      "iata": "CMI",
+      "accepted": true,
+      "votes": 412,
+      "topVotes": 412,
+      "topShare": 1,
+      "originVotes": 206,
+      "destVotes": 206,
+      "candidates": {
+        "CMI": 412
+      }
+    },
+    {
+      "id": "11076",
+      "iata": "CMX",
+      "accepted": true,
+      "votes": 94,
+      "topVotes": 94,
+      "topShare": 1,
+      "originVotes": 47,
+      "destVotes": 47,
+      "candidates": {
+        "CMX": 94
+      }
+    },
+    {
+      "id": "11097",
+      "iata": "COD",
+      "accepted": true,
+      "votes": 62,
+      "topVotes": 62,
+      "topShare": 1,
+      "originVotes": 31,
+      "destVotes": 31,
+      "candidates": {
+        "COD": 62
+      }
+    },
+    {
+      "id": "11109",
+      "iata": "COS",
+      "accepted": true,
+      "votes": 1062,
+      "topVotes": 1062,
+      "topShare": 1,
+      "originVotes": 555,
+      "destVotes": 507,
+      "candidates": {
+        "COS": 1062
+      }
+    },
+    {
+      "id": "11111",
+      "iata": "COU",
+      "accepted": true,
+      "votes": 246,
+      "topVotes": 246,
+      "topShare": 1,
+      "originVotes": 123,
+      "destVotes": 123,
+      "candidates": {
+        "COU": 246
+      }
+    },
+    {
+      "id": "11122",
+      "iata": "CPR",
+      "accepted": true,
+      "votes": 157,
+      "topVotes": 157,
+      "topShare": 1,
+      "originVotes": 81,
+      "destVotes": 76,
+      "candidates": {
+        "CPR": 157
+      }
+    },
+    {
+      "id": "11140",
+      "iata": "CRP",
+      "accepted": true,
+      "votes": 681,
+      "topVotes": 681,
+      "topShare": 1,
+      "originVotes": 341,
+      "destVotes": 340,
+      "candidates": {
+        "CRP": 681
+      }
+    },
+    {
+      "id": "11146",
+      "iata": "CRW",
+      "accepted": true,
+      "votes": 178,
+      "topVotes": 178,
+      "topShare": 1,
+      "originVotes": 96,
+      "destVotes": 82,
+      "candidates": {
+        "CRW": 178
+      }
+    },
+    {
+      "id": "11150",
+      "iata": "CSG",
+      "accepted": false,
+      "reason": "too_few_votes",
+      "votes": 5,
+      "topVotes": 5,
+      "topShare": 1,
+      "originVotes": 5,
+      "destVotes": 0,
+      "candidates": {
+        "CSG": 5
+      }
+    },
+    {
+      "id": "11193",
+      "iata": "CVG",
+      "accepted": true,
+      "votes": 2130,
+      "topVotes": 2130,
+      "topShare": 1,
+      "originVotes": 1053,
+      "destVotes": 1077,
+      "candidates": {
+        "CVG": 2130
+      }
+    },
+    {
+      "id": "11203",
+      "iata": "CWA",
+      "accepted": true,
+      "votes": 288,
+      "topVotes": 288,
+      "topShare": 1,
+      "originVotes": 145,
+      "destVotes": 143,
+      "candidates": {
+        "CWA": 288
+      }
+    },
+    {
+      "id": "11252",
+      "iata": "DAB",
+      "accepted": true,
+      "votes": 62,
+      "topVotes": 62,
+      "topShare": 1,
+      "originVotes": 31,
+      "destVotes": 31,
+      "candidates": {
+        "DAB": 62
+      }
+    },
+    {
+      "id": "11259",
+      "iata": "DAL",
+      "accepted": true,
+      "votes": 10254,
+      "topVotes": 10254,
+      "topShare": 1,
+      "originVotes": 5108,
+      "destVotes": 5146,
+      "candidates": {
+        "DAL": 10254
+      }
+    },
+    {
+      "id": "11267",
+      "iata": "DAY",
+      "accepted": true,
+      "votes": 1059,
+      "topVotes": 1059,
+      "topShare": 1,
+      "originVotes": 541,
+      "destVotes": 518,
+      "candidates": {
+        "DAY": 1059
+      }
+    },
+    {
+      "id": "11274",
+      "iata": "DBQ",
+      "accepted": true,
+      "votes": 174,
+      "topVotes": 174,
+      "topShare": 1,
+      "originVotes": 87,
+      "destVotes": 87,
+      "candidates": {
+        "DBQ": 174
+      }
+    },
+    {
+      "id": "11278",
+      "iata": "DCA",
+      "accepted": true,
+      "votes": 11334,
+      "topVotes": 11329,
+      "topShare": 0.9996,
+      "originVotes": 5559,
+      "destVotes": 5775,
+      "candidates": {
+        "DCA": 11329,
+        "HOU": 5
+      }
+    },
+    {
+      "id": "11292",
+      "iata": "DEN",
+      "accepted": true,
+      "votes": 31405,
+      "topVotes": 31405,
+      "topShare": 1,
+      "originVotes": 15664,
+      "destVotes": 15741,
+      "candidates": {
+        "DEN": 31405
+      }
+    },
+    {
+      "id": "11298",
+      "iata": "DFW",
+      "accepted": true,
+      "votes": 39897,
+      "topVotes": 39897,
+      "topShare": 1,
+      "originVotes": 19955,
+      "destVotes": 19942,
+      "candidates": {
+        "DFW": 39897
+      }
+    },
+    {
+      "id": "11308",
+      "iata": "DHN",
+      "accepted": true,
+      "votes": 60,
+      "topVotes": 60,
+      "topShare": 1,
+      "originVotes": 5,
+      "destVotes": 55,
+      "candidates": {
+        "DHN": 60
+      }
+    },
+    {
+      "id": "11315",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "11337",
+      "iata": "DLH",
+      "accepted": true,
+      "votes": 224,
+      "topVotes": 224,
+      "topShare": 1,
+      "originVotes": 112,
+      "destVotes": 112,
+      "candidates": {
+        "DLH": 224
+      }
+    },
+    {
+      "id": "11413",
+      "iata": "DRO",
+      "accepted": true,
+      "votes": 354,
+      "topVotes": 354,
+      "topShare": 1,
+      "originVotes": 178,
+      "destVotes": 176,
+      "candidates": {
+        "DRO": 354
+      }
+    },
+    {
+      "id": "11423",
+      "iata": "DSM",
+      "accepted": true,
+      "votes": 1048,
+      "topVotes": 1048,
+      "topShare": 1,
+      "originVotes": 514,
+      "destVotes": 534,
+      "candidates": {
+        "DSM": 1048
+      }
+    },
+    {
+      "id": "11433",
+      "iata": "DTW",
+      "accepted": true,
+      "votes": 4903,
+      "topVotes": 4903,
+      "topShare": 1,
+      "originVotes": 2316,
+      "destVotes": 2587,
+      "candidates": {
+        "DTW": 4903
+      }
+    },
+    {
+      "id": "11447",
+      "iata": "DVL",
+      "accepted": true,
+      "votes": 95,
+      "topVotes": 95,
+      "topShare": 1,
+      "originVotes": 48,
+      "destVotes": 47,
+      "candidates": {
+        "DVL": 95
+      }
+    },
+    {
+      "id": "11471",
+      "iata": "EAU",
+      "accepted": true,
+      "votes": 122,
+      "topVotes": 122,
+      "topShare": 1,
+      "originVotes": 61,
+      "destVotes": 61,
+      "candidates": {
+        "EAU": 122
+      }
+    },
+    {
+      "id": "11481",
+      "iata": "ECP",
+      "accepted": true,
+      "votes": 388,
+      "topVotes": 388,
+      "topShare": 1,
+      "originVotes": 187,
+      "destVotes": 201,
+      "candidates": {
+        "ECP": 388
+      }
+    },
+    {
+      "id": "11503",
+      "iata": "EGE",
+      "accepted": false,
+      "reason": "too_few_votes",
+      "votes": 7,
+      "topVotes": 7,
+      "topShare": 1,
+      "originVotes": 4,
+      "destVotes": 3,
+      "candidates": {
+        "EGE": 7
+      }
+    },
+    {
+      "id": "11525",
+      "iata": "EKO",
+      "accepted": true,
+      "votes": 102,
+      "topVotes": 102,
+      "topShare": 1,
+      "originVotes": 53,
+      "destVotes": 49,
+      "candidates": {
+        "EKO": 102
+      }
+    },
+    {
+      "id": "11537",
+      "iata": "ELM",
+      "accepted": true,
+      "votes": 120,
+      "topVotes": 120,
+      "topShare": 1,
+      "originVotes": 57,
+      "destVotes": 63,
+      "candidates": {
+        "ELM": 120
+      }
+    },
+    {
+      "id": "11540",
+      "iata": "ELP",
+      "accepted": true,
+      "votes": 1819,
+      "topVotes": 1819,
+      "topShare": 1,
+      "originVotes": 953,
+      "destVotes": 866,
+      "candidates": {
+        "ELP": 1819
+      }
+    },
+    {
+      "id": "11577",
+      "iata": "ERI",
+      "accepted": true,
+      "votes": 114,
+      "topVotes": 114,
+      "topShare": 1,
+      "originVotes": 57,
+      "destVotes": 57,
+      "candidates": {
+        "ERI": 114
+      }
+    },
+    {
+      "id": "11587",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "11603",
+      "iata": "EUG",
+      "accepted": true,
+      "votes": 551,
+      "topVotes": 551,
+      "topShare": 1,
+      "originVotes": 313,
+      "destVotes": 238,
+      "candidates": {
+        "EUG": 551
+      }
+    },
+    {
+      "id": "11612",
+      "iata": "EVV",
+      "accepted": true,
+      "votes": 461,
+      "topVotes": 461,
+      "topShare": 1,
+      "originVotes": 232,
+      "destVotes": 229,
+      "candidates": {
+        "EVV": 461
+      }
+    },
+    {
+      "id": "11617",
+      "iata": "EWN",
+      "accepted": true,
+      "votes": 31,
+      "topVotes": 31,
+      "topShare": 1,
+      "originVotes": 31,
+      "destVotes": 0,
+      "candidates": {
+        "EWN": 31
+      }
+    },
+    {
+      "id": "11618",
+      "iata": "EWR",
+      "accepted": true,
+      "votes": 16230,
+      "topVotes": 16230,
+      "topShare": 1,
+      "originVotes": 8145,
+      "destVotes": 8085,
+      "candidates": {
+        "EWR": 16230
+      }
+    },
+    {
+      "id": "11624",
+      "iata": "EYW",
+      "accepted": true,
+      "votes": 52,
+      "topVotes": 52,
+      "topShare": 1,
+      "originVotes": 15,
+      "destVotes": 37,
+      "candidates": {
+        "EYW": 52
+      }
+    },
+    {
+      "id": "11630",
+      "iata": "FAI",
+      "accepted": true,
+      "votes": 293,
+      "topVotes": 293,
+      "topShare": 1,
+      "originVotes": 149,
+      "destVotes": 144,
+      "candidates": {
+        "FAI": 293
+      }
+    },
+    {
+      "id": "11637",
+      "iata": "FAR",
+      "accepted": true,
+      "votes": 653,
+      "topVotes": 653,
+      "topShare": 1,
+      "originVotes": 328,
+      "destVotes": 325,
+      "candidates": {
+        "FAR": 653
+      }
+    },
+    {
+      "id": "11638",
+      "iata": "FAT",
+      "accepted": true,
+      "votes": 1172,
+      "topVotes": 1172,
+      "topShare": 1,
+      "originVotes": 597,
+      "destVotes": 575,
+      "candidates": {
+        "FAT": 1172
+      }
+    },
+    {
+      "id": "11641",
+      "iata": "FAY",
+      "accepted": true,
+      "votes": 55,
+      "topVotes": 55,
+      "topShare": 1,
+      "originVotes": 55,
+      "destVotes": 0,
+      "candidates": {
+        "FAY": 55
+      }
+    },
+    {
+      "id": "11648",
+      "iata": "FCA",
+      "accepted": true,
+      "votes": 125,
+      "topVotes": 125,
+      "topShare": 1,
+      "originVotes": 65,
+      "destVotes": 60,
+      "candidates": {
+        "FCA": 125
+      }
+    },
+    {
+      "id": "11695",
+      "iata": "FLG",
+      "accepted": true,
+      "votes": 261,
+      "topVotes": 261,
+      "topShare": 1,
+      "originVotes": 130,
+      "destVotes": 131,
+      "candidates": {
+        "FLG": 261
+      }
+    },
+    {
+      "id": "11697",
+      "iata": "FLL",
+      "accepted": true,
+      "votes": 9228,
+      "topVotes": 9228,
+      "topShare": 1,
+      "originVotes": 4542,
+      "destVotes": 4686,
+      "candidates": {
+        "FLL": 9228
+      }
+    },
+    {
+      "id": "11721",
+      "iata": "FNT",
+      "accepted": true,
+      "votes": 592,
+      "topVotes": 592,
+      "topShare": 1,
+      "originVotes": 310,
+      "destVotes": 282,
+      "candidates": {
+        "FNT": 592
+      }
+    },
+    {
+      "id": "11775",
+      "iata": "FSD",
+      "accepted": true,
+      "votes": 537,
+      "topVotes": 537,
+      "topShare": 1,
+      "originVotes": 283,
+      "destVotes": 254,
+      "candidates": {
+        "FSD": 537
+      }
+    },
+    {
+      "id": "11778",
+      "iata": "FSM",
+      "accepted": true,
+      "votes": 285,
+      "topVotes": 285,
+      "topShare": 1,
+      "originVotes": 144,
+      "destVotes": 141,
+      "candidates": {
+        "FSM": 285
+      }
+    },
+    {
+      "id": "11823",
+      "iata": "FWA",
+      "accepted": true,
+      "votes": 529,
+      "topVotes": 529,
+      "topShare": 1,
+      "originVotes": 255,
+      "destVotes": 274,
+      "candidates": {
+        "FWA": 529
+      }
+    },
+    {
+      "id": "11865",
+      "iata": "GCC",
+      "accepted": true,
+      "votes": 167,
+      "topVotes": 167,
+      "topShare": 1,
+      "originVotes": 87,
+      "destVotes": 80,
+      "candidates": {
+        "GCC": 167
+      }
+    },
+    {
+      "id": "11867",
+      "iata": "GCK",
+      "accepted": true,
+      "votes": 124,
+      "topVotes": 124,
+      "topShare": 1,
+      "originVotes": 62,
+      "destVotes": 62,
+      "candidates": {
+        "GCK": 124
+      }
+    },
+    {
+      "id": "11884",
+      "iata": "GEG",
+      "accepted": true,
+      "votes": 1136,
+      "topVotes": 1136,
+      "topShare": 1,
+      "originVotes": 557,
+      "destVotes": 579,
+      "candidates": {
+        "GEG": 1136
+      }
+    },
+    {
+      "id": "11898",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "11905",
+      "iata": "GGG",
+      "accepted": true,
+      "votes": 119,
+      "topVotes": 119,
+      "topShare": 1,
+      "originVotes": 59,
+      "destVotes": 60,
+      "candidates": {
+        "GGG": 119
+      }
+    },
+    {
+      "id": "11921",
+      "iata": "GJT",
+      "accepted": true,
+      "votes": 303,
+      "topVotes": 303,
+      "topShare": 1,
+      "originVotes": 147,
+      "destVotes": 156,
+      "candidates": {
+        "GJT": 303
+      }
+    },
+    {
+      "id": "11953",
+      "iata": "GNV",
+      "accepted": true,
+      "votes": 114,
+      "topVotes": 114,
+      "topShare": 1,
+      "originVotes": 57,
+      "destVotes": 57,
+      "candidates": {
+        "GNV": 114
+      }
+    },
+    {
+      "id": "11973",
+      "iata": "GPT",
+      "accepted": true,
+      "votes": 415,
+      "topVotes": 415,
+      "topShare": 1,
+      "originVotes": 207,
+      "destVotes": 208,
+      "candidates": {
+        "GPT": 415
+      }
+    },
+    {
+      "id": "11977",
+      "iata": "GRB",
+      "accepted": true,
+      "votes": 574,
+      "topVotes": 574,
+      "topShare": 1,
+      "originVotes": 288,
+      "destVotes": 286,
+      "candidates": {
+        "GRB": 574
+      }
+    },
+    {
+      "id": "11980",
+      "iata": "GRI",
+      "accepted": true,
+      "votes": 114,
+      "topVotes": 114,
+      "topShare": 1,
+      "originVotes": 57,
+      "destVotes": 57,
+      "candidates": {
+        "GRI": 114
+      }
+    },
+    {
+      "id": "11982",
+      "iata": "GRK",
+      "accepted": true,
+      "votes": 627,
+      "topVotes": 627,
+      "topShare": 1,
+      "originVotes": 316,
+      "destVotes": 311,
+      "candidates": {
+        "GRK": 627
+      }
+    },
+    {
+      "id": "11986",
+      "iata": "GRR",
+      "accepted": true,
+      "votes": 1019,
+      "topVotes": 1019,
+      "topShare": 1,
+      "originVotes": 514,
+      "destVotes": 505,
+      "candidates": {
+        "GRR": 1019
+      }
+    },
+    {
+      "id": "11995",
+      "iata": "GSO",
+      "accepted": true,
+      "votes": 562,
+      "topVotes": 562,
+      "topShare": 1,
+      "originVotes": 322,
+      "destVotes": 240,
+      "candidates": {
+        "GSO": 562
+      }
+    },
+    {
+      "id": "11996",
+      "iata": "GSP",
+      "accepted": true,
+      "votes": 762,
+      "topVotes": 762,
+      "topShare": 1,
+      "originVotes": 369,
+      "destVotes": 393,
+      "candidates": {
+        "GSP": 762
+      }
+    },
+    {
+      "id": "12003",
+      "iata": "GTF",
+      "accepted": true,
+      "votes": 202,
+      "topVotes": 202,
+      "topShare": 1,
+      "originVotes": 101,
+      "destVotes": 101,
+      "candidates": {
+        "GTF": 202
+      }
+    },
+    {
+      "id": "12007",
+      "iata": "GTR",
+      "accepted": true,
+      "votes": 26,
+      "topVotes": 26,
+      "topShare": 1,
+      "originVotes": 0,
+      "destVotes": 26,
+      "candidates": {
+        "GTR": 26
+      }
+    },
+    {
+      "id": "12016",
+      "iata": "GUM",
+      "accepted": true,
+      "votes": 55,
+      "topVotes": 55,
+      "topShare": 1,
+      "originVotes": 31,
+      "destVotes": 24,
+      "candidates": {
+        "GUM": 55
+      }
+    },
+    {
+      "id": "12094",
+      "iata": "HDN",
+      "accepted": true,
+      "votes": 40,
+      "topVotes": 40,
+      "topShare": 1,
+      "originVotes": 20,
+      "destVotes": 20,
+      "candidates": {
+        "HDN": 40
+      }
+    },
+    {
+      "id": "12129",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "12156",
+      "iata": "HLN",
+      "accepted": true,
+      "votes": 68,
+      "topVotes": 68,
+      "topShare": 1,
+      "originVotes": 46,
+      "destVotes": 22,
+      "candidates": {
+        "HLN": 68
+      }
+    },
+    {
+      "id": "12173",
+      "iata": "HNL",
+      "accepted": true,
+      "votes": 6414,
+      "topVotes": 6414,
+      "topShare": 1,
+      "originVotes": 3097,
+      "destVotes": 3317,
+      "candidates": {
+        "HNL": 6414
+      }
+    },
+    {
+      "id": "12177",
+      "iata": "HOB",
+      "accepted": true,
+      "votes": 99,
+      "topVotes": 99,
+      "topShare": 1,
+      "originVotes": 51,
+      "destVotes": 48,
+      "candidates": {
+        "HOB": 99
+      }
+    },
+    {
+      "id": "12191",
+      "iata": "HOU",
+      "accepted": true,
+      "votes": 8271,
+      "topVotes": 8271,
+      "topShare": 1,
+      "originVotes": 4135,
+      "destVotes": 4136,
+      "candidates": {
+        "HOU": 8271
+      }
+    },
+    {
+      "id": "12197",
+      "iata": "HPN",
+      "accepted": true,
+      "votes": 1051,
+      "topVotes": 1051,
+      "topShare": 1,
+      "originVotes": 506,
+      "destVotes": 545,
+      "candidates": {
+        "HPN": 1051
+      }
+    },
+    {
+      "id": "12206",
+      "iata": "HRL",
+      "accepted": true,
+      "votes": 550,
+      "topVotes": 550,
+      "topShare": 1,
+      "originVotes": 276,
+      "destVotes": 274,
+      "candidates": {
+        "HRL": 550
+      }
+    },
+    {
+      "id": "12217",
+      "iata": "HSV",
+      "accepted": true,
+      "votes": 271,
+      "topVotes": 271,
+      "topShare": 1,
+      "originVotes": 141,
+      "destVotes": 130,
+      "candidates": {
+        "HSV": 271
+      }
+    },
+    {
+      "id": "12255",
+      "iata": "HYS",
+      "accepted": true,
+      "votes": 106,
+      "topVotes": 106,
+      "topShare": 1,
+      "originVotes": 53,
+      "destVotes": 53,
+      "candidates": {
+        "HYS": 106
+      }
+    },
+    {
+      "id": "12264",
+      "iata": "IAD",
+      "accepted": true,
+      "votes": 4886,
+      "topVotes": 4886,
+      "topShare": 1,
+      "originVotes": 2407,
+      "destVotes": 2479,
+      "candidates": {
+        "IAD": 4886
+      }
+    },
+    {
+      "id": "12265",
+      "iata": "IAG",
+      "accepted": true,
+      "votes": 44,
+      "topVotes": 44,
+      "topShare": 1,
+      "originVotes": 22,
+      "destVotes": 22,
+      "candidates": {
+        "IAG": 44
+      }
+    },
+    {
+      "id": "12266",
+      "iata": "IAH",
+      "accepted": true,
+      "votes": 22885,
+      "topVotes": 22885,
+      "topShare": 1,
+      "originVotes": 11327,
+      "destVotes": 11558,
+      "candidates": {
+        "IAH": 22885
+      }
+    },
+    {
+      "id": "12278",
+      "iata": "ICT",
+      "accepted": true,
+      "votes": 1014,
+      "topVotes": 1014,
+      "topShare": 1,
+      "originVotes": 516,
+      "destVotes": 498,
+      "candidates": {
+        "ICT": 1014
+      }
+    },
+    {
+      "id": "12280",
+      "iata": "IDA",
+      "accepted": true,
+      "votes": 252,
+      "topVotes": 252,
+      "topShare": 1,
+      "originVotes": 141,
+      "destVotes": 111,
+      "candidates": {
+        "IDA": 252
+      }
+    },
+    {
+      "id": "12323",
+      "iata": "ILM",
+      "accepted": true,
+      "votes": 180,
+      "topVotes": 180,
+      "topShare": 1,
+      "originVotes": 114,
+      "destVotes": 66,
+      "candidates": {
+        "ILM": 180
+      }
+    },
+    {
+      "id": "12335",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "12339",
+      "iata": "IND",
+      "accepted": true,
+      "votes": 3703,
+      "topVotes": 3703,
+      "topShare": 1,
+      "originVotes": 1853,
+      "destVotes": 1850,
+      "candidates": {
+        "IND": 3703
+      }
+    },
+    {
+      "id": "12343",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "12389",
+      "iata": "ISN",
+      "accepted": true,
+      "votes": 276,
+      "topVotes": 276,
+      "topShare": 1,
+      "originVotes": 140,
+      "destVotes": 136,
+      "candidates": {
+        "ISN": 276
+      }
+    },
+    {
+      "id": "12391",
+      "iata": "ISP",
+      "accepted": true,
+      "votes": 667,
+      "topVotes": 667,
+      "topShare": 1,
+      "originVotes": 326,
+      "destVotes": 341,
+      "candidates": {
+        "ISP": 667
+      }
+    },
+    {
+      "id": "12402",
+      "iata": "ITO",
+      "accepted": true,
+      "votes": 994,
+      "topVotes": 994,
+      "topShare": 1,
+      "originVotes": 497,
+      "destVotes": 497,
+      "candidates": {
+        "ITO": 994
+      }
+    },
+    {
+      "id": "12441",
+      "iata": "JAC",
+      "accepted": true,
+      "votes": 191,
+      "topVotes": 191,
+      "topShare": 1,
+      "originVotes": 98,
+      "destVotes": 93,
+      "candidates": {
+        "JAC": 191
+      }
+    },
+    {
+      "id": "12448",
+      "iata": "JAN",
+      "accepted": true,
+      "votes": 959,
+      "topVotes": 959,
+      "topShare": 1,
+      "originVotes": 490,
+      "destVotes": 469,
+      "candidates": {
+        "JAN": 959
+      }
+    },
+    {
+      "id": "12451",
+      "iata": "JAX",
+      "accepted": true,
+      "votes": 2372,
+      "topVotes": 2372,
+      "topShare": 1,
+      "originVotes": 1200,
+      "destVotes": 1172,
+      "candidates": {
+        "JAX": 2372
+      }
+    },
+    {
+      "id": "12478",
+      "iata": "JFK",
+      "accepted": true,
+      "votes": 11679,
+      "topVotes": 11679,
+      "topShare": 1,
+      "originVotes": 5753,
+      "destVotes": 5926,
+      "candidates": {
+        "JFK": 11679
+      }
+    },
+    {
+      "id": "12511",
+      "iata": "JLN",
+      "accepted": true,
+      "votes": 116,
+      "topVotes": 116,
+      "topShare": 1,
+      "originVotes": 58,
+      "destVotes": 58,
+      "candidates": {
+        "JLN": 116
+      }
+    },
+    {
+      "id": "12519",
+      "iata": "JMS",
+      "accepted": true,
+      "votes": 148,
+      "topVotes": 148,
+      "topShare": 1,
+      "originVotes": 74,
+      "destVotes": 74,
+      "candidates": {
+        "JMS": 148
+      }
+    },
+    {
+      "id": "12523",
+      "iata": "JNU",
+      "accepted": true,
+      "votes": 590,
+      "topVotes": 590,
+      "topShare": 1,
+      "originVotes": 305,
+      "destVotes": 285,
+      "candidates": {
+        "JNU": 590
+      }
+    },
+    {
+      "id": "12758",
+      "iata": "KOA",
+      "accepted": true,
+      "votes": 1732,
+      "topVotes": 1732,
+      "topShare": 1,
+      "originVotes": 854,
+      "destVotes": 878,
+      "candidates": {
+        "KOA": 1732
+      }
+    },
+    {
+      "id": "12819",
+      "iata": "KTN",
+      "accepted": true,
+      "votes": 372,
+      "topVotes": 372,
+      "topShare": 1,
+      "originVotes": 186,
+      "destVotes": 186,
+      "candidates": {
+        "KTN": 372
+      }
+    },
+    {
+      "id": "12884",
+      "iata": "LAN",
+      "accepted": true,
+      "votes": 172,
+      "topVotes": 172,
+      "topShare": 1,
+      "originVotes": 87,
+      "destVotes": 85,
+      "candidates": {
+        "LAN": 172
+      }
+    },
+    {
+      "id": "12888",
+      "iata": "LAR",
+      "accepted": true,
+      "votes": 105,
+      "topVotes": 105,
+      "topShare": 1,
+      "originVotes": 52,
+      "destVotes": 53,
+      "candidates": {
+        "LAR": 105
+      }
+    },
+    {
+      "id": "12889",
+      "iata": "LAS",
+      "accepted": true,
+      "votes": 21233,
+      "topVotes": 21212,
+      "topShare": 0.999,
+      "originVotes": 10629,
+      "destVotes": 10604,
+      "candidates": {
+        "LAS": 21212,
+        "DAL": 20,
+        "MSP": 1
+      }
+    },
+    {
+      "id": "12891",
+      "iata": "LAW",
+      "accepted": true,
+      "votes": 242,
+      "topVotes": 242,
+      "topShare": 1,
+      "originVotes": 121,
+      "destVotes": 121,
+      "candidates": {
+        "LAW": 242
+      }
+    },
+    {
+      "id": "12892",
+      "iata": "LAX",
+      "accepted": true,
+      "votes": 27180,
+      "topVotes": 27179,
+      "topShare": 1,
+      "originVotes": 13585,
+      "destVotes": 13595,
+      "candidates": {
+        "LAX": 27179,
+        "DEN": 1
+      }
+    },
+    {
+      "id": "12896",
+      "iata": "LBB",
+      "accepted": true,
+      "votes": 847,
+      "topVotes": 847,
+      "topShare": 1,
+      "originVotes": 427,
+      "destVotes": 420,
+      "candidates": {
+        "LBB": 847
+      }
+    },
+    {
+      "id": "12898",
+      "iata": "LBE",
+      "accepted": true,
+      "votes": 233,
+      "topVotes": 233,
+      "topShare": 1,
+      "originVotes": 117,
+      "destVotes": 116,
+      "candidates": {
+        "LBE": 233
+      }
+    },
+    {
+      "id": "12915",
+      "iata": "LCH",
+      "accepted": true,
+      "votes": 387,
+      "topVotes": 387,
+      "topShare": 1,
+      "originVotes": 191,
+      "destVotes": 196,
+      "candidates": {
+        "LCH": 387
+      }
+    },
+    {
+      "id": "12945",
+      "iata": "LEX",
+      "accepted": true,
+      "votes": 543,
+      "topVotes": 543,
+      "topShare": 1,
+      "originVotes": 299,
+      "destVotes": 244,
+      "candidates": {
+        "LEX": 543
+      }
+    },
+    {
+      "id": "12951",
+      "iata": "LFT",
+      "accepted": true,
+      "votes": 610,
+      "topVotes": 610,
+      "topShare": 1,
+      "originVotes": 304,
+      "destVotes": 306,
+      "candidates": {
+        "LFT": 610
+      }
+    },
+    {
+      "id": "12953",
+      "iata": "LGA",
+      "accepted": true,
+      "votes": 11188,
+      "topVotes": 11188,
+      "topShare": 1,
+      "originVotes": 5499,
+      "destVotes": 5689,
+      "candidates": {
+        "LGA": 11188
+      }
+    },
+    {
+      "id": "12954",
+      "iata": "LGB",
+      "accepted": true,
+      "votes": 1353,
+      "topVotes": 1353,
+      "topShare": 1,
+      "originVotes": 708,
+      "destVotes": 645,
+      "candidates": {
+        "LGB": 1353
+      }
+    },
+    {
+      "id": "12982",
+      "iata": "LIH",
+      "accepted": true,
+      "votes": 1635,
+      "topVotes": 1635,
+      "topShare": 1,
+      "originVotes": 818,
+      "destVotes": 817,
+      "candidates": {
+        "LIH": 1635
+      }
+    },
+    {
+      "id": "12992",
+      "iata": "LIT",
+      "accepted": true,
+      "votes": 1667,
+      "topVotes": 1667,
+      "topShare": 1,
+      "originVotes": 861,
+      "destVotes": 806,
+      "candidates": {
+        "LIT": 1667
+      }
+    },
+    {
+      "id": "13029",
+      "iata": "LNK",
+      "accepted": true,
+      "votes": 342,
+      "topVotes": 342,
+      "topShare": 1,
+      "originVotes": 179,
+      "destVotes": 163,
+      "candidates": {
+        "LNK": 342
+      }
+    },
+    {
+      "id": "13061",
+      "iata": "LRD",
+      "accepted": true,
+      "votes": 401,
+      "topVotes": 401,
+      "topShare": 1,
+      "originVotes": 199,
+      "destVotes": 202,
+      "candidates": {
+        "LRD": 401
+      }
+    },
+    {
+      "id": "13076",
+      "iata": "LSE",
+      "accepted": true,
+      "votes": 184,
+      "topVotes": 184,
+      "topShare": 1,
+      "originVotes": 92,
+      "destVotes": 92,
+      "candidates": {
+        "LSE": 184
+      }
+    },
+    {
+      "id": "13127",
+      "iata": "LWS",
+      "accepted": true,
+      "votes": 47,
+      "topVotes": 47,
+      "topShare": 1,
+      "originVotes": 24,
+      "destVotes": 23,
+      "candidates": {
+        "LWS": 47
+      }
+    },
+    {
+      "id": "13158",
+      "iata": "MAF",
+      "accepted": true,
+      "votes": 1074,
+      "topVotes": 1074,
+      "topShare": 1,
+      "originVotes": 540,
+      "destVotes": 534,
+      "candidates": {
+        "MAF": 1074
+      }
+    },
+    {
+      "id": "13184",
+      "iata": "MBS",
+      "accepted": true,
+      "votes": 161,
+      "topVotes": 161,
+      "topShare": 1,
+      "originVotes": 74,
+      "destVotes": 87,
+      "candidates": {
+        "MBS": 161
+      }
+    },
+    {
+      "id": "13198",
+      "iata": "MCI",
+      "accepted": true,
+      "votes": 5443,
+      "topVotes": 5443,
+      "topShare": 1,
+      "originVotes": 2726,
+      "destVotes": 2717,
+      "candidates": {
+        "MCI": 5443
+      }
+    },
+    {
+      "id": "13204",
+      "iata": "MCO",
+      "accepted": true,
+      "votes": 14495,
+      "topVotes": 14495,
+      "topShare": 1,
+      "originVotes": 7126,
+      "destVotes": 7369,
+      "candidates": {
+        "MCO": 14495
+      }
+    },
+    {
+      "id": "13230",
+      "iata": "MDT",
+      "accepted": true,
+      "votes": 327,
+      "topVotes": 327,
+      "topShare": 1,
+      "originVotes": 163,
+      "destVotes": 164,
+      "candidates": {
+        "MDT": 327
+      }
+    },
+    {
+      "id": "13232",
+      "iata": "MDW",
+      "accepted": true,
+      "votes": 13091,
+      "topVotes": 13086,
+      "topShare": 0.9996,
+      "originVotes": 6586,
+      "destVotes": 6505,
+      "candidates": {
+        "MDW": 13086,
+        "LAS": 5
+      }
+    },
+    {
+      "id": "13241",
+      "iata": "MEI",
+      "accepted": true,
+      "votes": 168,
+      "topVotes": 168,
+      "topShare": 1,
+      "originVotes": 84,
+      "destVotes": 84,
+      "candidates": {
+        "MEI": 168
+      }
+    },
+    {
+      "id": "13244",
+      "iata": "MEM",
+      "accepted": true,
+      "votes": 2046,
+      "topVotes": 2046,
+      "topShare": 1,
+      "originVotes": 988,
+      "destVotes": 1058,
+      "candidates": {
+        "MEM": 2046
+      }
+    },
+    {
+      "id": "13256",
+      "iata": "MFE",
+      "accepted": true,
+      "votes": 392,
+      "topVotes": 392,
+      "topShare": 1,
+      "originVotes": 193,
+      "destVotes": 199,
+      "candidates": {
+        "MFE": 392
+      }
+    },
+    {
+      "id": "13264",
+      "iata": "MFR",
+      "accepted": true,
+      "votes": 350,
+      "topVotes": 350,
+      "topShare": 1,
+      "originVotes": 176,
+      "destVotes": 174,
+      "candidates": {
+        "MFR": 350
+      }
+    },
+    {
+      "id": "13277",
+      "iata": "MGM",
+      "accepted": true,
+      "votes": 176,
+      "topVotes": 176,
+      "topShare": 1,
+      "originVotes": 88,
+      "destVotes": 88,
+      "candidates": {
+        "MGM": 176
+      }
+    },
+    {
+      "id": "13290",
+      "iata": "MHK",
+      "accepted": true,
+      "votes": 302,
+      "topVotes": 302,
+      "topShare": 1,
+      "originVotes": 151,
+      "destVotes": 151,
+      "candidates": {
+        "MHK": 302
+      }
+    },
+    {
+      "id": "13296",
+      "iata": "MHT",
+      "accepted": true,
+      "votes": 960,
+      "topVotes": 960,
+      "topShare": 1,
+      "originVotes": 478,
+      "destVotes": 482,
+      "candidates": {
+        "MHT": 960
+      }
+    },
+    {
+      "id": "13303",
+      "iata": "MIA",
+      "accepted": true,
+      "votes": 10222,
+      "topVotes": 10222,
+      "topShare": 1,
+      "originVotes": 5155,
+      "destVotes": 5067,
+      "candidates": {
+        "MIA": 10222
+      }
+    },
+    {
+      "id": "13342",
+      "iata": "MKE",
+      "accepted": true,
+      "votes": 3860,
+      "topVotes": 3860,
+      "topShare": 1,
+      "originVotes": 1904,
+      "destVotes": 1956,
+      "candidates": {
+        "MKE": 3860
+      }
+    },
+    {
+      "id": "13344",
+      "iata": "MKG",
+      "accepted": true,
+      "votes": 124,
+      "topVotes": 124,
+      "topShare": 1,
+      "originVotes": 62,
+      "destVotes": 62,
+      "candidates": {
+        "MKG": 124
+      }
+    },
+    {
+      "id": "13360",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "13367",
+      "iata": "MLI",
+      "accepted": true,
+      "votes": 421,
+      "topVotes": 421,
+      "topShare": 1,
+      "originVotes": 211,
+      "destVotes": 210,
+      "candidates": {
+        "MLI": 421
+      }
+    },
+    {
+      "id": "13377",
+      "iata": "MLU",
+      "accepted": true,
+      "votes": 371,
+      "topVotes": 371,
+      "topShare": 1,
+      "originVotes": 206,
+      "destVotes": 165,
+      "candidates": {
+        "MLU": 371
+      }
+    },
+    {
+      "id": "13422",
+      "iata": "MOB",
+      "accepted": true,
+      "votes": 481,
+      "topVotes": 481,
+      "topShare": 1,
+      "originVotes": 235,
+      "destVotes": 246,
+      "candidates": {
+        "MOB": 481
+      }
+    },
+    {
+      "id": "13433",
+      "iata": "MOT",
+      "accepted": true,
+      "votes": 218,
+      "topVotes": 218,
+      "topShare": 1,
+      "originVotes": 114,
+      "destVotes": 104,
+      "candidates": {
+        "MOT": 218
+      }
+    },
+    {
+      "id": "13459",
+      "iata": "MQT",
+      "accepted": true,
+      "votes": 52,
+      "topVotes": 52,
+      "topShare": 1,
+      "originVotes": 26,
+      "destVotes": 26,
+      "candidates": {
+        "MQT": 52
+      }
+    },
+    {
+      "id": "13476",
+      "iata": "MRY",
+      "accepted": true,
+      "votes": 466,
+      "topVotes": 466,
+      "topShare": 1,
+      "originVotes": 238,
+      "destVotes": 228,
+      "candidates": {
+        "MRY": 466
+      }
+    },
+    {
+      "id": "13485",
+      "iata": "MSN",
+      "accepted": true,
+      "votes": 855,
+      "topVotes": 855,
+      "topShare": 1,
+      "originVotes": 429,
+      "destVotes": 426,
+      "candidates": {
+        "MSN": 855
+      }
+    },
+    {
+      "id": "13486",
+      "iata": "MSO",
+      "accepted": true,
+      "votes": 96,
+      "topVotes": 96,
+      "topShare": 1,
+      "originVotes": 54,
+      "destVotes": 42,
+      "candidates": {
+        "MSO": 96
+      }
+    },
+    {
+      "id": "13487",
+      "iata": "MSP",
+      "accepted": true,
+      "votes": 5411,
+      "topVotes": 5411,
+      "topShare": 1,
+      "originVotes": 2706,
+      "destVotes": 2705,
+      "candidates": {
+        "MSP": 5411
+      }
+    },
+    {
+      "id": "13495",
+      "iata": "MSY",
+      "accepted": true,
+      "votes": 5737,
+      "topVotes": 5733,
+      "topShare": 0.9993,
+      "originVotes": 2855,
+      "destVotes": 2882,
+      "candidates": {
+        "MSY": 5733,
+        "MDW": 4
+      }
+    },
+    {
+      "id": "13502",
+      "iata": "MTJ",
+      "accepted": false,
+      "reason": "too_few_votes",
+      "votes": 13,
+      "topVotes": 13,
+      "topShare": 1,
+      "originVotes": 6,
+      "destVotes": 7,
+      "candidates": {
+        "MTJ": 13
+      }
+    },
+    {
+      "id": "13541",
+      "iata": "MVY",
+      "accepted": true,
+      "votes": 22,
+      "topVotes": 22,
+      "topShare": 1,
+      "originVotes": 11,
+      "destVotes": 11,
+      "candidates": {
+        "MVY": 22
+      }
+    },
+    {
+      "id": "13577",
+      "iata": "MYR",
+      "accepted": true,
+      "votes": 666,
+      "topVotes": 666,
+      "topShare": 1,
+      "originVotes": 333,
+      "destVotes": 333,
+      "candidates": {
+        "MYR": 666
+      }
+    },
+    {
+      "id": "13795",
+      "iata": "OAJ",
+      "accepted": false,
+      "reason": "too_few_votes",
+      "votes": 9,
+      "topVotes": 9,
+      "topShare": 1,
+      "originVotes": 4,
+      "destVotes": 5,
+      "candidates": {
+        "OAJ": 9
+      }
+    },
+    {
+      "id": "13796",
+      "iata": "OAK",
+      "accepted": true,
+      "votes": 6989,
+      "topVotes": 6989,
+      "topShare": 1,
+      "originVotes": 3501,
+      "destVotes": 3488,
+      "candidates": {
+        "OAK": 6989
+      }
+    },
+    {
+      "id": "13830",
+      "iata": "OGG",
+      "accepted": true,
+      "votes": 3012,
+      "topVotes": 3012,
+      "topShare": 1,
+      "originVotes": 1494,
+      "destVotes": 1518,
+      "candidates": {
+        "OGG": 3012
+      }
+    },
+    {
+      "id": "13851",
+      "iata": "OKC",
+      "accepted": true,
+      "votes": 2544,
+      "topVotes": 2544,
+      "topShare": 1,
+      "originVotes": 1248,
+      "destVotes": 1296,
+      "candidates": {
+        "OKC": 2544
+      }
+    },
+    {
+      "id": "13871",
+      "iata": "OMA",
+      "accepted": true,
+      "votes": 2152,
+      "topVotes": 2152,
+      "topShare": 1,
+      "originVotes": 1084,
+      "destVotes": 1068,
+      "candidates": {
+        "OMA": 2152
+      }
+    },
+    {
+      "id": "13873",
+      "iata": "OME",
+      "accepted": true,
+      "votes": 124,
+      "topVotes": 124,
+      "topShare": 1,
+      "originVotes": 62,
+      "destVotes": 62,
+      "candidates": {
+        "OME": 124
+      }
+    },
+    {
+      "id": "13891",
+      "iata": "ONT",
+      "accepted": true,
+      "votes": 3123,
+      "topVotes": 3123,
+      "topShare": 1,
+      "originVotes": 1559,
+      "destVotes": 1564,
+      "candidates": {
+        "ONT": 3123
+      }
+    },
+    {
+      "id": "13930",
+      "iata": "ORD",
+      "accepted": true,
+      "votes": 50287,
+      "topVotes": 50287,
+      "topShare": 1,
+      "originVotes": 25199,
+      "destVotes": 25088,
+      "candidates": {
+        "ORD": 50287
+      }
+    },
+    {
+      "id": "13931",
+      "iata": "ORF",
+      "accepted": true,
+      "votes": 1220,
+      "topVotes": 1220,
+      "topShare": 1,
+      "originVotes": 657,
+      "destVotes": 563,
+      "candidates": {
+        "ORF": 1220
+      }
+    },
+    {
+      "id": "13933",
+      "iata": "ORH",
+      "accepted": true,
+      "votes": 122,
+      "topVotes": 122,
+      "topShare": 1,
+      "originVotes": 61,
+      "destVotes": 61,
+      "candidates": {
+        "ORH": 122
+      }
+    },
+    {
+      "id": "13964",
+      "iata": "OTH",
+      "accepted": true,
+      "votes": 72,
+      "topVotes": 72,
+      "topShare": 1,
+      "originVotes": 36,
+      "destVotes": 36,
+      "candidates": {
+        "OTH": 72
+      }
+    },
+    {
+      "id": "13970",
+      "iata": "OTZ",
+      "accepted": true,
+      "votes": 124,
+      "topVotes": 124,
+      "topShare": 1,
+      "originVotes": 62,
+      "destVotes": 62,
+      "candidates": {
+        "OTZ": 124
+      }
+    },
+    {
+      "id": "14006",
+      "iata": "PAH",
+      "accepted": true,
+      "votes": 124,
+      "topVotes": 124,
+      "topShare": 1,
+      "originVotes": 62,
+      "destVotes": 62,
+      "candidates": {
+        "PAH": 124
+      }
+    },
+    {
+      "id": "14025",
+      "iata": "PBG",
+      "accepted": true,
+      "votes": 26,
+      "topVotes": 26,
+      "topShare": 1,
+      "originVotes": 13,
+      "destVotes": 13,
+      "candidates": {
+        "PBG": 26
+      }
+    },
+    {
+      "id": "14027",
+      "iata": "PBI",
+      "accepted": true,
+      "votes": 2374,
+      "topVotes": 2374,
+      "topShare": 1,
+      "originVotes": 1225,
+      "destVotes": 1149,
+      "candidates": {
+        "PBI": 2374
+      }
+    },
+    {
+      "id": "14057",
+      "iata": "PDX",
+      "accepted": true,
+      "votes": 7385,
+      "topVotes": 7384,
+      "topShare": 0.9999,
+      "originVotes": 3686,
+      "destVotes": 3699,
+      "candidates": {
+        "PDX": 7384,
+        "SAN": 1
+      }
+    },
+    {
+      "id": "14098",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "14100",
+      "iata": "PHL",
+      "accepted": true,
+      "votes": 10391,
+      "topVotes": 10391,
+      "topShare": 1,
+      "originVotes": 5218,
+      "destVotes": 5173,
+      "candidates": {
+        "PHL": 10391
+      }
+    },
+    {
+      "id": "14107",
+      "iata": "PHX",
+      "accepted": true,
+      "votes": 20079,
+      "topVotes": 20079,
+      "topShare": 1,
+      "originVotes": 10391,
+      "destVotes": 9688,
+      "candidates": {
+        "PHX": 20079
+      }
+    },
+    {
+      "id": "14108",
+      "iata": "PIA",
+      "accepted": true,
+      "votes": 707,
+      "topVotes": 707,
+      "topShare": 1,
+      "originVotes": 361,
+      "destVotes": 346,
+      "candidates": {
+        "PIA": 707
+      }
+    },
+    {
+      "id": "14109",
+      "iata": "PIB",
+      "accepted": true,
+      "votes": 106,
+      "topVotes": 106,
+      "topShare": 1,
+      "originVotes": 53,
+      "destVotes": 53,
+      "candidates": {
+        "PIB": 106
+      }
+    },
+    {
+      "id": "14113",
+      "iata": "PIH",
+      "accepted": true,
+      "votes": 113,
+      "topVotes": 113,
+      "topShare": 1,
+      "originVotes": 57,
+      "destVotes": 56,
+      "candidates": {
+        "PIH": 113
+      }
+    },
+    {
+      "id": "14122",
+      "iata": "PIT",
+      "accepted": true,
+      "votes": 3272,
+      "topVotes": 3272,
+      "topShare": 1,
+      "originVotes": 1636,
+      "destVotes": 1636,
+      "candidates": {
+        "PIT": 3272
+      }
+    },
+    {
+      "id": "14150",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "14193",
+      "iata": "PNS",
+      "accepted": true,
+      "votes": 528,
+      "topVotes": 528,
+      "topShare": 1,
+      "originVotes": 258,
+      "destVotes": 270,
+      "candidates": {
+        "PNS": 528
+      }
+    },
+    {
+      "id": "14222",
+      "iata": "PPG",
+      "accepted": false,
+      "reason": "too_few_votes",
+      "votes": 18,
+      "topVotes": 18,
+      "topShare": 1,
+      "originVotes": 9,
+      "destVotes": 9,
+      "candidates": {
+        "PPG": 18
+      }
+    },
+    {
+      "id": "14252",
+      "iata": "PSC",
+      "accepted": true,
+      "votes": 210,
+      "topVotes": 210,
+      "topShare": 1,
+      "originVotes": 117,
+      "destVotes": 93,
+      "candidates": {
+        "PSC": 210
+      }
+    },
+    {
+      "id": "14254",
+      "iata": "PSE",
+      "accepted": true,
+      "votes": 94,
+      "topVotes": 94,
+      "topShare": 1,
+      "originVotes": 48,
+      "destVotes": 46,
+      "candidates": {
+        "PSE": 94
+      }
+    },
+    {
+      "id": "14256",
+      "iata": "PSG",
+      "accepted": true,
+      "votes": 124,
+      "topVotes": 124,
+      "topShare": 1,
+      "originVotes": 62,
+      "destVotes": 62,
+      "candidates": {
+        "PSG": 124
+      }
+    },
+    {
+      "id": "14262",
+      "iata": "PSP",
+      "accepted": true,
+      "votes": 1121,
+      "topVotes": 1121,
+      "topShare": 1,
+      "originVotes": 577,
+      "destVotes": 544,
+      "candidates": {
+        "PSP": 1121
+      }
+    },
+    {
+      "id": "14307",
+      "iata": "PVD",
+      "accepted": true,
+      "votes": 1747,
+      "topVotes": 1747,
+      "topShare": 1,
+      "originVotes": 849,
+      "destVotes": 898,
+      "candidates": {
+        "PVD": 1747
+      }
+    },
+    {
+      "id": "14321",
+      "iata": "PWM",
+      "accepted": true,
+      "votes": 598,
+      "topVotes": 598,
+      "topShare": 1,
+      "originVotes": 309,
+      "destVotes": 289,
+      "candidates": {
+        "PWM": 598
+      }
+    },
+    {
+      "id": "14457",
+      "iata": "RAP",
+      "accepted": true,
+      "votes": 275,
+      "topVotes": 275,
+      "topShare": 1,
+      "originVotes": 130,
+      "destVotes": 145,
+      "candidates": {
+        "RAP": 275
+      }
+    },
+    {
+      "id": "14487",
+      "iata": "RDD",
+      "accepted": true,
+      "votes": 124,
+      "topVotes": 124,
+      "topShare": 1,
+      "originVotes": 62,
+      "destVotes": 62,
+      "candidates": {
+        "RDD": 124
+      }
+    },
+    {
+      "id": "14489",
+      "iata": "RDM",
+      "accepted": true,
+      "votes": 282,
+      "topVotes": 282,
+      "topShare": 1,
+      "originVotes": 141,
+      "destVotes": 141,
+      "candidates": {
+        "RDM": 282
+      }
+    },
+    {
+      "id": "14492",
+      "iata": "RDU",
+      "accepted": true,
+      "votes": 4409,
+      "topVotes": 4409,
+      "topShare": 1,
+      "originVotes": 2230,
+      "destVotes": 2179,
+      "candidates": {
+        "RDU": 4409
+      }
+    },
+    {
+      "id": "14520",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "14524",
+      "iata": "RIC",
+      "accepted": true,
+      "votes": 2118,
+      "topVotes": 2118,
+      "topShare": 1,
+      "originVotes": 1103,
+      "destVotes": 1015,
+      "candidates": {
+        "RIC": 2118
+      }
+    },
+    {
+      "id": "14543",
+      "iata": "RKS",
+      "accepted": true,
+      "votes": 114,
+      "topVotes": 114,
+      "topShare": 1,
+      "originVotes": 57,
+      "destVotes": 57,
+      "candidates": {
+        "RKS": 114
+      }
+    },
+    {
+      "id": "14570",
+      "iata": "RNO",
+      "accepted": true,
+      "votes": 1941,
+      "topVotes": 1941,
+      "topShare": 1,
+      "originVotes": 928,
+      "destVotes": 1013,
+      "candidates": {
+        "RNO": 1941
+      }
+    },
+    {
+      "id": "14574",
+      "iata": "ROA",
+      "accepted": true,
+      "votes": 183,
+      "topVotes": 183,
+      "topShare": 1,
+      "originVotes": 77,
+      "destVotes": 106,
+      "candidates": {
+        "ROA": 183
+      }
+    },
+    {
+      "id": "14576",
+      "iata": "ROC",
+      "accepted": true,
+      "votes": 1106,
+      "topVotes": 1106,
+      "topShare": 1,
+      "originVotes": 551,
+      "destVotes": 555,
+      "candidates": {
+        "ROC": 1106
+      }
+    },
+    {
+      "id": "14588",
+      "iata": "ROW",
+      "accepted": true,
+      "votes": 176,
+      "topVotes": 176,
+      "topShare": 1,
+      "originVotes": 88,
+      "destVotes": 88,
+      "candidates": {
+        "ROW": 176
+      }
+    },
+    {
+      "id": "14633",
+      "iata": "RST",
+      "accepted": true,
+      "votes": 246,
+      "topVotes": 246,
+      "topShare": 1,
+      "originVotes": 123,
+      "destVotes": 123,
+      "candidates": {
+        "RST": 246
+      }
+    },
+    {
+      "id": "14635",
+      "iata": "RSW",
+      "accepted": true,
+      "votes": 2596,
+      "topVotes": 2596,
+      "topShare": 1,
+      "originVotes": 1303,
+      "destVotes": 1293,
+      "candidates": {
+        "RSW": 2596
+      }
+    },
+    {
+      "id": "14674",
+      "iata": "SAF",
+      "accepted": true,
+      "votes": 186,
+      "topVotes": 186,
+      "topShare": 1,
+      "originVotes": 93,
+      "destVotes": 93,
+      "candidates": {
+        "SAF": 186
+      }
+    },
+    {
+      "id": "14679",
+      "iata": "SAN",
+      "accepted": true,
+      "votes": 10484,
+      "topVotes": 10484,
+      "topShare": 1,
+      "originVotes": 5275,
+      "destVotes": 5209,
+      "candidates": {
+        "SAN": 10484
+      }
+    },
+    {
+      "id": "14683",
+      "iata": "SAT",
+      "accepted": true,
+      "votes": 4231,
+      "topVotes": 4231,
+      "topShare": 1,
+      "originVotes": 2093,
+      "destVotes": 2138,
+      "candidates": {
+        "SAT": 4231
+      }
+    },
+    {
+      "id": "14685",
+      "iata": "SAV",
+      "accepted": true,
+      "votes": 718,
+      "topVotes": 718,
+      "topShare": 1,
+      "originVotes": 355,
+      "destVotes": 363,
+      "candidates": {
+        "SAV": 718
+      }
+    },
+    {
+      "id": "14689",
+      "iata": "SBA",
+      "accepted": true,
+      "votes": 1100,
+      "topVotes": 1100,
+      "topShare": 1,
+      "originVotes": 543,
+      "destVotes": 557,
+      "candidates": {
+        "SBA": 1100
+      }
+    },
+    {
+      "id": "14696",
+      "iata": "SBN",
+      "accepted": true,
+      "votes": 296,
+      "topVotes": 296,
+      "topShare": 1,
+      "originVotes": 139,
+      "destVotes": 157,
+      "candidates": {
+        "SBN": 296
+      }
+    },
+    {
+      "id": "14698",
+      "iata": "SBP",
+      "accepted": true,
+      "votes": 421,
+      "topVotes": 421,
+      "topShare": 1,
+      "originVotes": 214,
+      "destVotes": 207,
+      "candidates": {
+        "SBP": 421
+      }
+    },
+    {
+      "id": "14709",
+      "iata": "SCC",
+      "accepted": true,
+      "votes": 162,
+      "topVotes": 162,
+      "topShare": 1,
+      "originVotes": 81,
+      "destVotes": 81,
+      "candidates": {
+        "SCC": 162
+      }
+    },
+    {
+      "id": "14711",
+      "iata": "SCE",
+      "accepted": true,
+      "votes": 121,
+      "topVotes": 121,
+      "topShare": 1,
+      "originVotes": 62,
+      "destVotes": 59,
+      "candidates": {
+        "SCE": 121
+      }
+    },
+    {
+      "id": "14730",
+      "iata": "SDF",
+      "accepted": true,
+      "votes": 1042,
+      "topVotes": 1042,
+      "topShare": 1,
+      "originVotes": 530,
+      "destVotes": 512,
+      "candidates": {
+        "SDF": 1042
+      }
+    },
+    {
+      "id": "14747",
+      "iata": "SEA",
+      "accepted": true,
+      "votes": 15457,
+      "topVotes": 15457,
+      "topShare": 1,
+      "originVotes": 7713,
+      "destVotes": 7744,
+      "candidates": {
+        "SEA": 15457
+      }
+    },
+    {
+      "id": "14771",
+      "iata": "SFO",
+      "accepted": true,
+      "votes": 23772,
+      "topVotes": 23772,
+      "topShare": 1,
+      "originVotes": 11965,
+      "destVotes": 11807,
+      "candidates": {
+        "SFO": 23772
+      }
+    },
+    {
+      "id": "14783",
+      "iata": "SGF",
+      "accepted": true,
+      "votes": 818,
+      "topVotes": 818,
+      "topShare": 1,
+      "originVotes": 429,
+      "destVotes": 389,
+      "candidates": {
+        "SGF": 818
+      }
+    },
+    {
+      "id": "14794",
+      "iata": "SGU",
+      "accepted": true,
+      "votes": 337,
+      "topVotes": 337,
+      "topShare": 1,
+      "originVotes": 173,
+      "destVotes": 164,
+      "candidates": {
+        "SGU": 337
+      }
+    },
+    {
+      "id": "14814",
+      "iata": "SHV",
+      "accepted": true,
+      "votes": 703,
+      "topVotes": 703,
+      "topShare": 1,
+      "originVotes": 355,
+      "destVotes": 348,
+      "candidates": {
+        "SHV": 703
+      }
+    },
+    {
+      "id": "14828",
+      "iata": "SIT",
+      "accepted": true,
+      "votes": 186,
+      "topVotes": 186,
+      "topShare": 1,
+      "originVotes": 93,
+      "destVotes": 93,
+      "candidates": {
+        "SIT": 186
+      }
+    },
+    {
+      "id": "14831",
+      "iata": "SJC",
+      "accepted": true,
+      "votes": 5698,
+      "topVotes": 5698,
+      "topShare": 1,
+      "originVotes": 2864,
+      "destVotes": 2834,
+      "candidates": {
+        "SJC": 5698
+      }
+    },
+    {
+      "id": "14842",
+      "iata": "SJT",
+      "accepted": true,
+      "votes": 296,
+      "topVotes": 296,
+      "topShare": 1,
+      "originVotes": 148,
+      "destVotes": 148,
+      "candidates": {
+        "SJT": 296
+      }
+    },
+    {
+      "id": "14843",
+      "iata": "SJU",
+      "accepted": true,
+      "votes": 2236,
+      "topVotes": 2236,
+      "topShare": 1,
+      "originVotes": 1102,
+      "destVotes": 1134,
+      "candidates": {
+        "SJU": 2236
+      }
+    },
+    {
+      "id": "14869",
+      "iata": "SLC",
+      "accepted": true,
+      "votes": 6922,
+      "topVotes": 6922,
+      "topShare": 1,
+      "originVotes": 3404,
+      "destVotes": 3518,
+      "candidates": {
+        "SLC": 6922
+      }
+    },
+    {
+      "id": "14893",
+      "iata": "SMF",
+      "accepted": true,
+      "votes": 6005,
+      "topVotes": 5985,
+      "topShare": 0.9967,
+      "originVotes": 3010,
+      "destVotes": 2995,
+      "candidates": {
+        "SMF": 5985,
+        "LAX": 20
+      }
+    },
+    {
+      "id": "14905",
+      "iata": "SMX",
+      "accepted": true,
+      "votes": 124,
+      "topVotes": 124,
+      "topShare": 1,
+      "originVotes": 62,
+      "destVotes": 62,
+      "candidates": {
+        "SMX": 124
+      }
+    },
+    {
+      "id": "14908",
+      "iata": "SNA",
+      "accepted": true,
+      "votes": 5950,
+      "topVotes": 5950,
+      "topShare": 1,
+      "originVotes": 2942,
+      "destVotes": 3008,
+      "candidates": {
+        "SNA": 5950
+      }
+    },
+    {
+      "id": "14952",
+      "iata": "SPI",
+      "accepted": true,
+      "votes": 300,
+      "topVotes": 300,
+      "topShare": 1,
+      "originVotes": 150,
+      "destVotes": 150,
+      "candidates": {
+        "SPI": 300
+      }
+    },
+    {
+      "id": "14960",
+      "iata": "SPS",
+      "accepted": true,
+      "votes": 233,
+      "topVotes": 233,
+      "topShare": 1,
+      "originVotes": 118,
+      "destVotes": 115,
+      "candidates": {
+        "SPS": 233
+      }
+    },
+    {
+      "id": "14986",
+      "iata": "SRQ",
+      "accepted": true,
+      "votes": 283,
+      "topVotes": 283,
+      "topShare": 1,
+      "originVotes": 181,
+      "destVotes": 102,
+      "candidates": {
+        "SRQ": 283
+      }
+    },
+    {
+      "id": "15016",
+      "iata": "STL",
+      "accepted": true,
+      "votes": 6987,
+      "topVotes": 6987,
+      "topShare": 1,
+      "originVotes": 3495,
+      "destVotes": 3492,
+      "candidates": {
+        "STL": 6987
+      }
+    },
+    {
+      "id": "15024",
+      "iata": "STT",
+      "accepted": true,
+      "votes": 272,
+      "topVotes": 272,
+      "topShare": 1,
+      "originVotes": 136,
+      "destVotes": 136,
+      "candidates": {
+        "STT": 272
+      }
+    },
+    {
+      "id": "15027",
+      "iata": "STX",
+      "accepted": true,
+      "votes": 110,
+      "topVotes": 110,
+      "topShare": 1,
+      "originVotes": 55,
+      "destVotes": 55,
+      "candidates": {
+        "STX": 110
+      }
+    },
+    {
+      "id": "15041",
+      "iata": "SUN",
+      "accepted": true,
+      "votes": 27,
+      "topVotes": 27,
+      "topShare": 1,
+      "originVotes": 27,
+      "destVotes": 0,
+      "candidates": {
+        "SUN": 27
+      }
+    },
+    {
+      "id": "15048",
+      "iata": "SUX",
+      "accepted": true,
+      "votes": 114,
+      "topVotes": 114,
+      "topShare": 1,
+      "originVotes": 57,
+      "destVotes": 57,
+      "candidates": {
+        "SUX": 114
+      }
+    },
+    {
+      "id": "15070",
+      "iata": "SWF",
+      "accepted": true,
+      "votes": 124,
+      "topVotes": 124,
+      "topShare": 1,
+      "originVotes": 62,
+      "destVotes": 62,
+      "candidates": {
+        "SWF": 124
+      }
+    },
+    {
+      "id": "15096",
+      "iata": "SYR",
+      "accepted": true,
+      "votes": 842,
+      "topVotes": 842,
+      "topShare": 1,
+      "originVotes": 420,
+      "destVotes": 422,
+      "candidates": {
+        "SYR": 842
+      }
+    },
+    {
+      "id": "15249",
+      "iata": "TLH",
+      "accepted": true,
+      "votes": 195,
+      "topVotes": 195,
+      "topShare": 1,
+      "originVotes": 102,
+      "destVotes": 93,
+      "candidates": {
+        "TLH": 195
+      }
+    },
+    {
+      "id": "15295",
+      "iata": "TOL",
+      "accepted": true,
+      "votes": 176,
+      "topVotes": 176,
+      "topShare": 1,
+      "originVotes": 88,
+      "destVotes": 88,
+      "candidates": {
+        "TOL": 176
+      }
+    },
+    {
+      "id": "15304",
+      "iata": "TPA",
+      "accepted": true,
+      "votes": 8160,
+      "topVotes": 8160,
+      "topShare": 1,
+      "originVotes": 4162,
+      "destVotes": 3998,
+      "candidates": {
+        "TPA": 8160
+      }
+    },
+    {
+      "id": "15323",
+      "iata": null,
+      "accepted": false,
+      "reason": "no_votes",
+      "votes": 0,
+      "topVotes": 0,
+      "topShare": 0,
+      "originVotes": 0,
+      "destVotes": 0,
+      "candidates": {}
+    },
+    {
+      "id": "15356",
+      "iata": "TTN",
+      "accepted": true,
+      "votes": 439,
+      "topVotes": 439,
+      "topShare": 1,
+      "originVotes": 220,
+      "destVotes": 219,
+      "candidates": {
+        "TTN": 439
+      }
+    },
+    {
+      "id": "15370",
+      "iata": "TUL",
+      "accepted": true,
+      "votes": 2053,
+      "topVotes": 2053,
+      "topShare": 1,
+      "originVotes": 1019,
+      "destVotes": 1034,
+      "candidates": {
+        "TUL": 2053
+      }
+    },
+    {
+      "id": "15376",
+      "iata": "TUS",
+      "accepted": true,
+      "votes": 1546,
+      "topVotes": 1546,
+      "topShare": 1,
+      "originVotes": 716,
+      "destVotes": 830,
+      "candidates": {
+        "TUS": 1546
+      }
+    },
+    {
+      "id": "15380",
+      "iata": "TVC",
+      "accepted": true,
+      "votes": 288,
+      "topVotes": 288,
+      "topShare": 1,
+      "originVotes": 144,
+      "destVotes": 144,
+      "candidates": {
+        "TVC": 288
+      }
+    },
+    {
+      "id": "15389",
+      "iata": "TWF",
+      "accepted": true,
+      "votes": 30,
+      "topVotes": 30,
+      "topShare": 1,
+      "originVotes": 4,
+      "destVotes": 26,
+      "candidates": {
+        "TWF": 30
+      }
+    },
+    {
+      "id": "15401",
+      "iata": "TXK",
+      "accepted": true,
+      "votes": 175,
+      "topVotes": 175,
+      "topShare": 1,
+      "originVotes": 87,
+      "destVotes": 88,
+      "candidates": {
+        "TXK": 175
+      }
+    },
+    {
+      "id": "15411",
+      "iata": "TYR",
+      "accepted": true,
+      "votes": 432,
+      "topVotes": 432,
+      "topShare": 1,
+      "originVotes": 222,
+      "destVotes": 210,
+      "candidates": {
+        "TYR": 432
+      }
+    },
+    {
+      "id": "15412",
+      "iata": "TYS",
+      "accepted": true,
+      "votes": 857,
+      "topVotes": 857,
+      "topShare": 1,
+      "originVotes": 424,
+      "destVotes": 433,
+      "candidates": {
+        "TYS": 857
+      }
+    },
+    {
+      "id": "15497",
+      "iata": "UST",
+      "accepted": true,
+      "votes": 28,
+      "topVotes": 28,
+      "topShare": 1,
+      "originVotes": 14,
+      "destVotes": 14,
+      "candidates": {
+        "UST": 28
+      }
+    },
+    {
+      "id": "15607",
+      "iata": "VLD",
+      "accepted": true,
+      "votes": 22,
+      "topVotes": 22,
+      "topShare": 1,
+      "originVotes": 22,
+      "destVotes": 0,
+      "candidates": {
+        "VLD": 22
+      }
+    },
+    {
+      "id": "15624",
+      "iata": "VPS",
+      "accepted": true,
+      "votes": 415,
+      "topVotes": 415,
+      "topShare": 1,
+      "originVotes": 208,
+      "destVotes": 207,
+      "candidates": {
+        "VPS": 415
+      }
+    },
+    {
+      "id": "15841",
+      "iata": "WRG",
+      "accepted": true,
+      "votes": 124,
+      "topVotes": 124,
+      "topShare": 1,
+      "originVotes": 62,
+      "destVotes": 62,
+      "candidates": {
+        "WRG": 124
+      }
+    },
+    {
+      "id": "15919",
+      "iata": "XNA",
+      "accepted": true,
+      "votes": 1339,
+      "topVotes": 1339,
+      "topShare": 1,
+      "originVotes": 668,
+      "destVotes": 671,
+      "candidates": {
+        "XNA": 1339
+      }
+    },
+    {
+      "id": "15991",
+      "iata": "YAK",
+      "accepted": true,
+      "votes": 124,
+      "topVotes": 124,
+      "topShare": 1,
+      "originVotes": 62,
+      "destVotes": 62,
+      "candidates": {
+        "YAK": 124
+      }
+    },
+    {
+      "id": "16218",
+      "iata": "YUM",
+      "accepted": true,
+      "votes": 291,
+      "topVotes": 291,
+      "topShare": 1,
+      "originVotes": 146,
+      "destVotes": 145,
+      "candidates": {
+        "YUM": 291
+      }
+    }
+  ]
+}

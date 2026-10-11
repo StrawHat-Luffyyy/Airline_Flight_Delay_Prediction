@@ -31,6 +31,18 @@ npm run ingest -- --drop  # rebuild from scratch
 
 Other flags: `--append` adds to existing data, `--limit N` loads only the first N flight rows, and `--dir PATH` reads the CSVs from another folder. Each run is recorded in the `ingest_runs` collection.
 
+### Data pipeline order
+
+Run these in order after downloading the data (later steps arrive with later phases):
+
+1. `npm run ingest -- --drop`: load the CSVs.
+2. `npm run resolve:airport-ids -- --apply`: map October's numeric BTS airport ids to IATA codes. Without `--apply` it only reports. The raw ids are kept in `originAirportId` / `destAirportId`. The mapping and its evidence are written to `docs/airport-id-map.json` and the `resolve_runs` collection.
+3. `npm run build:indexes`
+4. `npm run build:stats`
+5. `npm run build:lookup`
+
+Re-running `ingest -- --drop` brings back the numeric ids, so run step 2 again after every re-ingest.
+
 Start the Express API and Vite frontend together:
 
 ```sh

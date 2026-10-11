@@ -7,7 +7,8 @@
     "start": "tsx src/server.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "ingest": "tsx src/ingest/cli.ts"
+    "ingest": "tsx src/ingest/cli.ts",
+    "resolve:airport-ids": "tsx src/ingest/resolve-cli.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -15,6 +15,7 @@ import {
 } from '../db/collections.js';
 import type { IngestArgs } from './args.js';
 import { inBatches } from './batch.js';
+import { RssMonitor } from './rss.js';
 import { transformAirlineRow, transformAirportRow } from './reference.js';
 import { REQUIRED_FLIGHT_COLUMNS, transformFlightRow, type ReferenceData } from './transform.js';
 
@@ -37,26 +38,6 @@ function newStats(): RunStats {
 function reject(stats: RunStats, reason: string): void {
   stats.rowsRejected += 1;
   stats.rejectReasons[reason] = (stats.rejectReasons[reason] ?? 0) + 1;
-}
-
-/** Tracks peak resident set size while a load runs. */
-class RssMonitor {
-  private peakBytes = process.memoryUsage().rss;
-  private readonly timer = setInterval(() => this.sample(), 1_000);
-
-  constructor() {
-    this.timer.unref();
-  }
-
-  sample(): void {
-    this.peakBytes = Math.max(this.peakBytes, process.memoryUsage().rss);
-  }
-
-  stop(): number {
-    clearInterval(this.timer);
-    this.sample();
-    return Math.round(this.peakBytes / 1024 / 1024);
-  }
 }
 
 /**
