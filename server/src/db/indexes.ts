@@ -40,6 +40,22 @@ export const FLIGHT_INDEXES: readonly IndexSpec[] = [
   },
 ];
 
+/**
+ * Indexes added beyond §6.2 for API reads, each justified in docs/DECISIONS.md (Phase 3).
+ * airline + origin on /api/flights otherwise fetched every flight of the airline to filter the
+ * origin (HA + ATL: 76,272 docs, ~2 s, for 0 results).
+ */
+export const API_INDEXES: readonly IndexSpec[] = [
+  {
+    name: 'airline_1_origin_1',
+    key: { airline: 1, origin: 1 },
+    purpose: '/api/flights filtered by airline and origin',
+  },
+];
+
+/** Everything build:indexes maintains on flights. */
+export const ALL_FLIGHT_INDEXES: readonly IndexSpec[] = [...FLIGHT_INDEXES, ...API_INDEXES];
+
 /** True when an existing index (from listIndexes) has the spec's key order and partial filter. */
 export function matchesSpec(existing: Document, spec: IndexSpec): boolean {
   const existingKey: unknown = existing.key;
@@ -60,7 +76,7 @@ export interface IndexOutcome {
 }
 
 /**
- * Creates any missing §6.2 index, one at a time, timing each build. Idempotent: an index that
+ * Creates any missing §6.2 or API index, one at a time, timing each build. Idempotent: an index that
  * already exists with the same definition is skipped. A name or key clash with a different
  * definition throws instead of dropping anything.
  */
@@ -70,7 +86,7 @@ export async function ensureFlightIndexes(db: Db, logger: Logger): Promise<Index
 
   // Check every spec before building anything, so a conflict never leaves a half-built set.
   const missing: IndexSpec[] = [];
-  for (const spec of FLIGHT_INDEXES) {
+  for (const spec of ALL_FLIGHT_INDEXES) {
     const sameName = existing.find((index) => index.name === spec.name);
     if (sameName && matchesSpec(sameName, spec)) continue;
     const clash = sameName ?? existing.find((index) => matchesSpec(index, spec));
@@ -83,7 +99,7 @@ export async function ensureFlightIndexes(db: Db, logger: Logger): Promise<Index
   }
 
   const outcomes: IndexOutcome[] = [];
-  for (const spec of FLIGHT_INDEXES) {
+  for (const spec of ALL_FLIGHT_INDEXES) {
     if (!missing.includes(spec)) {
       outcomes.push({ name: spec.name, status: 'exists', ms: 0 });
       logger.info({ index: spec.name }, 'Index already exists');

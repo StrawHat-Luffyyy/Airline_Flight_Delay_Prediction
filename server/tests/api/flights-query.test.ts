@@ -12,7 +12,8 @@ describe('FlightsQuerySchema (GET /api/flights query)', () => {
     [{ origin: 'ATL' }],
     [{ route: 'LAX-SFO' }],
     [{ from: '2015-12-24', to: '2015-12-26' }],
-    [{ dest: 'ORD', airline: 'AA' }],
+    [{ dest: 'ORD', origin: 'JFK' }],
+    [{ dest: 'SFO', route: 'LAX-SFO', airline: 'UA' }],
   ])('accepts an index-backed filter: %o', (input) => {
     expect(FlightsQuerySchema.safeParse(input).success).toBe(true);
   });
@@ -26,6 +27,15 @@ describe('FlightsQuerySchema (GET /api/flights query)', () => {
   ])('rejects a query with no index-backed filter: %o', (input) => {
     expect(issues(input)).toContain(
       'Provide airline, origin, route, or a from+to date range; dest alone would scan the whole collection.',
+    );
+  });
+
+  it.each([
+    [{ dest: 'ORD', airline: 'AA' }],
+    [{ dest: 'ORD', from: '2015-12-01', to: '2015-12-31' }],
+  ])('rejects dest unless origin or route is given: %o', (input) => {
+    expect(issues(input)).toContain(
+      'dest has no index of its own: combine it with origin (or use route).',
     );
   });
 

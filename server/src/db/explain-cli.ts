@@ -15,6 +15,8 @@ import {
 import { flightsSizes, type CollectionSizes } from './indexes.js';
 import { REPRESENTATIVE_QUERIES, type RepresentativeQuery } from './representative-queries.js';
 import { toShellSyntax } from './shell-format.js';
+import { STATS_COLLECTIONS } from '../stats/builders.js';
+import { API_LIMIT_MS, measureApi, type ApiTiming } from './api-timing.js';
 
 const OUTPUT = fileURLToPath(new URL('../../../docs/EXPLAIN_RESULTS.md', import.meta.url));
 const RUNS = 3;
@@ -64,6 +66,43 @@ function queryText(query: RepresentativeQuery): string {
       ? `db.flights.find(${toShellSyntax(query.filter)}${query.projection ? `, ${toShellSyntax(query.projection)}` : ''})`
       : `db.flights.aggregate(${toShellSyntax(query.pipeline, 2)})`;
   return ['```js', body, '```'].join('\n');
+}
+
+const apiPlan = (a: ApiTiming): string =>
+  a.plan
+    ? `${a.plan.stages.join(' > ')}${a.plan.indexes.length ? ` (${a.plan.indexes.join(', ')})` : ''}`
+    : 'n/a';
+
+function apiSection(api: ApiTiming[], statsDocs: Record<string, number>): string {
+  const passing = api.filter((a) => a.status === 200 && a.medianMs < API_LIMIT_MS).length;
+  return [
+    '## API endpoint timings (Phase 3)',
+    '',
+    '- **How they were measured:** each endpoint was called over HTTP against the real Express app running in-process. The response cache was disabled (`cacheTtlMs: 0`), so every request runs its query. Times are wall-clock medians of the runs.',
+    '- **What they read:** analytics endpoints read the pre-aggregated `stats_*` collections built by `npm run build:stats`. `/api/flights` reads `flights` through the §6.2 indexes.',
+    '',
+    `**Acceptance (Phase 3: every endpoint < 1 s on the full dataset):** ${passing === api.length ? 'PASS' : 'FAIL'}. ${passing} of ${api.length} requests returned 200 in under ${fmt(API_LIMIT_MS)} ms.`,
+    '',
+    '| Endpoint | Status | Median ms | Max ms | Reads | Plan of the underlying query | Docs examined |',
+    '|---|---|---|---|---|---|---|',
+    ...api.map(
+      (a) =>
+        `| \`${a.path}\` | ${a.status} | ${fmt(a.medianMs)} | ${fmt(a.maxMs)} | ${a.source} | ${apiPlan(a)} | ${a.plan ? fmt(a.plan.totalDocsExamined) : 'n/a'} |`,
+    ),
+    '',
+    `Stats collection sizes (documents): ${Object.entries(statsDocs)
+      .map(([name, docs]) => `\`${name}\` ${fmt(docs)}`)
+      .join(', ')}.`,
+  ].join('\n');
+}
+
+async function statsDocCounts(db: Db): Promise<Record<string, number>> {
+  const entries = await Promise.all(
+    STATS_COLLECTIONS.map(
+      async (name) => [name, await db.collection(name).countDocuments()] as const,
+    ),
+  );
+  return Object.fromEntries(entries);
 }
 
 function q1SanitySection(s: Q1Sanity): string {
@@ -117,6 +156,8 @@ interface Context {
   octoberRows: number;
   octoberUnresolvedOrigin: number;
   q1Sanity: Q1Sanity;
+  api: ApiTiming[];
+  statsDocs: Record<string, number>;
 }
 
 function render(results: Result[], context: Context): string {
@@ -177,6 +218,8 @@ function render(results: Result[], context: Context): string {
     '',
     q1SanitySection(context.q1Sanity),
     '',
+    apiSection(context.api, context.statsDocs),
+    '',
     '## Collection and index sizes',
     '',
     sizesTable(sizes),
@@ -186,7 +229,7 @@ function render(results: Result[], context: Context): string {
     '- **Memory and disk:** indexes speed up selective reads, but every index costs RAM and disk. Its keys compete with documents for the WiredTiger cache.',
     '- **Writes:** every index slows every insert. This is why `npm run ingest` loads the data first and `npm run build:indexes` builds the indexes afterwards (§6.4). The per-index build times and before/after sizes are in `docs/DECISIONS.md` (Phase 2).',
     '- **Selectivity:** the indexes pay off for selective access (one airline, one airport, one route, one month).',
-    '- **Whole-collection rankings:** the control query Q8 shows an index cannot help a ranking over the whole collection. Such reads are served by the pre-aggregated `stats_*` collections that Phase 3 builds.',
+    '- **Whole-collection rankings:** the control query Q8 shows an index cannot help a ranking over the whole collection. Such reads are served by the pre-aggregated `stats_*` collections (`npm run build:stats`), as the API timings above show.',
     '',
     '## Per-query detail',
     '',
@@ -234,11 +277,16 @@ async function main(): Promise<void> {
     octoberRows: await flights.countDocuments({ month: 10 }),
     octoberUnresolvedOrigin: await flights.countDocuments({ month: 10, originIsIata: false }),
     q1Sanity: await q1Sanity(db, results),
+    api: await measureApi(db, RUNS),
+    statsDocs: await statsDocCounts(db),
   };
   await writeFile(OUTPUT, render(results, context));
   logger.info({ output: OUTPUT }, 'explain:report written');
 
   const failed = [
+    ...context.api
+      .filter((a) => a.status !== 200 || a.medianMs >= API_LIMIT_MS)
+      .map((a) => `${a.path} returned ${a.status} in ${a.medianMs} ms`),
     ...results.filter((r) => !r.check.identical).map((r) => `${r.query.id} results differ`),
     ...(context.q1Sanity.sumMatchesTotal ? [] : ['Q1 sanity: monthly sum != total']),
     ...(context.q1Sanity.monthMatchesQ1 ? [] : ['Q1 sanity: March count != Q1']),

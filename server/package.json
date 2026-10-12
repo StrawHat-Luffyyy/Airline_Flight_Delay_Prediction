@@ -10,7 +10,8 @@
     "ingest": "tsx src/ingest/cli.ts",
     "resolve:airport-ids": "tsx src/ingest/resolve-cli.ts",
     "build:indexes": "tsx src/db/indexes-cli.ts",
-    "explain:report": "tsx src/db/explain-cli.ts"
+    "explain:report": "tsx src/db/explain-cli.ts",
+    "build:stats": "tsx src/stats/build-cli.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

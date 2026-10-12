@@ -1,7 +1,7 @@
 import { MongoClient, type Db } from 'mongodb';
 import { pino } from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { FLIGHT_INDEXES, ensureFlightIndexes } from '../../src/db/indexes.js';
+import { ALL_FLIGHT_INDEXES, ensureFlightIndexes } from '../../src/db/indexes.js';
 
 // Needs a reachable MongoDB (MONGODB_URI from vitest.config.ts); skipped when there is none.
 const TEST_DB = 'flight_delay_indexes_test';
@@ -33,18 +33,18 @@ afterAll(async () => {
 });
 
 describe('ensureFlightIndexes (MongoDB integration)', () => {
-  it('creates every §6.2 index, then skips them all on a second run', async (context) => {
+  it('creates every §6.2 and API index, then skips them all on a second run', async (context) => {
     if (!client) return context.skip();
     const first = await ensureFlightIndexes(db, logger);
     const second = await ensureFlightIndexes(db, logger);
 
-    expect(first.map((o) => o.status)).toEqual(FLIGHT_INDEXES.map(() => 'created'));
-    expect(second.map((o) => o.status)).toEqual(FLIGHT_INDEXES.map(() => 'exists'));
+    expect(first.map((o) => o.status)).toEqual(ALL_FLIGHT_INDEXES.map(() => 'created'));
+    expect(second.map((o) => o.status)).toEqual(ALL_FLIGHT_INDEXES.map(() => 'exists'));
 
     const indexes = await db.collection('flights').listIndexes().toArray();
     const partial = indexes.find((index) => index.name === 'month_1_airline_1_with_causes');
     expect(partial?.partialFilterExpression).toEqual({ causes: { $type: 'object' } });
-    expect(indexes).toHaveLength(FLIGHT_INDEXES.length + 1); // + _id_
+    expect(indexes).toHaveLength(ALL_FLIGHT_INDEXES.length + 1); // + _id_
   });
 
   it('refuses, without dropping, when an index name is taken by another definition', async (context) => {

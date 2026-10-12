@@ -159,3 +159,71 @@ The six indexes add 192.4 MB, 29.5% of the compressed storage size.
   - Codes must be IATA. A 5-digit unresolved BTS id is rejected, consistent with excluding unresolved airports from airport-keyed reads.
   - `limit` defaults to 20 and is capped at 100 (§9).
   - The rule lives in the shared zod schema `FlightsQuerySchema` (`shared/src/flights.ts`) and is unit-tested. The route itself does not exist yet: the user chose to add the rule now and have Phase 3's `/flights` route validate with this schema and return `400 { error: { code, message, details } }`.
+
+## Phase 3: analytics
+
+**Pre-aggregation (`npm run build:stats`).** These are pure builders in `server/src/stats/builders.ts`. Each one runs `$match` (where a subset is aggregated) → `$group` → `$set` → `$merge` (`on: _id`, `whenMatched: replace`) over `flights`, with `allowDiskUse: true`.
+
+| Collection | Key | Docs | Build (2026-10-12) | Serves |
+|---|---|---|---|---|
+| `stats_daily` | date, airline (+ dayOfWeek, month, cause minutes, min/max `_id`) | 4,926 | 22.1 s | summary, trend (overall / airline), delay rate by airline and day of week, `/flights` date bounds |
+| `stats_daily_origin` | date, origin (IATA only) | 110,522 | 19.4 s | trend `?origin=` |
+| `stats_route` | route (both ends IATA) | 4,695 | 18.1 s | delay rate by route, worst routes |
+| `stats_airport_hour` | origin airport, hour (IATA only, + cause minutes) | 4,259 | 21.2 s | delay rate by origin and by hour, causes by airport and by hour, the late-aircraft cascade |
+| `stats_cause_monthly` | month, airline (flights with causes) | 162 | 8.4 s | causes overall, by airline, by month |
+| `stats_cancellation` | month, airline, reason | 440 | 6.1 s | cancellation reasons |
+| `stats_delay_buckets` | `$bucket` of arrival delay (completed flights) | 8 | 14.9 s | delay-severity histogram |
+
+- **Run time:** 110.2 s in total. Node's peak RSS was 106 MB, since all the work runs in MongoDB. Every run is recorded in `stats_runs`.
+- **Rebuilding is idempotent.** Every output document carries the run's `buildId`. After each `$merge`, documents with an older `buildId` are deleted, so keys that no longer exist (e.g. numeric origins before `resolve:airport-ids`) disappear, and no collection is ever empty mid-build. A second full build produced identical document counts and removed 0 stale documents.
+- **Sums are stored, not just rates.** Each document stores `flights`, `completed`, `delayed`, `cancelled`, `diverted` and `arrDelaySum`, and derives `delayRate`, `cancelRate` and `avgArrDelay` from them. Re-aggregating at read time (e.g. per-day documents into months) therefore stays exact.
+- **Definitions:**
+  - `completed` = `isDelayed` is not null.
+  - Delay rate = delayed / completed, so cancelled and diverted flights are excluded (§8).
+  - Average arrival delay is over completed flights.
+  - A null cause counts as 0 only inside these pipelines (`$ifNull`); the stored flights keep `null` (§3).
+- **Unresolved airports:** airport-keyed collections (`stats_daily_origin`, `stats_route`, `stats_airport_hour`) exclude the 1,632 rows whose origin is still a numeric BTS id. Totals by airline or month (from `stats_daily` and `stats_cause_monthly`) include them. Cause totals by airport or hour can therefore be slightly smaller than the overall totals; this is intentional.
+- **Additions beyond §6.1:**
+  - `stats_daily_origin`: §6.1's `stats_daily` has no origin, and trend accepts `?origin=`.
+  - `stats_cancellation` and `stats_delay_buckets`: §8.5 cancellation reasons and the §8 `$bucket` histogram.
+  - `dayOfWeek` and min/max `_id` in `stats_daily`.
+  - Small read indexes, created by `build:stats`: `stats_daily {airline, date}`, `stats_daily_origin {origin, date}`, `stats_route {flights: -1}`.
+
+**API (`server/src/routes/api.ts`, contracts in `shared/src/analytics.ts`).**
+- **Reads:** every analytics endpoint reads only `stats_*` collections, none scans `flights`. Pipeline builders are pure and live in `server/src/analytics/`. Responses are validated with the shared zod schemas before they are sent.
+- **Validation:** invalid parameters return `400 { error: { code: "VALIDATION_ERROR", message, details } }`.
+- **Cache:** responses go through an in-memory TTL cache (10 minutes; `cacheTtlMs: 0` disables it). There is no Redis, per §9.
+- **Endpoints beyond the §9 table:** `/analytics/cancellations` (§8.5, Causes page) and `/analytics/delay-distribution` (§8 `$bucket`).
+- **`delay-rate`:**
+  - `minFlights` defaults to 500 and `limit` is capped at 100.
+  - `order=worst|best`, with ties broken by key. This also serves the "worst N routes/airports" ranking of §8.6.
+  - `by=dow` and `by=hour` return the full 7- or 24-point series in key order instead of a ranking.
+- **`trend`:** `airline` and `origin` together return 400, because no pre-aggregated series is keyed by both.
+- **`cancellations`:** reasons are A-D plus `unknown`, so `total` always equals their sum. The full data has no unknown reasons: A 25,262 + B 48,851 + C 15,749 + D 22 = 89,884.
+- **Cross-check against Phase 1:** `/analytics/summary` returns flights 5,819,079, delayed 1,063,439, cancelled 89,884 and diverted 15,187. These match the direct counts on `flights` from Phase 1.
+
+**`/api/flights`.** It has keyset pagination on `_id`: `cursor` = the previous page's last `_id`, `limit` ≤ 100, and the response is `{ items, nextCursor }`. `_id` follows ingest (CSV) order, which is almost chronological. Three measured worst cases forced changes:
+1. **Late date windows walked the `_id` index from the start:** December took 8.8 s and examined 5.3M documents.
+   - Fix: `stats_daily` stores each day's min/max `_id`, and a date window adds `_id ∈ [lo, hi]`.
+   - The bounds are the true min/max over the window's flights, so they can never exclude a match. That matters because the data has one day boundary (2015-10-17/18) where the `_id` ranges overlap.
+   - The bounds are used only when the latest stats build started after the last completed ingest; otherwise the query runs unbounded (correct, just slower).
+   - Result: December now takes 21 ms.
+2. **`dest` has no index:** airline + dest with no matches took 1.3-1.5 s.
+   - `origin + dest` is now rewritten to the indexed `route` key (`route` always equals `origin-dest`), so JFK→HNL takes 5 ms.
+   - `dest` is otherwise only accepted with `route`. `airline` + `dest` and date + `dest` return 400 with "combine it with origin (or use route)".
+3. **airline + origin with no matches:** HA + ATL fetched all 76,272 HA flights, about 2 s.
+   - Added one index beyond §6.2, `airline_1_origin_1` `{ airline: 1, origin: 1 }` (36.2 MB, 13.5 s build). It is defined in `API_INDEXES` (`server/src/db/indexes.ts`) and built by `build:indexes`.
+   - A planner hint was rejected: hinting the origin index for a dense pair like DL + ATL would fetch all of ATL's ~350k flights.
+   - Result: HA + ATL now takes 4 ms.
+
+Remaining known cost: pages of a large route (e.g. JFK-LAX, about 13k flights) re-scan the route on every page, 68 ms median and 287 ms max. That is under 1 s, so `route_1` was left unchanged. A `{ route: 1, _id: 1 }` index would make it flat, if it is ever needed.
+
+**Evidence.** These come from the "API endpoint timings (Phase 3)" section of `docs/EXPLAIN_RESULTS.md`. All 32 requests were made over HTTP with the cache off, and all returned 200 in under 1 s:
+- analytics medians 7-51 ms (max 110 ms);
+- `/flights` medians 4-68 ms (max 306 ms).
+
+The query reviews behind the three fixes were done by the mongo-query-optimizer and ts-reviewer agents.
+
+**Tests.**
+- **Seeded fixture:** `server/tests/analytics/analytics.integration.test.ts` has 26 tests on a 9-flight fixture with hand-computed values. It covers null causes, cancelled and diverted flights, an unresolved origin, tiny groups under `minFlights`, the stale-key sweep, pagination and the 400 cases. It uses `flight_delay_analytics_test`, dropped in `afterAll`. A deliberate mutation of the "completed" definition failed 8 of these tests, so they detect logic changes.
+- **Pipeline shapes:** `builders.test.ts` checks pipeline shapes and the `/flights` filter.

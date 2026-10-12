@@ -18,7 +18,8 @@
     "ingest": "npm run ingest --workspace=@flight-delay/server --",
     "resolve:airport-ids": "npm run resolve:airport-ids --workspace=@flight-delay/server --",
     "build:indexes": "npm run build:indexes --workspace=@flight-delay/server --",
-    "explain:report": "npm run explain:report --workspace=@flight-delay/server --"
+    "explain:report": "npm run explain:report --workspace=@flight-delay/server --",
+    "build:stats": "npm run build:stats --workspace=@flight-delay/server --"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

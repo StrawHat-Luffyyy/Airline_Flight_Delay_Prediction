@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { FLIGHT_INDEXES, matchesSpec } from '../../src/db/indexes.js';
+import {
+  ALL_FLIGHT_INDEXES,
+  API_INDEXES,
+  FLIGHT_INDEXES,
+  matchesSpec,
+} from '../../src/db/indexes.js';
 
 describe('FLIGHT_INDEXES', () => {
   it('is exactly the PROJECT_OVERVIEW §6.2 index set, in order', () => {
@@ -13,8 +18,12 @@ describe('FLIGHT_INDEXES', () => {
     ]);
   });
 
+  it('adds only the documented airline + origin index beyond §6.2', () => {
+    expect(API_INDEXES.map((spec) => spec.key)).toEqual([{ airline: 1, origin: 1 }]);
+  });
+
   it('gives every index a unique explicit name', () => {
-    const names = FLIGHT_INDEXES.map((spec) => spec.name);
+    const names = ALL_FLIGHT_INDEXES.map((spec) => spec.name);
     expect(new Set(names).size).toBe(names.length);
   });
 });

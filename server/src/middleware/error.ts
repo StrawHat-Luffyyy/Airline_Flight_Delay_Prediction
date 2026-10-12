@@ -1,6 +1,8 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import type { ErrorResponse } from '@flight-delay/shared';
+import { InvalidCursorError } from '../analytics/flights.js';
 import { logger } from '../logger.js';
+import { RequestValidationError } from './validate.js';
 
 const DEFAULT_CLIENT_ERROR: [string, string] = ['BAD_REQUEST', 'Malformed request'];
 
@@ -27,6 +29,17 @@ export const notFoundHandler: RequestHandler = (_request, response) => {
 // Express identifies error middleware by its four parameters, so `_next` must stay.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const errorHandler: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
+  if (error instanceof RequestValidationError) {
+    const body: ErrorResponse = {
+      error: { code: 'VALIDATION_ERROR', message: error.message, details: error.details },
+    };
+    response.status(400).json(body);
+    return;
+  }
+  if (error instanceof InvalidCursorError) {
+    response.status(400).json(errorBody('VALIDATION_ERROR', error.message));
+    return;
+  }
   const status = clientErrorStatus(error);
   if (status !== undefined) {
     // Body-parser errors (malformed JSON, payload too large, bad charset) carry a 4xx status.

@@ -5,11 +5,15 @@ const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 export const MISSING_SELECTIVE_FILTER =
   'Provide airline, origin, route, or a from+to date range; dest alone would scan the whole collection.';
 
+export const DEST_NEEDS_ORIGIN =
+  'dest has no index of its own: combine it with origin (or use route).';
+
 /**
  * Query string for GET /api/flights (PROJECT_OVERVIEW §9). At least one filter must map to a
  * §6.2 index: airline (airline_1_date_1), origin (origin_1_schedDepHour_1), route (route_1) or
- * a closed from+to date range (date_1). `dest` has no index, so on its own it is rejected
- * (400) instead of scanning 5.8M documents.
+ * a closed from+to date range (date_1). `dest` has no index, so it is only accepted with origin
+ * (served as the route origin-dest via route_1) or route; elsewhere it would force a fetch of
+ * every flight of the airline or date window to filter it (400 instead).
  */
 export const FlightsQuerySchema = z
   .object({
@@ -38,6 +42,8 @@ export const FlightsQuerySchema = z
     const hasDateRange = query.from !== undefined && query.to !== undefined;
     if (!query.airline && !query.origin && !query.route && !hasDateRange) {
       context.addIssue({ code: 'custom', message: MISSING_SELECTIVE_FILTER, path: [] });
+    } else if (query.dest && !query.origin && !query.route) {
+      context.addIssue({ code: 'custom', message: DEST_NEEDS_ORIGIN, path: ['dest'] });
     }
     if (hasDateRange && query.from && query.to && query.from > query.to) {
       context.addIssue({
