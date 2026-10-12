@@ -216,7 +216,7 @@ The six indexes add 192.4 MB, 29.5% of the compressed storage size.
    - A planner hint was rejected: hinting the origin index for a dense pair like DL + ATL would fetch all of ATL's ~350k flights.
    - Result: HA + ATL now takes 4 ms.
 
-Remaining known cost: pages of a large route (e.g. JFK-LAX, about 13k flights, or LAX-SFO) re-scan up to 11k documents per page. That costs 252-350 ms median and up to 439 ms in the final run with a cold cache after a rebuild, and was 42-68 ms when warm. It is under 1 s, so `route_1` (§6.2) is unchanged. A `{ route: 1, _id: 1 }` index, the same pattern as the review below, would make it flat at the cost of roughly another 100 MB.
+Remaining known cost: pages of a busy route re-scan the route on every page. This is an accepted trade-off; see "Phase 3 close-out" below for measurements.
 
 **Evidence.** These come from the "API endpoint timings (Phase 3)" section of `docs/EXPLAIN_RESULTS.md`. All 32 requests were made over HTTP with the cache off, and all returned 200 in under 1 s:
 - analytics medians 7-51 ms (max 110 ms);
@@ -273,6 +273,38 @@ The query reviews behind the three fixes were done by the mongo-query-optimizer 
 
 **Evidence (final run).** All 33 timed requests return 200 in under 1 s:
 - analytics medians 5-50 ms (max 285 ms);
-- `/flights` medians 5-350 ms (max 439 ms; large-route pages are the tail, see "Remaining known cost").
+- `/flights` medians 5-350 ms (max 439 ms; busy-route pages are the tail, see "Phase 3 close-out").
 
 Tests: 121 pass. They include new fixture tests for combined trends, coverage on every airport-keyed endpoint, `/meta` data quality, and index retirement.
+
+### Phase 3 close-out: deferred items (2026-10-12)
+
+**`$facet`: deferred to Phase 6, not needed yet.**
+- §8 asks for `$facet` "where one request needs several slices" of a single scan. No Phase 3 request does: every analytics endpoint returns exactly one breakdown from one pre-aggregated collection.
+- The multi-slice needs are on Phase 6 dashboard pages (§10). Most of them read *different* collections, which `$facet` cannot combine because it splits one input stream:
+  - Causes page: cause minutes from `stats_cause_monthly`, cascade from `stats_airport_hour`, cancellations from `stats_cancellation`.
+  - Explorer: worst airlines from `stats_daily`, worst airports from `stats_airport_hour`, worst routes from `stats_route`.
+- The one real candidate is the Overview page: its KPI totals and its monthly trend both read `stats_daily`. If Phase 6 serves that page in one request, it will use `$facet` over `stats_daily` and record the measurement.
+- Already in use from the §8 toolset: `$bucket` (delay histogram), `$group` + `$merge` (`build:stats`), `allowDiskUse` (stats builds), and `$match` first wherever a pipeline filters.
+
+**Busy-route `/flights` pages: accepted trade-off, `route_1` (§6.2) unchanged.**
+- **The cost.** `/flights` pages are returned in `_id` order. `route_1` yields a route's flights in key order, so the planner either walks `_id` and filters, or reads the whole route and sorts it. Either way a busy route's page examines many documents.
+- **Who is affected.** Only 8 of the 4,695 routes have 10,000 or more flights. The busiest is SFO-LAX with 15,116, then LAX-SFO 14,799 and JFK-LAX 13,113.
+- **Measured (2026-10-12, server side, warm cache, median of 3, page size 21):**
+
+  | Route | First page | Last page |
+  |---|---|---|
+  | SFO-LAX | 14 ms, 9,131 docs examined | 10 ms, 8,484 docs |
+  | JFK-LAX | 12 ms, 8,506 docs | 13 ms, 12,145 docs |
+  | LAX-SFO | 13 ms, 10,097 docs | 11 ms, 8,551 docs |
+
+- **Over HTTP.** In the `explain:report` run straight after a stats rebuild (cold cache), the same pages took 252-350 ms median and 439 ms max. That is still under the 1 s target.
+- **The alternative and its cost.** A `{ route: 1, _id: 1 }` index (the pattern used for `airline_1_origin_1__id_1`) would make every route page read ≤ 21 documents. It would hold one entry per flight (5.8M), like `airline_1_origin_1__id_1`, which measured 96.3 MB. Every insert would maintain it, and it would duplicate the §6.2 `route_1`.
+- **Decision.** Not worth it while the worst case is 10-14 ms warm and under 0.5 s cold. Revisit if `/flights` gains a route-heavy UI or `explain:report` shows a busy route over 1 s.
+
+**`docs/SCHEMA.md`: deferred to Phase 7.** PROJECT_OVERVIEW §11 lists `SCHEMA.md` under Phase 7 (Hardening + docs). Until then, the schemas are documented in code and in this file:
+- `FlightDoc` and the run documents: `server/src/db/collections.ts`;
+- stats collection keys and fields: `server/src/stats/builders.ts`, and the Phase 3 table above;
+- API contracts: `shared/src/analytics.ts` and `shared/src/flights.ts`.
+
+**Phase 4 not started.**
