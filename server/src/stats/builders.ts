@@ -98,12 +98,28 @@ export function statsDailyPipeline(buildId: string): Document[] {
   ];
 }
 
-/** (date, origin) daily series for trend ?origin=. Unresolved numeric airport ids are excluded. */
+/**
+ * (date, origin, airline) daily series for trend ?origin= and ?airline=&origin= (§9).
+ * Unresolved numeric airport ids are excluded.
+ */
 export function statsDailyOriginPipeline(buildId: string): Document[] {
   return [
     { $match: { originIsIata: true } },
-    { $group: { _id: { date: '$date', origin: '$origin' }, ...OUTCOME_ACCUMULATORS } },
-    { $set: { date: '$_id.date', origin: '$_id.origin', ...DERIVED_RATES, buildId } },
+    {
+      $group: {
+        _id: { date: '$date', origin: '$origin', airline: '$airline' },
+        ...OUTCOME_ACCUMULATORS,
+      },
+    },
+    {
+      $set: {
+        date: '$_id.date',
+        origin: '$_id.origin',
+        airline: '$_id.airline',
+        ...DERIVED_RATES,
+        buildId,
+      },
+    },
     merge('stats_daily_origin'),
   ];
 }
@@ -222,7 +238,10 @@ export const STATS_BUILDS: readonly StatsBuild[] = [
   {
     collection: 'stats_daily_origin',
     pipeline: statsDailyOriginPipeline,
-    indexes: [{ origin: 1, date: 1 }],
+    indexes: [
+      { origin: 1, date: 1 },
+      { airline: 1, origin: 1, date: 1 },
+    ],
   },
   { collection: 'stats_route', pipeline: statsRoutePipeline, indexes: [{ flights: -1 }] },
   { collection: 'stats_airport_hour', pipeline: statsAirportHourPipeline, indexes: [] },

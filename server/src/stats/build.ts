@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Db } from 'mongodb';
+import type { DataQuality } from '@flight-delay/shared';
 import type { Logger } from 'pino';
 import { RssMonitor } from '../ingest/rss.js';
 import { STATS_BUILDS, type StatsCollection } from './builders.js';
@@ -20,10 +21,38 @@ export interface StatsRunDoc {
   collections: StatsCollectionResult[];
   totalMs: number;
   peakRssMb: number;
+  /** Unresolved-airport counts, derived from the stats themselves (completed runs only). */
+  dataQuality?: DataQuality;
   error?: string;
 }
 
 export const STATS_RUNS = 'stats_runs';
+
+async function sumFlights(db: Db, collection: string): Promise<number> {
+  const [row] = await db
+    .collection(collection)
+    .aggregate<{ flights: number }>([{ $group: { _id: null, flights: { $sum: '$flights' } } }])
+    .toArray();
+  return row?.flights ?? 0;
+}
+
+/**
+ * Flights left out of airport-keyed stats because an airport is still a numeric BTS id.
+ * stats_daily covers every flight, stats_daily_origin those with an IATA origin, stats_route
+ * those with IATA codes at both ends, so the differences are exact counts.
+ */
+export async function dataQuality(db: Db): Promise<DataQuality> {
+  const [flights, originResolved, routeResolved] = await Promise.all([
+    sumFlights(db, 'stats_daily'),
+    sumFlights(db, 'stats_daily_origin'),
+    sumFlights(db, 'stats_route'),
+  ]);
+  return {
+    flights,
+    unresolvedOriginFlights: flights - originResolved,
+    unresolvedRouteFlights: flights - routeResolved,
+  };
+}
 
 /**
  * Rebuilds every stats_* collection from `flights`. Each pipeline $merges into its target with
@@ -83,6 +112,7 @@ export async function buildStats(db: Db, logger: Logger): Promise<StatsRunDoc> {
     startedAt,
     finishedAt: new Date(),
     status: 'completed',
+    dataQuality: await dataQuality(db),
     collections: results,
     totalMs: Date.now() - startedAt.getTime(),
     peakRssMb: monitor.stop(),

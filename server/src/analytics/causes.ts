@@ -5,8 +5,16 @@ import {
   CauseRowSchema,
   type CausesQuery,
   type CausesResponse,
+  type DataQuality,
 } from '@flight-delay/shared';
-import { MONTH_NAMES, airportLabel, hourLabel, shareExpression, type Labels } from './common.js';
+import {
+  MONTH_NAMES,
+  airportLabel,
+  coverageFor,
+  hourLabel,
+  shareExpression,
+  type Labels,
+} from './common.js';
 
 type By = CausesQuery['by'];
 
@@ -68,6 +76,7 @@ export async function getCauses(
   db: Db,
   query: CausesQuery,
   labels: Labels,
+  quality: DataQuality | null,
 ): Promise<CausesResponse> {
   const docs = await db
     .collection(CAUSE_SOURCES[query.by].collection)
@@ -76,6 +85,7 @@ export async function getCauses(
   const rows = z.array(RowWithoutLabel).parse(docs);
   return {
     by: query.by,
+    coverage: coverageFor(query.by === 'airport' || query.by === 'hour' ? 'origin' : null, quality),
     rows: rows.map((row) => ({ ...row, label: label(query.by, row.key, labels) })),
   };
 }

@@ -474,12 +474,65 @@ describe('analytics API (MongoDB integration)', () => {
       ]);
     });
 
-    it('rejects airline and origin together', async (context) => {
+    it('combines airline and origin (§9)', async (context) => {
       if (!client) return context.skip();
-      const body = (await get('/api/analytics/trend?airline=AA&origin=JFK', 400)) as {
-        error: { code: string };
+      const aaJfk = TrendResponseSchema.parse(
+        await get('/api/analytics/trend?airline=AA&origin=JFK'),
+      );
+      expect(
+        aaJfk.points.map((p) => [p.period, p.flights, p.completed, p.delayed, p.cancelled]),
+      ).toEqual([['2015-01', 4, 3, 2, 1]]);
+
+      // DL from ATL: flights 5,6,7 on 02-02 (completed 5,7; delayed 5) and 9 on 10-01 (cancelled)
+      const dlAtl = TrendResponseSchema.parse(
+        await get('/api/analytics/trend?airline=DL&origin=ATL&granularity=day'),
+      );
+      expect(
+        dlAtl.points.map((p) => [p.period, p.flights, p.completed, p.delayed, p.cancelled]),
+      ).toEqual([
+        ['2015-02-02', 3, 2, 1, 0],
+        ['2015-10-01', 1, 0, 0, 1],
+      ]);
+      expect(dlAtl.points[1]?.delayRate).toBeNull();
+
+      const none = TrendResponseSchema.parse(
+        await get('/api/analytics/trend?airline=DL&origin=JFK'),
+      );
+      expect(none.points).toEqual([]);
+    });
+  });
+
+  describe('coverage of unresolved airports', () => {
+    // Fixture flight 8 has the unresolved numeric origin 10666; it is the only one.
+    it('is reported on every airport-keyed response and null elsewhere', async (context) => {
+      if (!client) return context.skip();
+      const excluded = async (path: string): Promise<number | null> => {
+        const body = (await get(path)) as {
+          coverage: { excludedUnresolvedFlights: number } | null;
+        };
+        return body.coverage ? body.coverage.excludedUnresolvedFlights : null;
       };
-      expect(body.error.code).toBe('VALIDATION_ERROR');
+      expect(await excluded('/api/analytics/delay-rate?by=origin&minFlights=1')).toBe(1);
+      expect(await excluded('/api/analytics/delay-rate?by=hour&minFlights=1')).toBe(1);
+      expect(await excluded('/api/analytics/delay-rate?by=route&minFlights=1')).toBe(1);
+      expect(await excluded('/api/analytics/causes?by=airport')).toBe(1);
+      expect(await excluded('/api/analytics/causes?by=hour')).toBe(1);
+      expect(await excluded('/api/analytics/cascade')).toBe(1);
+      expect(await excluded('/api/analytics/trend?origin=JFK')).toBe(1);
+
+      expect(await excluded('/api/analytics/delay-rate?by=airline&minFlights=1')).toBeNull();
+      expect(await excluded('/api/analytics/causes?by=overall')).toBeNull();
+      expect(await excluded('/api/analytics/trend?airline=AA')).toBeNull();
+    });
+
+    it('is summarised in /meta', async (context) => {
+      if (!client) return context.skip();
+      const body = MetaResponseSchema.parse(await get('/api/meta'));
+      expect(body.dataQuality).toEqual({
+        flights: 9,
+        unresolvedOriginFlights: 1,
+        unresolvedRouteFlights: 1,
+      });
     });
   });
 

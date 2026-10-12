@@ -6,6 +6,7 @@ import {
   type CancellationsQuery,
   type CancellationsResponse,
   type CascadeResponse,
+  type DataQuality,
   type DelayDistributionResponse,
   type TrendQuery,
   type TrendResponse,
@@ -15,6 +16,7 @@ import {
   DERIVED_RATES,
   MONTH_NAMES,
   SUM_OUTCOMES,
+  coverageFor,
   shareExpression,
   type Labels,
 } from './common.js';
@@ -27,11 +29,10 @@ export function trendSource(query: TrendQuery): string {
 }
 
 export function trendPipeline(query: TrendQuery): Document[] {
-  const match = query.origin
-    ? { origin: query.origin }
-    : query.airline
-      ? { airline: query.airline }
-      : {};
+  const match = {
+    ...(query.origin ? { origin: query.origin } : {}),
+    ...(query.airline ? { airline: query.airline } : {}),
+  };
   const format = query.granularity === 'day' ? '%Y-%m-%d' : '%Y-%m';
   return [
     { $match: match },
@@ -54,12 +55,17 @@ export function trendPipeline(query: TrendQuery): Document[] {
   ];
 }
 
-export async function getTrend(db: Db, query: TrendQuery): Promise<TrendResponse> {
+export async function getTrend(
+  db: Db,
+  query: TrendQuery,
+  quality: DataQuality | null,
+): Promise<TrendResponse> {
   const docs = await db.collection(trendSource(query)).aggregate(trendPipeline(query)).toArray();
   return {
     granularity: query.granularity,
     airline: query.airline ?? null,
     origin: query.origin ?? null,
+    coverage: coverageFor(query.origin ? 'origin' : null, quality),
     points: z.array(TrendPointSchema).parse(docs),
   };
 }
@@ -101,9 +107,9 @@ export function cascadePipeline(): Document[] {
   ];
 }
 
-export async function getCascade(db: Db): Promise<CascadeResponse> {
+export async function getCascade(db: Db, quality: DataQuality | null): Promise<CascadeResponse> {
   const docs = await db.collection(CASCADE_SOURCE).aggregate(cascadePipeline()).toArray();
-  return { rows: z.array(CascadeRowSchema).parse(docs) };
+  return { coverage: coverageFor('origin', quality), rows: z.array(CascadeRowSchema).parse(docs) };
 }
 
 // ---------- Cancellation reasons (§8.5) ----------

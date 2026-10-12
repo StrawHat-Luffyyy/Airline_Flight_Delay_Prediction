@@ -15,6 +15,8 @@ import {
 import { flightsSizes, type CollectionSizes } from './indexes.js';
 import { REPRESENTATIVE_QUERIES, type RepresentativeQuery } from './representative-queries.js';
 import { toShellSyntax } from './shell-format.js';
+import type { DataQuality } from '@flight-delay/shared';
+import { loadDataQuality } from '../analytics/common.js';
 import { STATS_COLLECTIONS } from '../stats/builders.js';
 import { API_LIMIT_MS, measureApi, type ApiTiming } from './api-timing.js';
 
@@ -73,7 +75,11 @@ const apiPlan = (a: ApiTiming): string =>
     ? `${a.plan.stages.join(' > ')}${a.plan.indexes.length ? ` (${a.plan.indexes.join(', ')})` : ''}`
     : 'n/a';
 
-function apiSection(api: ApiTiming[], statsDocs: Record<string, number>): string {
+function apiSection(
+  api: ApiTiming[],
+  statsDocs: Record<string, number>,
+  quality: DataQuality | null,
+): string {
   const passing = api.filter((a) => a.status === 200 && a.medianMs < API_LIMIT_MS).length;
   return [
     '## API endpoint timings (Phase 3)',
@@ -89,6 +95,10 @@ function apiSection(api: ApiTiming[], statsDocs: Record<string, number>): string
       (a) =>
         `| \`${a.path}\` | ${a.status} | ${fmt(a.medianMs)} | ${fmt(a.maxMs)} | ${a.source} | ${apiPlan(a)} | ${a.plan ? fmt(a.plan.totalDocsExamined) : 'n/a'} |`,
     ),
+    '',
+    quality
+      ? `**Data coverage:** ${fmt(quality.unresolvedOriginFlights)} of ${fmt(quality.flights)} flights (${((quality.unresolvedOriginFlights / quality.flights) * 100).toFixed(3)}%) still have an unresolved numeric origin airport id, and ${fmt(quality.unresolvedRouteFlights)} have an unresolved origin or destination. They count toward the totals by airline, month and day of week. Airport-, hour- and route-keyed results exclude them, and those responses report this in \`coverage.excludedUnresolvedFlights\`.`
+      : '**Data coverage:** no stats build recorded.',
     '',
     `Stats collection sizes (documents): ${Object.entries(statsDocs)
       .map(([name, docs]) => `\`${name}\` ${fmt(docs)}`)
@@ -158,6 +168,7 @@ interface Context {
   q1Sanity: Q1Sanity;
   api: ApiTiming[];
   statsDocs: Record<string, number>;
+  quality: DataQuality | null;
 }
 
 function render(results: Result[], context: Context): string {
@@ -218,7 +229,7 @@ function render(results: Result[], context: Context): string {
     '',
     q1SanitySection(context.q1Sanity),
     '',
-    apiSection(context.api, context.statsDocs),
+    apiSection(context.api, context.statsDocs, context.quality),
     '',
     '## Collection and index sizes',
     '',
@@ -279,6 +290,7 @@ async function main(): Promise<void> {
     q1Sanity: await q1Sanity(db, results),
     api: await measureApi(db, RUNS),
     statsDocs: await statsDocCounts(db),
+    quality: await loadDataQuality(db),
   };
   await writeFile(OUTPUT, render(results, context));
   logger.info({ output: OUTPUT }, 'explain:report written');

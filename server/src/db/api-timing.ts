@@ -79,6 +79,7 @@ function checks(page2Cursor: string | null): ApiCheck[] {
     { granularity: 'month' },
     { granularity: 'day', airline: 'AA' },
     { granularity: 'day', origin: 'ORD' },
+    { granularity: 'day', airline: 'DL', origin: 'ATL' },
   ];
   const trends = trendInputs.map((raw) => {
     const query = TrendQuerySchema.parse(raw);

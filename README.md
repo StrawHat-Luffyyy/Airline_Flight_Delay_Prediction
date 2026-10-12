@@ -47,16 +47,16 @@ Re-running `ingest -- --drop` drops `flights` along with its indexes and brings 
 
 ### API
 
-All endpoints are `GET` under `/api`. Errors use the shape `{ error: { code, message, details? } }`, and invalid query parameters return `400 VALIDATION_ERROR`. Analytics responses are cached in memory for 10 minutes.
+All endpoints are `GET` under `/api`. Errors use the shape `{ error: { code, message, details? } }`, and invalid query parameters return `400 VALIDATION_ERROR`. Airport-, hour- and route-keyed results include `coverage.excludedUnresolvedFlights`: flights whose airport is still an unresolved numeric BTS id (1,632 by origin, 3,147 by route). Analytics responses are cached in memory for 10 minutes.
 
 | Endpoint | Parameters |
 |---|---|
 | `/health` | none |
-| `/meta` | none: row count, date range, airlines, airports |
+| `/meta` | none: row count, date range, airlines, airports, `dataQuality` (unresolved-airport counts) |
 | `/analytics/summary` | none: flights, delay rate, average arrival delay, cancel rate |
 | `/analytics/causes` | `by=overall\|airline\|airport\|month\|hour`, `limit` (≤ 100) |
 | `/analytics/delay-rate` | `by=airline\|origin\|route\|dow\|hour`, `minFlights` (default 500), `limit` (≤ 100), `order=worst\|best` |
-| `/analytics/trend` | `airline` or `origin` (not both), `granularity=day\|month` |
+| `/analytics/trend` | optional `airline` and/or `origin`, `granularity=day\|month` |
 | `/analytics/cascade` | none: late-aircraft share of delay minutes by hour |
 | `/analytics/cancellations` | `by=overall\|airline\|month` |
 | `/analytics/delay-distribution` | none: arrival-delay histogram |

@@ -58,4 +58,27 @@ describe('ensureFlightIndexes (MongoDB integration)', () => {
     );
     expect(route?.key).toEqual({ route: -1 });
   });
+
+  it('retires the superseded airline_1_origin_1 index, and only that exact definition', async (context) => {
+    if (!client) return context.skip();
+    const flights = db.collection('flights');
+    await flights.dropIndexes();
+    await flights.createIndex({ airline: 1, origin: 1 }, { name: 'airline_1_origin_1' });
+
+    const outcomes = await ensureFlightIndexes(db, logger);
+    const names = (await flights.listIndexes().toArray()).map((index) => index.name);
+    expect(outcomes).toContainEqual(
+      expect.objectContaining({ name: 'airline_1_origin_1', status: 'retired' }),
+    );
+    expect(names).not.toContain('airline_1_origin_1');
+    expect(names).toContain('airline_1_origin_1__id_1');
+
+    // A user index that merely reuses the retired name with another key is left alone.
+    await flights.createIndex({ airline: -1, origin: 1 }, { name: 'airline_1_origin_1' });
+    const again = await ensureFlightIndexes(db, logger);
+    expect(again.find((o) => o.name === 'airline_1_origin_1')).toBeUndefined();
+    expect((await flights.listIndexes().toArray()).map((index) => index.name)).toContain(
+      'airline_1_origin_1',
+    );
+  });
 });

@@ -19,7 +19,7 @@ describe('FLIGHT_INDEXES', () => {
   });
 
   it('adds only the documented airline + origin index beyond §6.2', () => {
-    expect(API_INDEXES.map((spec) => spec.key)).toEqual([{ airline: 1, origin: 1 }]);
+    expect(API_INDEXES.map((spec) => spec.key)).toEqual([{ airline: 1, origin: 1, _id: 1 }]);
   });
 
   it('gives every index a unique explicit name', () => {

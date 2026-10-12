@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   DelayRateRowSchema,
   type DelayRateQuery,
+  type DataQuality,
   type DelayRateResponse,
 } from '@flight-delay/shared';
 import {
@@ -10,6 +11,7 @@ import {
   DERIVED_RATES,
   SUM_OUTCOMES,
   airportLabel,
+  coverageFor,
   hourLabel,
   type Labels,
 } from './common.js';
@@ -70,6 +72,7 @@ export async function getDelayRate(
   db: Db,
   query: DelayRateQuery,
   labels: Labels,
+  quality: DataQuality | null,
 ): Promise<DelayRateResponse> {
   const docs = await db
     .collection(DELAY_RATE_SOURCES[query.by].collection)
@@ -80,6 +83,14 @@ export async function getDelayRate(
     by: query.by,
     order: query.order,
     minFlights: query.minFlights,
+    coverage: coverageFor(
+      query.by === 'route'
+        ? 'route'
+        : query.by === 'origin' || query.by === 'hour'
+          ? 'origin'
+          : null,
+      quality,
+    ),
     rows: rows.map((row) => ({ ...row, label: label(query.by, row.key, labels) })),
   };
 }

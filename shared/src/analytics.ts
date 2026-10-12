@@ -21,20 +21,12 @@ export const DelayRateQuerySchema = z.object({
 });
 export type DelayRateQuery = z.infer<typeof DelayRateQuerySchema>;
 
-export const BOTH_TREND_FILTERS =
-  'Filter the trend by airline or by origin, not both; no pre-aggregated series is keyed by both.';
-
-export const TrendQuerySchema = z
-  .object({
-    airline: z.string().regex(AIRLINE_CODE, 'airline must be a 2-character IATA code').optional(),
-    origin: z.string().regex(AIRPORT_CODE, 'origin must be a 3-character IATA code').optional(),
-    granularity: z.enum(['day', 'month']).default('month'),
-  })
-  .superRefine((query, context) => {
-    if (query.airline && query.origin) {
-      context.addIssue({ code: 'custom', message: BOTH_TREND_FILTERS, path: [] });
-    }
-  });
+/** airline and/or origin; both together are served by stats_daily_origin (date, origin, airline). */
+export const TrendQuerySchema = z.object({
+  airline: z.string().regex(AIRLINE_CODE, 'airline must be a 2-character IATA code').optional(),
+  origin: z.string().regex(AIRPORT_CODE, 'origin must be a 3-character IATA code').optional(),
+  granularity: z.enum(['day', 'month']).default('month'),
+});
 export type TrendQuery = z.infer<typeof TrendQuerySchema>;
 
 export const CancellationsQuerySchema = z.object({
@@ -45,6 +37,25 @@ export type CancellationsQuery = z.infer<typeof CancellationsQuerySchema>;
 // ---------- Response schemas ----------
 
 const rate = z.number().nullable();
+
+/**
+ * Present on airport-keyed results: flights left out because their airport is still a numeric
+ * BTS id that resolve:airport-ids could not map (all in October 2015). null when the result
+ * covers every flight.
+ */
+export const CoverageSchema = z
+  .object({ excludedUnresolvedFlights: z.number(), note: z.string() })
+  .nullable();
+export type Coverage = z.infer<typeof CoverageSchema>;
+
+export const DataQualitySchema = z.object({
+  flights: z.number(),
+  /** Flights whose origin is an unresolved numeric BTS id (excluded from origin/hour results). */
+  unresolvedOriginFlights: z.number(),
+  /** Flights with either end unresolved (excluded from route results). */
+  unresolvedRouteFlights: z.number(),
+});
+export type DataQuality = z.infer<typeof DataQualitySchema>;
 
 export const SummaryResponseSchema = z.object({
   flights: z.number(),
@@ -90,6 +101,7 @@ export type CauseRow = z.infer<typeof CauseRowSchema>;
 
 export const CausesResponseSchema = z.object({
   by: CausesQuerySchema.shape.by,
+  coverage: CoverageSchema,
   rows: z.array(CauseRowSchema),
 });
 export type CausesResponse = z.infer<typeof CausesResponseSchema>;
@@ -109,6 +121,7 @@ export const DelayRateResponseSchema = z.object({
   by: DelayRateQuerySchema.shape.by,
   order: DelayRateQuerySchema.shape.order,
   minFlights: z.number(),
+  coverage: CoverageSchema,
   rows: z.array(DelayRateRowSchema),
 });
 export type DelayRateResponse = z.infer<typeof DelayRateResponseSchema>;
@@ -130,6 +143,7 @@ export const TrendResponseSchema = z.object({
   granularity: TrendQuerySchema.shape.granularity,
   airline: z.string().nullable(),
   origin: z.string().nullable(),
+  coverage: CoverageSchema,
   points: z.array(TrendPointSchema),
 });
 export type TrendResponse = z.infer<typeof TrendResponseSchema>;
@@ -141,7 +155,10 @@ export const CascadeRowSchema = z.object({
   /** Late-aircraft minutes / all cause minutes for flights departing in this hour. */
   lateAircraftShare: rate,
 });
-export const CascadeResponseSchema = z.object({ rows: z.array(CascadeRowSchema) });
+export const CascadeResponseSchema = z.object({
+  coverage: CoverageSchema,
+  rows: z.array(CascadeRowSchema),
+});
 export type CascadeResponse = z.infer<typeof CascadeResponseSchema>;
 
 export const CANCELLATION_REASONS = {
@@ -199,6 +216,8 @@ export const MetaResponseSchema = z.object({
   ),
   /** When build:stats last completed (ISO), or null if stats were never built. */
   statsBuiltAt: z.string().nullable(),
+  /** Unresolved-airport counts from the latest stats build; null if stats were never built. */
+  dataQuality: DataQualitySchema.nullable(),
 });
 export type MetaResponse = z.infer<typeof MetaResponseSchema>;
 
