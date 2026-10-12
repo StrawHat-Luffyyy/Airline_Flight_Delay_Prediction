@@ -42,14 +42,28 @@ export const FLIGHT_INDEXES: readonly IndexSpec[] = [
 
 /**
  * Indexes added beyond §6.2 for API reads, each justified in docs/DECISIONS.md (Phase 3).
- * airline + origin on /api/flights otherwise fetched every flight of the airline to filter the
- * origin (HA + ATL: 76,272 docs, ~2 s, for 0 results).
+ * /api/flights pages in _id order. Without this index, airline + origin fetched every flight of
+ * the airline (HA + ATL: 76,272 docs, 1.3 s, for 0 results); with {airline, origin} alone the
+ * planner sometimes sorted a dense pair in memory (NK + FLL: 12,478 docs, 513 ms). The trailing
+ * _id returns a pair's flights already in page order, so any pair stops after one page.
  */
 export const API_INDEXES: readonly IndexSpec[] = [
   {
+    name: 'airline_1_origin_1__id_1',
+    key: { airline: 1, origin: 1, _id: 1 },
+    purpose: '/api/flights filtered by airline and origin, in page (_id) order',
+  },
+];
+
+/**
+ * Indexes this project created earlier and has since replaced. build:indexes drops one only when
+ * both the name and the exact key match, so an unrelated index is never touched.
+ */
+export const RETIRED_FLIGHT_INDEXES: readonly IndexSpec[] = [
+  {
     name: 'airline_1_origin_1',
     key: { airline: 1, origin: 1 },
-    purpose: '/api/flights filtered by airline and origin',
+    purpose: 'superseded by airline_1_origin_1__id_1 (Phase 3 review)',
   },
 ];
 
@@ -71,17 +85,27 @@ export function matchesSpec(existing: Document, spec: IndexSpec): boolean {
 
 export interface IndexOutcome {
   name: string;
-  status: 'created' | 'exists';
+  status: 'created' | 'exists' | 'retired';
   ms: number;
 }
 
 /**
- * Creates any missing §6.2 or API index, one at a time, timing each build. Idempotent: an index that
+ * Retires superseded indexes (exact name + key only), then creates any missing §6.2 or API index, one at a time, timing each build. Idempotent: an index that
  * already exists with the same definition is skipped. A name or key clash with a different
  * definition throws instead of dropping anything.
  */
 export async function ensureFlightIndexes(db: Db, logger: Logger): Promise<IndexOutcome[]> {
   const flights = collections.flights(db);
+  const outcomes: IndexOutcome[] = [];
+
+  for (const retired of RETIRED_FLIGHT_INDEXES) {
+    const current = (await flights.listIndexes().toArray()).find((i) => i.name === retired.name);
+    if (current && matchesSpec(current, retired)) {
+      await flights.dropIndex(retired.name);
+      outcomes.push({ name: retired.name, status: 'retired', ms: 0 });
+      logger.info({ index: retired.name, reason: retired.purpose }, 'Retired superseded index');
+    }
+  }
   const existing = await flights.listIndexes().toArray();
 
   // Check every spec before building anything, so a conflict never leaves a half-built set.
@@ -98,7 +122,6 @@ export async function ensureFlightIndexes(db: Db, logger: Logger): Promise<Index
     missing.push(spec);
   }
 
-  const outcomes: IndexOutcome[] = [];
   for (const spec of ALL_FLIGHT_INDEXES) {
     if (!missing.includes(spec)) {
       outcomes.push({ name: spec.name, status: 'exists', ms: 0 });

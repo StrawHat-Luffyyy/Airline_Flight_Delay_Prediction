@@ -167,7 +167,7 @@ The six indexes add 192.4 MB, 29.5% of the compressed storage size.
 | Collection | Key | Docs | Build (2026-10-12) | Serves |
 |---|---|---|---|---|
 | `stats_daily` | date, airline (+ dayOfWeek, month, cause minutes, min/max `_id`) | 4,926 | 22.1 s | summary, trend (overall / airline), delay rate by airline and day of week, `/flights` date bounds |
-| `stats_daily_origin` | date, origin (IATA only) | 110,522 | 19.4 s | trend `?origin=` |
+| `stats_daily_origin` | date, origin, airline (IATA origins only) | 386,704 (was 110,522 before the review below) | 33.6 s | trend `?origin=` and `?airline=&origin=` |
 | `stats_route` | route (both ends IATA) | 4,695 | 18.1 s | delay rate by route, worst routes |
 | `stats_airport_hour` | origin airport, hour (IATA only, + cause minutes) | 4,259 | 21.2 s | delay rate by origin and by hour, causes by airport and by hour, the late-aircraft cascade |
 | `stats_cause_monthly` | month, airline (flights with causes) | 162 | 8.4 s | causes overall, by airline, by month |
@@ -187,7 +187,7 @@ The six indexes add 192.4 MB, 29.5% of the compressed storage size.
   - `stats_daily_origin`: §6.1's `stats_daily` has no origin, and trend accepts `?origin=`.
   - `stats_cancellation` and `stats_delay_buckets`: §8.5 cancellation reasons and the §8 `$bucket` histogram.
   - `dayOfWeek` and min/max `_id` in `stats_daily`.
-  - Small read indexes, created by `build:stats`: `stats_daily {airline, date}`, `stats_daily_origin {origin, date}`, `stats_route {flights: -1}`.
+  - Small read indexes, created by `build:stats`: `stats_daily {airline, date}`, `stats_daily_origin {origin, date}` and `{airline, origin, date}`, `stats_route {flights: -1}`.
 
 **API (`server/src/routes/api.ts`, contracts in `shared/src/analytics.ts`).**
 - **Reads:** every analytics endpoint reads only `stats_*` collections, none scans `flights`. Pipeline builders are pure and live in `server/src/analytics/`. Responses are validated with the shared zod schemas before they are sent.
@@ -198,7 +198,7 @@ The six indexes add 192.4 MB, 29.5% of the compressed storage size.
   - `minFlights` defaults to 500 and `limit` is capped at 100.
   - `order=worst|best`, with ties broken by key. This also serves the "worst N routes/airports" ranking of §8.6.
   - `by=dow` and `by=hour` return the full 7- or 24-point series in key order instead of a ranking.
-- **`trend`:** `airline` and `origin` together return 400, because no pre-aggregated series is keyed by both.
+- **`trend`:** `airline` and `origin` can be combined (§9). The first version returned 400 for this; see "Phase 3 review" below.
 - **`cancellations`:** reasons are A-D plus `unknown`, so `total` always equals their sum. The full data has no unknown reasons: A 25,262 + B 48,851 + C 15,749 + D 22 = 89,884.
 - **Cross-check against Phase 1:** `/analytics/summary` returns flights 5,819,079, delayed 1,063,439, cancelled 89,884 and diverted 15,187. These match the direct counts on `flights` from Phase 1.
 
@@ -212,11 +212,11 @@ The six indexes add 192.4 MB, 29.5% of the compressed storage size.
    - `origin + dest` is now rewritten to the indexed `route` key (`route` always equals `origin-dest`), so JFK→HNL takes 5 ms.
    - `dest` is otherwise only accepted with `route`. `airline` + `dest` and date + `dest` return 400 with "combine it with origin (or use route)".
 3. **airline + origin with no matches:** HA + ATL fetched all 76,272 HA flights, about 2 s.
-   - Added one index beyond §6.2, `airline_1_origin_1` `{ airline: 1, origin: 1 }` (36.2 MB, 13.5 s build). It is defined in `API_INDEXES` (`server/src/db/indexes.ts`) and built by `build:indexes`.
+   - Added one index beyond §6.2. It was first `airline_1_origin_1` `{ airline: 1, origin: 1 }`, then replaced by `airline_1_origin_1__id_1` in the Phase 3 review below.
    - A planner hint was rejected: hinting the origin index for a dense pair like DL + ATL would fetch all of ATL's ~350k flights.
    - Result: HA + ATL now takes 4 ms.
 
-Remaining known cost: pages of a large route (e.g. JFK-LAX, about 13k flights) re-scan the route on every page, 68 ms median and 287 ms max. That is under 1 s, so `route_1` was left unchanged. A `{ route: 1, _id: 1 }` index would make it flat, if it is ever needed.
+Remaining known cost: pages of a large route (e.g. JFK-LAX, about 13k flights, or LAX-SFO) re-scan up to 11k documents per page. That costs 252-350 ms median and up to 439 ms in the final run with a cold cache after a rebuild, and was 42-68 ms when warm. It is under 1 s, so `route_1` (§6.2) is unchanged. A `{ route: 1, _id: 1 }` index, the same pattern as the review below, would make it flat at the cost of roughly another 100 MB.
 
 **Evidence.** These come from the "API endpoint timings (Phase 3)" section of `docs/EXPLAIN_RESULTS.md`. All 32 requests were made over HTTP with the cache off, and all returned 200 in under 1 s:
 - analytics medians 7-51 ms (max 110 ms);
@@ -227,3 +227,52 @@ The query reviews behind the three fixes were done by the mongo-query-optimizer 
 **Tests.**
 - **Seeded fixture:** `server/tests/analytics/analytics.integration.test.ts` has 26 tests on a 9-flight fixture with hand-computed values. It covers null causes, cancelled and diverted flights, an unresolved origin, tiny groups under `minFlights`, the stale-key sweep, pagination and the 400 cases. It uses `flight_delay_analytics_test`, dropped in `afterAll`. A deliberate mutation of the "completed" definition failed 8 of these tests, so they detect logic changes.
 - **Pipeline shapes:** `builders.test.ts` checks pipeline shapes and the `/flights` filter.
+
+### Phase 3 review: final decisions (2026-10-12)
+
+**1. Extra index: kept, but changed to `airline_1_origin_1__id_1` `{ airline: 1, origin: 1, _id: 1 }`.**
+- **Why it is needed.** `/api/flights` with `airline` + `origin` has no fast §6.2 plan. These are measured explain plans on the full data, 8 airline-origin pairs, page size 21. Without an airline-origin index:
+
+  | Plan | Range | Worst case |
+  |---|---|---|
+  | `airline_1_date_1` + in-memory sort | 0.9-3.0 s | WN+MDW sorted 1,261,855 docs |
+  | origin index + sort | 1.3-2.0 s | |
+  | `_id` walk | 2-378 ms for dense pairs | 7.5 s for an empty pair (HA+ATL scans all 5,819,079) |
+
+- **Why not `{ airline, origin }` alone.** The version first shipped in Phase 3 fixed empty pairs (HA+ATL: 1 ms). But the planner sometimes picked it and then sorted a dense pair in memory: NK+FLL took 513 ms and VX+SFO 446 ms, where an `_id` walk took 10-20 ms.
+- **What the trailing `_id` changes.** It returns a pair's flights already in page order, so every pair (empty, sparse or dense, and later pages) reads exactly ≤ 21 keys and ≤ 21 docs in 1-3 ms with no sort.
+- **Cost:**
+  - 96.3 MB versus 36.2 MB without `_id`; total index size 350.3 MB, 40.7% of the 861.6 MB compressed storage.
+  - 15.5 s to build.
+  - One more index to maintain on every insert. Ingest builds indexes after the load (§6.4), so the bulk load is unaffected; only appends pay this.
+- **Verdict.** It is justified: it is the only way to make every airline + origin page constant-time, and 96 MB is small next to the 3.7 GB of data.
+- **Retirement.** `build:indexes` retired the first version through `RETIRED_FLIGHT_INDEXES`. It drops an index only when both the name and the exact key match, logs it, and an integration test covers it. Unrelated indexes are never dropped.
+- **Unaffected checks.** The Phase 2 explain checks still pass: 7/7 intended indexes and 8/8 identical results.
+
+**2. `dest` rule: kept as is.** `dest` is accepted only with `origin` (served as the indexed `route`) or with `route`; otherwise the request returns 400 with guidance.
+- No §10 page needs destination-only browsing. Arrival statistics are served from `stats_*`, and origin + dest covers "flights between two airports" in 5-8 ms.
+- Allowing `dest` with `airline` or a date window would need another index of about 40-100 MB. Without one, the measured cost was 1.3-1.5 s with no matches, and an unbounded worst case for large airlines.
+- The 400 message names the alternative, so clients are never left guessing.
+- If a destination view is added later, add `{ dest: 1, _id: 1 }` using the same pattern as decision 1.
+
+**3. Trend restriction: removed.** §9 lists `?airline=&origin=` together, so returning 400 deviated from the spec.
+- `stats_daily_origin` is now keyed by (date, origin, airline): 386,704 docs, 25.3 MB, 33.6 s to build. It has an index `{ airline: 1, origin: 1, date: 1 }`.
+- A combined series reads at most 365 documents: `trend?airline=DL&origin=ATL&granularity=day` takes 20 ms median.
+- An origin-only series re-aggregates the airlines of that origin: ORD reads 4,196 docs in 33 ms.
+- Rebuilding swept the 110,522 old-shape documents through the `buildId` mechanism. Total `build:stats` time went from 110 s to 127 s.
+
+**4. The 1,632 unresolved-airport flights are now visible in results, not only in docs.**
+- **Counts.** `build:stats` records them in `stats_runs.dataQuality` as exact differences of the stats totals: all flights minus origin-keyed flights, and all flights minus route-keyed flights. They agree with direct counts on `flights`:
+  - 1,632 with an unresolved origin (0.028% of all flights);
+  - 3,147 with an unresolved origin or destination (= 486,165 − 483,018 from the airport-id resolution).
+- **Where they appear:**
+  - `/api/meta` returns `dataQuality: { flights, unresolvedOriginFlights, unresolvedRouteFlights }`.
+  - Airport-, hour- and route-keyed responses carry `coverage: { excludedUnresolvedFlights, note }`. That covers delay-rate by origin, hour and route; causes by airport and hour; cascade; and trend with `origin`.
+  - `coverage` is null when the dimension counts every flight: airline, month, day of week and overall.
+  - `docs/EXPLAIN_RESULTS.md` prints the same counts in its data-coverage line.
+
+**Evidence (final run).** All 33 timed requests return 200 in under 1 s:
+- analytics medians 5-50 ms (max 285 ms);
+- `/flights` medians 5-350 ms (max 439 ms; large-route pages are the tail, see "Remaining known cost").
+
+Tests: 121 pass. They include new fixture tests for combined trends, coverage on every airport-keyed endpoint, `/meta` data quality, and index retirement.

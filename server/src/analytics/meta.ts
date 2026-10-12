@@ -25,5 +25,6 @@ export async function getMeta(db: Db): Promise<MetaResponse> {
     airlines: airlines.map((a) => ({ code: a._id, name: a.name })),
     airports: airports.map((a) => ({ code: a._id, name: a.name, city: a.city, state: a.state })),
     statsBuiltAt: lastRun ? lastRun.finishedAt.toISOString() : null,
+    dataQuality: lastRun?.dataQuality ?? null,
   };
 }

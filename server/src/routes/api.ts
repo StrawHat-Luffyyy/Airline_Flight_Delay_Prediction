@@ -6,9 +6,10 @@ import {
   DelayRateQuerySchema,
   FlightsQuerySchema,
   TrendQuerySchema,
+  type DataQuality,
 } from '@flight-delay/shared';
 import { getCauses } from '../analytics/causes.js';
-import { loadLabels, type Labels } from '../analytics/common.js';
+import { loadDataQuality, loadLabels, type Labels } from '../analytics/common.js';
 import { getDelayRate } from '../analytics/delay-rate.js';
 import { getFlights } from '../analytics/flights.js';
 import { getMeta } from '../analytics/meta.js';
@@ -37,6 +38,9 @@ export function apiRouter({ getDb, cacheTtlMs }: ApiRouterOptions): Router {
   const cache = new TtlCache<unknown>({ ttlMs: cacheTtlMs });
   const labelsCache = new TtlCache<Labels>({ ttlMs: cacheTtlMs });
   const labels = (): Promise<Labels> => labelsCache.getOrLoad('labels', () => loadLabels(getDb()));
+  const qualityCache = new TtlCache<DataQuality | null>({ ttlMs: cacheTtlMs });
+  const quality = (): Promise<DataQuality | null> =>
+    qualityCache.getOrLoad('quality', () => loadDataQuality(getDb()));
   const cached = (key: string, load: () => Promise<unknown>): Promise<unknown> =>
     cache.getOrLoad(key, load);
 
@@ -52,7 +56,7 @@ export function apiRouter({ getDb, cacheTtlMs }: ApiRouterOptions): Router {
     const query = parseQuery(CausesQuerySchema, request.query);
     response.json(
       await cached(`causes:${JSON.stringify(query)}`, async () =>
-        getCauses(getDb(), query, await labels()),
+        getCauses(getDb(), query, await labels(), await quality()),
       ),
     );
   });
@@ -61,18 +65,22 @@ export function apiRouter({ getDb, cacheTtlMs }: ApiRouterOptions): Router {
     const query = parseQuery(DelayRateQuerySchema, request.query);
     response.json(
       await cached(`delay-rate:${JSON.stringify(query)}`, async () =>
-        getDelayRate(getDb(), query, await labels()),
+        getDelayRate(getDb(), query, await labels(), await quality()),
       ),
     );
   });
 
   router.get('/analytics/trend', async (request, response) => {
     const query = parseQuery(TrendQuerySchema, request.query);
-    response.json(await cached(`trend:${JSON.stringify(query)}`, () => getTrend(getDb(), query)));
+    response.json(
+      await cached(`trend:${JSON.stringify(query)}`, async () =>
+        getTrend(getDb(), query, await quality()),
+      ),
+    );
   });
 
   router.get('/analytics/cascade', async (_request, response) => {
-    response.json(await cached('cascade', () => getCascade(getDb())));
+    response.json(await cached('cascade', async () => getCascade(getDb(), await quality())));
   });
 
   router.get('/analytics/cancellations', async (request, response) => {
