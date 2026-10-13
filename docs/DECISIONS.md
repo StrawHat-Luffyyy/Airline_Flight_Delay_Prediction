@@ -308,3 +308,60 @@ Tests: 121 pass. They include new fixture tests for combined trends, coverage on
 - API contracts: `shared/src/analytics.ts` and `shared/src/flights.ts`.
 
 **Phase 4 not started.**
+
+## Phase 4: features and training (2026-10-13)
+
+**Feature contract.**
+- The 13 features are defined in `server/src/features/feature-list.ts`, in order: `dayOfWeek, schedDepHour, isHolidayWeek, airline, origin, dest, distance, scheduledTime, airlineRate, originRate, destRate, originHourRate, routeRate`.
+- `ml/train.py` must use the identical list. A test parses its `FEATURES` literal and compares.
+- `ml:register` refuses a run whose `featureList` differs, so `/predict` (Phase 5) can always encode its inputs.
+
+**Deviations from §7, each approved by the user:**
+1. **Out-of-fold rate features.** `delay_lookup` is computed from the train split only, with m-estimate smoothing (m = 50) toward the scope's global rate.
+   - Training rows use rates from the *other* train months, in 3 month-folds: Jan-Mar rows use Apr-Sep, Apr-Jun use Jan-Mar + Jul-Sep, Jul-Sep use Jan-Jun. No training row's rate includes its own label.
+   - Test rows and `/predict` use the full Jan-Sep rates.
+2. **airline × month rate dropped.** Under month-fold out-of-fold encoding, no evaluated row can have one without leakage. `month` and the airline rate cover the same ground.
+3. **`month` dropped as a feature.** Training sees only months 1-9, so every Oct-Dec flight (the whole test set, and any `/predict` date in Oct-Dec) was treated like September. It also identified a row's out-of-fold rate set, which test rows never share.
+   - The leakage-auditor ranked it as the top problem.
+   - On September validation only, dropping it changed AUC 0.6478 → 0.6449 (noise), so the decision was made on validation evidence before any test result.
+   - `month` is still exported, as an identifier column for the September carve-out and the split assertions.
+4. **3,127 completed flights with unresolved airports excluded,** all of them October (test split). `/predict` only accepts IATA codes. The counts are in `metrics.json.excluded`.
+5. **Model selected on validation, not on test AUC.** §7 says "picks the best by test ROC-AUC", but that would tune on the test set. September is held out from train for early stopping, the threshold (max F1 on the validation PR curve) and model selection. The final models are refit on Jan-Sep, and the test set is only scored.
+6. **Python 3.12** instead of 3.11: the 3.11 install on this machine is broken. Dependencies are pinned in `ml/requirements.txt` and installed in `ml/.venv`.
+
+**Other choices:**
+- LightGBM uses the integer codes as numeric features, not `categorical_feature`, so the ONNX export is reliable; the rate features carry most of the categorical signal.
+- Logistic regression uses only the scaled numeric features.
+- The holiday flag means within ±3 days of a US federal holiday, computed by rule for any year, including adjacent years.
+
+**Pipeline evidence (full data):**
+- **`build:lookup`:** 32.7 s. It produced 249,130 (airline, origin, dest, hour, month) cells and 36,420 lookup entries over 4 scopes. The full scope covers 4,299,046 completed train flights, 836,017 delayed (19.45%).
+- **`export:training`:**
+  - 4,299,046 train rows and 1,411,835 test rows, exactly the completed IATA flights per split;
+  - excluded: 3,127 with an unresolved airport and 105,071 cancelled or diverted;
+  - final run 222 s, peak RSS 284 MB;
+  - files are written to `.tmp` and renamed only on success, and the export refuses to run unless the last lookup build completed.
+- **`ml/train.py`:** 89.5 s. ONNX matches the native model to within 2.0e-7 over all 1,411,835 test rows. `model.onnx` is 0.72 MB.
+- **`ml:register`:** upserts by `modelVersion`. `model_runs` keeps both runs as history: `lightgbm-20261013093139-12f165c2` (final) and the earlier run with `month`.
+
+**Results** (from `ml/artifacts/metrics.json`; chosen model LightGBM, 157 trees, threshold 0.2070):
+
+| Model | Validation AUC | Test AUC | Test PR-AUC | Test precision | Test recall | Test F1 |
+|---|---|---|---|---|---|---|
+| Baseline (constant train rate) | 0.5000 | 0.5000 | 0.1608 | 0 | 0 | 0 |
+| Logistic regression | 0.6287 | 0.6155 | 0.2218 | 0.216 | 0.531 | 0.307 |
+| **LightGBM** | **0.6449** | **0.6276** | **0.2348** | **0.218** | **0.582** | **0.318** |
+
+- **Confusion matrix** (test, n = 1,411,835): TN 711,981, FP 472,825, FN 94,948, TP 132,081.
+- **Class balance:** 19.45% delayed in train and 16.08% in test, so the test period is easier on average.
+- **Top features by gain:** originHourRate 34.4%, schedDepHour 13.8%, airlineRate 13.7%, airline 7.0%, routeRate 6.3%, originRate 6.1%, destRate 4.7%, dayOfWeek 4.2%, origin 2.5%, dest 2.5%.
+- **Threshold transfer:** validation recall is 0.598 and test recall 0.582. The Jan-Aug model scored on test at the same threshold gives AUC 0.6250 and recall 0.601 (`testFitModel`). With `month` the transfer was broken: test recall fell to 0.240.
+
+**Ceiling and caveats:**
+- **Below §7's range.** Test AUC 0.628 sits under the 0.65-0.72 that §7 expects for pre-departure features. Nothing was added to raise it: the leakage-auditor found no leakage into test metrics, and the remaining signal (weather, upstream delays) only exists after departure.
+- **Optimistic validation figure.** Validation AUC is a slight overestimate. The Jan-Aug rows the validation model is fitted on use out-of-fold rates whose folds include September labels; test metrics are unaffected.
+- **Low precision is expected.** At the max-F1 threshold, about 1 in 5 flagged flights is delayed (precision 0.218 against a 16.1% base rate).
+- **Not yet tested:** the TypeScript ONNX parity test over `ml/artifacts/parity_sample.json` (100 fixed-seed test rows) belongs to Phase 5.
+- **Rate distributions differ between train and test.** Training rows carry out-of-fold rates computed from 6 months; test rows and `/predict` carry full-train rates computed from 9 months, which are slightly less noisy. That mismatch can only cost the model accuracy; it cannot inflate the test metrics.
+- **Active model.** `model_runs` keeps every registered run as history; it currently holds 2: the final run and the earlier run that used `month`. Phase 5 must serve the run whose `modelVersion` equals `ml/artifacts/encoders.json.modelVersion` (the deployed `model.onnx`), not merely the newest document.
+- **Final leakage-auditor result.** After these fixes the leakage-auditor reported PASS on all 7 items. The only item it could not check is cross-language encoder parity, which needs the Phase 5 `/predict` encoder.

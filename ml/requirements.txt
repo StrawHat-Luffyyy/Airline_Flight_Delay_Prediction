@@ -1,0 +1,11 @@
+# Offline training for ml/train.py (Python 3.12). Install into ml/.venv:
+#   py -3.12 -m venv ml/.venv && ml/.venv/Scripts/python -m pip install -r ml/requirements.txt
+pandas==3.0.6
+numpy==2.5.4
+scipy==1.18.1
+scikit-learn==1.9.1
+lightgbm==4.7.0
+onnx==1.23.2
+onnxmltools==1.16.0
+skl2onnx==1.20.0
+onnxruntime==1.31.0
