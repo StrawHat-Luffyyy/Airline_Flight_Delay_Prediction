@@ -365,3 +365,57 @@ Tests: 121 pass. They include new fixture tests for combined trends, coverage on
 - **Rate distributions differ between train and test.** Training rows carry out-of-fold rates computed from 6 months; test rows and `/predict` carry full-train rates computed from 9 months, which are slightly less noisy. That mismatch can only cost the model accuracy; it cannot inflate the test metrics.
 - **Active model.** `model_runs` keeps every registered run as history; it currently holds 2: the final run and the earlier run that used `month`. Phase 5 must serve the run whose `modelVersion` equals `ml/artifacts/encoders.json.modelVersion` (the deployed `model.onnx`), not merely the newest document.
 - **Final leakage-auditor result.** After these fixes the leakage-auditor reported PASS on all 7 items. The only item it could not check is cross-language encoder parity, which needs the Phase 5 `/predict` encoder.
+
+## Phase 5: prediction API (2026-10-13)
+
+**Serving.**
+- `onnxruntime-node` 1.30.0 loads `ml/artifacts/model.onnx` once at startup (`server/src/ml/model.ts`) and reads output `probabilities`, column 1.
+- `encoders.json` is validated on load and refused if its `featureOrder` is not exactly `FEATURE_COLUMNS` or lists a forbidden feature.
+- If the artifacts cannot be loaded, the API still starts. `/api/predict` and `/api/model/*` then return 503 `MODEL_UNAVAILABLE`, and `/api/health` reports `modelLoaded: false`.
+- A restart is needed after retraining. A restart is also needed after `npm run build:lookup`, because `delay_lookup` is read into memory once per process.
+- **Active model:** `/api/model/metrics` and `/api/model/feature-importance` serve the `model_runs` document whose `modelVersion` equals the loaded `encoders.json.modelVersion`, not the newest run. They return 404 `MODEL_NOT_REGISTERED` if `ml:register` was not run. This is tested with a newer, non-served run present.
+
+**Encoder parity (acceptance).**
+- `server/tests/ml/parity.test.ts` runs the 100 fixed-seed test rows of `ml/artifacts/parity_sample.json` through the TypeScript encoder and onnxruntime-node.
+  - Every encoded vector equals Python's exactly.
+  - The max |p_ts − p_py| is **0.00e+0** (tolerance 1e-4).
+- The artifacts are committed, so the test fails rather than skips when they are missing.
+- The encoder mirrors `train.py encode()`:
+  - unseen category → -1, using `Object.hasOwn` so inherited keys like `constructor` are also unknown;
+  - null `scheduledTime` → train median (122);
+  - all values float32.
+
+**`/predict` feature derivation.**
+- The client sends only `{date, airline, origin, dest, schedDepHour}`. The schema is strict, so any other field, including a post-departure one, is a 400.
+- The server derives the rest:
+  - `dayOfWeek` (1 = Mon) and `isHolidayWeek` from the UTC date;
+  - the five rates from full-scope `delay_lookup`, the same as the test rows;
+  - `distance` and `scheduledTime` from `stats_route`.
+- An airline or airport not in MongoDB gets 422 `UNKNOWN_CODE`, with `details.field`.
+- **Route schedule from `stats_route`.**
+  - `npm run build:stats` now adds `distance` (`$max`) and `scheduledTime` (approximate `$median`) to each `stats_route` document: 4,695 routes, all with both fields.
+  - These are published schedule data, known before departure, so using every split is not leakage. Only these two fields are read; the route's outcome rates are not.
+  - A route with no 2015 flights gets 422 `UNKNOWN_ROUTE`. This is the simplest honest option, since its distance and schedule are unknown.
+  - The route's airline is not checked: any known airline may be scored on any known route.
+- **Measured skew** (leakage-auditor, all 1,411,835 test rows re-scored with the route-level values instead of each flight's own):
+  - distance differs on 0.67% of rows, by at most 1 mile;
+  - |Δ scheduledTime| has a median of 3 min and a p99 of 19 min;
+  - mean |Δp| is 0.00033, and 0.11% of labels flip at the 0.207 threshold;
+  - test AUC moves from 0.62759 to 0.62752.
+  - These are the two least important features by gain, so the skew is accepted.
+- **Dates outside 2015** are accepted and scored with the 2015 rates. This is extrapolation, not leakage.
+
+**topFactors (occlusion, not SHAP).**
+- Each of the five rate features is replaced in turn by the full-scope global train delay rate (0.1945), and the row is re-scored in the same batched ONNX call: 6 rows per request.
+- `impact = p − p_without`, sorted by |impact|.
+- This uses the real model and is cheap. SHAP-style explanations remain the Phase 7 stretch goal.
+
+**Live check (full data, `npm run start`):**
+- `/predict` takes 0.30 s for the first request (loading `delay_lookup`), then 0.012 s.
+- `{date: 2015-12-21, AA, ORD→LAX, 17h}` → p = 0.3136, `delayed` (threshold 0.2070). The top factors are routeRate (+0.082) and originHourRate (+0.059).
+
+**Deferred (from the leakage-auditor; none Must-fix):**
+- The parity sample has no unseen-category or null-`scheduledTime` rows. Those paths are only unit-tested in TypeScript; adding them needs `train.py` to write targeted rows (and `null` instead of `NaN`) and a retrain.
+- No end-to-end test compares `predictDelay`'s encoded row with the exported row for real test flights.
+- `encoders.json` does not record the `delay_lookup` buildId it was trained against. The build is deterministic over the train split, so this only matters after re-ingestion.
+- No rate limiting on `/predict`; that is Phase 7 scope.
