@@ -224,6 +224,13 @@ describe('analytics API (MongoDB integration)', () => {
     );
   });
 
+  it('stats_route carries the schedule fields /predict derives (distance, scheduledTime)', async (context) => {
+    if (!client) return context.skip();
+    await buildStats(db, logger);
+    const route = await db.collection('stats_route').findOne({ _id: 'JFK-LAX' as never });
+    expect(route).toMatchObject({ distance: 1000, scheduledTime: 300 });
+  });
+
   it('summary', async (context) => {
     if (!client) return context.skip();
     const body = SummaryResponseSchema.parse(await get('/api/analytics/summary'));

@@ -2,20 +2,41 @@ import { createApp } from './app.js';
 import { closeMongo, connectToMongo } from './db/client.js';
 import { env } from './config/env.js';
 import { logger } from './logger.js';
+import { DEFAULT_ARTIFACTS_DIR, loadModel, type DelayModel } from './ml/model.js';
 
-const app = createApp();
+/** The API still serves analytics without a model; /predict then answers 503 until a restart. */
+async function loadModelOrNull(): Promise<DelayModel | null> {
+  try {
+    const model = await loadModel();
+    logger.info({ modelVersion: model.encoders.modelVersion }, 'Prediction model loaded');
+    return model;
+  } catch (error) {
+    logger.error(
+      { err: error, artifactsDir: DEFAULT_ARTIFACTS_DIR },
+      'Prediction model not loaded; /api/predict will return 503',
+    );
+    return null;
+  }
+}
 
 async function start(): Promise<void> {
   await connectToMongo();
+  const model = await loadModelOrNull();
+  const app = createApp({ model });
   const server = app.listen(env.PORT, () => {
     logger.info({ port: env.PORT }, 'Flight delay API listening');
   });
 
   const shutdown = (): void => {
     server.close(() => {
-      closeMongo()
-        .catch((error: unknown) => logger.error({ err: error }, 'Error closing MongoDB'))
-        .finally(() => process.exit(0));
+      Promise.all([
+        closeMongo().catch((error: unknown) =>
+          logger.error({ err: error }, 'Error closing MongoDB'),
+        ),
+        model
+          ?.close()
+          .catch((error: unknown) => logger.error({ err: error }, 'Error closing model')),
+      ]).finally(() => process.exit(0));
     });
   };
 

@@ -8,7 +8,10 @@ import type { Db } from 'mongodb';
 import { getDb, pingMongo } from './db/client.js';
 import { logger } from './logger.js';
 import { errorHandler, notFoundHandler } from './middleware/error.js';
+import type { DelayModel } from './ml/model.js';
+import { mongoReferenceData, type ReferenceData } from './ml/predict.js';
 import { apiRouter } from './routes/api.js';
+import { modelRouter } from './routes/model.js';
 
 const DEFAULT_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -19,11 +22,18 @@ export interface AppOptions {
   getDb?: () => Db;
   /** TTL of the in-memory response cache; 0 disables it. Default 10 minutes. */
   cacheTtlMs?: number;
+  /** The deployed model (loaded once at startup); null or absent = /predict answers 503. */
+  model?: DelayModel | null;
+  /** What /predict reads from MongoDB; defaults to the collections behind getDb. */
+  referenceData?: ReferenceData;
 }
 
 export function createApp(options: AppOptions = {}) {
   const app = express();
   const checkMongo = options.pingMongo ?? pingMongo;
+  const db = options.getDb ?? getDb;
+  const model = options.model ?? null;
+  const cacheTtlMs = options.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
 
   app.use(pinoHttp({ logger }));
   app.use(helmet());
@@ -35,16 +45,19 @@ export function createApp(options: AppOptions = {}) {
     const body: HealthResponse = HealthResponseSchema.parse({
       status: mongoIsUp ? 'ok' : 'degraded',
       mongo: mongoIsUp ? 'up' : 'down',
-      modelLoaded: false,
+      modelLoaded: model !== null,
     });
     response.status(mongoIsUp ? 200 : 503).json(body);
   });
 
+  app.use('/api', apiRouter({ getDb: db, cacheTtlMs }));
   app.use(
     '/api',
-    apiRouter({
-      getDb: options.getDb ?? getDb,
-      cacheTtlMs: options.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS,
+    modelRouter({
+      getDb: db,
+      model,
+      referenceData: options.referenceData ?? mongoReferenceData(db),
+      cacheTtlMs,
     }),
   );
 

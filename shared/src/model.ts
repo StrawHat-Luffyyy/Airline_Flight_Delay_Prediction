@@ -54,3 +54,73 @@ export const ModelRunSchema = z.object({
   versions: z.record(z.string(), z.string()),
 });
 export type ModelRun = z.infer<typeof ModelRunSchema>;
+
+// ---------- /api/model/* and /api/predict (§9) ----------
+
+/** GET /model/metrics: the model_runs document of the model currently being served. */
+export const ModelMetricsResponseSchema = ModelRunSchema.extend({
+  registeredAt: z.string().datetime({ offset: true }),
+});
+export type ModelMetricsResponse = z.infer<typeof ModelMetricsResponseSchema>;
+
+/** GET /model/feature-importance: LightGBM gain share per feature, from the served run. */
+export const FeatureImportanceResponseSchema = z.object({
+  modelVersion: z.string(),
+  features: ModelRunSchema.shape.featureImportance,
+});
+export type FeatureImportanceResponse = z.infer<typeof FeatureImportanceResponseSchema>;
+
+const UPPER_AIRPORT = /^[A-Z]{3}$/;
+
+/** POST /predict body: only pre-departure facts; the server derives everything else. */
+export const PredictRequestSchema = z
+  .object({
+    date: z.iso.date('date must be a calendar date (YYYY-MM-DD)'),
+    airline: z.string().regex(/^[A-Z0-9]{2}$/, 'airline must be a 2-character IATA code'),
+    origin: z.string().regex(UPPER_AIRPORT, 'origin must be a 3-letter IATA code'),
+    dest: z.string().regex(UPPER_AIRPORT, 'dest must be a 3-letter IATA code'),
+    schedDepHour: z.number().int().min(0).max(23),
+  })
+  .strict()
+  .refine((body) => body.origin !== body.dest, {
+    path: ['dest'],
+    message: 'dest must differ from origin',
+  });
+export type PredictRequest = z.infer<typeof PredictRequestSchema>;
+
+/** The historical-rate features a top factor can be. */
+export const RATE_FEATURES = [
+  'airlineRate',
+  'originRate',
+  'destRate',
+  'originHourRate',
+  'routeRate',
+] as const;
+
+/**
+ * One rate feature's contribution, by occlusion: impact = p - p', where p' is the model's
+ * probability with this rate replaced by the network-wide train delay rate (baseline).
+ */
+export const TopFactorSchema = z.object({
+  feature: z.enum(RATE_FEATURES),
+  value: z.number(),
+  baseline: z.number(),
+  impact: z.number(),
+});
+export type TopFactor = z.infer<typeof TopFactorSchema>;
+
+export const PredictResponseSchema = z.object({
+  probability: z.number().min(0).max(1),
+  label: z.enum(['delayed', 'on-time']),
+  threshold: z.number(),
+  modelVersion: z.string(),
+  /** What the server derived for this flight (route data and calendar). */
+  derived: z.object({
+    dayOfWeek: z.number().int(),
+    isHolidayWeek: z.boolean(),
+    distance: z.number(),
+    scheduledTime: z.number().nullable(),
+  }),
+  topFactors: z.array(TopFactorSchema),
+});
+export type PredictResponse = z.infer<typeof PredictResponseSchema>;

@@ -124,7 +124,10 @@ export function statsDailyOriginPipeline(buildId: string): Document[] {
   ];
 }
 
-/** One document per route with IATA codes on both ends. */
+/**
+ * One document per route with IATA codes on both ends. distance and the median scheduledTime are
+ * published schedule data (known before departure); /predict derives its inputs from them.
+ */
 export function statsRoutePipeline(buildId: string): Document[] {
   return [
     { $match: { originIsIata: true, destIsIata: true } },
@@ -133,6 +136,8 @@ export function statsRoutePipeline(buildId: string): Document[] {
         _id: '$route',
         origin: { $first: '$origin' },
         dest: { $first: '$dest' },
+        distance: { $max: '$distance' },
+        scheduledTime: { $median: { input: '$scheduledTime', method: 'approximate' } },
         ...OUTCOME_ACCUMULATORS,
       },
     },

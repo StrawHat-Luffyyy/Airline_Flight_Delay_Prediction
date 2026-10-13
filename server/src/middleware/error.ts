@@ -12,6 +12,18 @@ const CLIENT_ERRORS: Record<number, [string, string]> = {
   415: ['UNSUPPORTED_MEDIA_TYPE', 'Unsupported request encoding'],
 };
 
+/** A deliberate client- or availability-facing error with a stable code (422, 503, 404...). */
+export class HttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+    readonly details?: unknown,
+  ) {
+    super(message);
+  }
+}
+
 function errorBody(code: string, message: string): ErrorResponse {
   return { error: { code, message } };
 }
@@ -34,6 +46,17 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, _request, resp
       error: { code: 'VALIDATION_ERROR', message: error.message, details: error.details },
     };
     response.status(400).json(body);
+    return;
+  }
+  if (error instanceof HttpError) {
+    const body: ErrorResponse = {
+      error: {
+        code: error.code,
+        message: error.message,
+        ...(error.details === undefined ? {} : { details: error.details }),
+      },
+    };
+    response.status(error.status).json(body);
     return;
   }
   if (error instanceof InvalidCursorError) {
