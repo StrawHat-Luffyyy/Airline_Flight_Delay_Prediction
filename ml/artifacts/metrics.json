@@ -1,0 +1,253 @@
+{
+  "modelVersion": "lightgbm-20261013093139-12f165c2",
+  "createdAt": "2026-10-13T09:31:39.329416+00:00",
+  "algorithm": "lightgbm",
+  "featureList": [
+    "dayOfWeek",
+    "schedDepHour",
+    "isHolidayWeek",
+    "airline",
+    "origin",
+    "dest",
+    "distance",
+    "scheduledTime",
+    "airlineRate",
+    "originRate",
+    "destRate",
+    "originHourRate",
+    "routeRate"
+  ],
+  "trainRange": {
+    "from": "2015-01-01",
+    "to": "2015-09-30",
+    "rows": 4299046
+  },
+  "validation": {
+    "month": 9,
+    "rows": 462153,
+    "usedFor": "early stopping, threshold, model selection"
+  },
+  "testRange": {
+    "from": "2015-10-01",
+    "to": "2015-12-31",
+    "rows": 1411835
+  },
+  "excluded": {
+    "unresolvedAirport": 3127,
+    "noOutcome": 105071
+  },
+  "classBalance": {
+    "trainDelayRate": 0.19446570239071645,
+    "testDelayRate": 0.16080420162412745
+  },
+  "threshold": {
+    "value": 0.20697104012783935,
+    "chosenOn": "validation (September)",
+    "criterion": "max F1 on the PR curve"
+  },
+  "metrics": {
+    "auc": 0.627585192053224,
+    "prAuc": 0.2348301347954927,
+    "precision": 0.21834962787606668,
+    "recall": 0.5817803011950016,
+    "f1": 0.31752721065948664,
+    "threshold": 0.20697104012783935,
+    "confusion": {
+      "tn": 711981,
+      "fp": 472825,
+      "fn": 94948,
+      "tp": 132081
+    }
+  },
+  "models": {
+    "baseline": {
+      "description": "constant probability = train delay rate; predicts the majority class (on time)",
+      "validation": {
+        "auc": 0.5,
+        "prAuc": 0.12995912609027746,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "threshold": null,
+        "confusion": {
+          "tn": 402092,
+          "fp": 0,
+          "fn": 60061,
+          "tp": 0
+        }
+      },
+      "test": {
+        "auc": 0.5,
+        "prAuc": 0.16080420162412745,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "threshold": null,
+        "confusion": {
+          "tn": 1184806,
+          "fp": 0,
+          "fn": 227029,
+          "tp": 0
+        }
+      }
+    },
+    "logisticRegression": {
+      "validation": {
+        "auc": 0.6287393596464435,
+        "prAuc": 0.1872151289431392,
+        "precision": 0.17676235237294669,
+        "recall": 0.6337057325052863,
+        "f1": 0.2764212880922639,
+        "threshold": 0.2088899165391922,
+        "confusion": {
+          "tn": 224830,
+          "fp": 177262,
+          "fn": 22000,
+          "tp": 38061
+        }
+      },
+      "test": {
+        "auc": 0.6155301613514134,
+        "prAuc": 0.2218395090972022,
+        "precision": 0.21553863634330295,
+        "recall": 0.5305797937708399,
+        "f1": 0.30654770236189616,
+        "threshold": 0.2088899165391922,
+        "confusion": {
+          "tn": 746398,
+          "fp": 438408,
+          "fn": 106572,
+          "tp": 120457
+        }
+      },
+      "testFitModel": {
+        "auc": 0.6161652701396081,
+        "prAuc": 0.2220604609865329,
+        "precision": 0.21233298207271906,
+        "recall": 0.5760101132454444,
+        "f1": 0.31028608172204253,
+        "threshold": 0.2088899165391922,
+        "confusion": {
+          "tn": 699700,
+          "fp": 485106,
+          "fn": 96258,
+          "tp": 130771
+        }
+      }
+    },
+    "lightgbm": {
+      "bestIteration": 157,
+      "validation": {
+        "auc": 0.6449475281059335,
+        "prAuc": 0.1987804602190985,
+        "precision": 0.18764688064674487,
+        "recall": 0.5982417875160254,
+        "f1": 0.2856847537001626,
+        "threshold": 0.20697104012783935,
+        "confusion": {
+          "tn": 246541,
+          "fp": 155551,
+          "fn": 24130,
+          "tp": 35931
+        }
+      },
+      "test": {
+        "auc": 0.627585192053224,
+        "prAuc": 0.2348301347954927,
+        "precision": 0.21834962787606668,
+        "recall": 0.5817803011950016,
+        "f1": 0.31752721065948664,
+        "threshold": 0.20697104012783935,
+        "confusion": {
+          "tn": 711981,
+          "fp": 472825,
+          "fn": 94948,
+          "tp": 132081
+        }
+      },
+      "testFitModel": {
+        "auc": 0.62503828187054,
+        "prAuc": 0.23172885991220793,
+        "precision": 0.21523471400394478,
+        "recall": 0.6008263261521656,
+        "f1": 0.3169338471314937,
+        "threshold": 0.20697104012783935,
+        "confusion": {
+          "tn": 687461,
+          "fp": 497345,
+          "fn": 90624,
+          "tp": 136405
+        }
+      }
+    }
+  },
+  "featureImportance": [
+    {
+      "feature": "originHourRate",
+      "importance": 0.3443075629400992
+    },
+    {
+      "feature": "schedDepHour",
+      "importance": 0.13831639903877707
+    },
+    {
+      "feature": "airlineRate",
+      "importance": 0.1369268478918843
+    },
+    {
+      "feature": "airline",
+      "importance": 0.07036443131901583
+    },
+    {
+      "feature": "routeRate",
+      "importance": 0.06312638646296534
+    },
+    {
+      "feature": "originRate",
+      "importance": 0.061002843634885624
+    },
+    {
+      "feature": "destRate",
+      "importance": 0.047044604027381164
+    },
+    {
+      "feature": "dayOfWeek",
+      "importance": 0.0422045129522793
+    },
+    {
+      "feature": "origin",
+      "importance": 0.02460394678910436
+    },
+    {
+      "feature": "dest",
+      "importance": 0.024536932106825657
+    },
+    {
+      "feature": "distance",
+      "importance": 0.01986746526822482
+    },
+    {
+      "feature": "isHolidayWeek",
+      "importance": 0.015397707327970208
+    },
+    {
+      "feature": "scheduledTime",
+      "importance": 0.012300360240587147
+    }
+  ],
+  "onnx": {
+    "maxAbsDiffVsNative": 2.0199043468394073e-07,
+    "rowsChecked": 1411835,
+    "sizeBytes": 723011
+  },
+  "durationSeconds": 89.5,
+  "versions": {
+    "lightgbm": "4.7.0",
+    "scikit-learn": "1.9.1",
+    "onnxruntime": "1.31.0",
+    "onnxmltools": "1.16.0",
+    "skl2onnx": "1.20.0",
+    "numpy": "2.5.4",
+    "pandas": "3.0.6"
+  }
+}
