@@ -1,59 +1,38 @@
-import React, { useState, useCallback } from 'react';
-import { LenisProvider } from './context/LenisContext';
-import { PageLoader } from './components/PageLoader';
-import { Navbar } from './components/Navbar';
-import { CursorGlow } from './components/CursorGlow';
-import { FlightPathProgress } from './components/FlightPathProgress';
+import { lazy, Suspense } from 'react';
+import { Navigate, Route, Routes } from 'react-router';
 import { HeroSection } from './components/HeroSection';
-import { StatementSection } from './components/StatementSection';
-import { PredictorSection } from './components/PredictorSection';
-import { MethodSection } from './components/MethodSection';
-import { AmbientMarquee } from './components/AmbientMarquee';
-import { FinalSection } from './components/FinalSection';
+import { Skeleton } from './components/QueryState';
+import { Shell } from './components/Shell';
+
+const Overview = lazy(() => import('./pages/Overview'));
+const Causes = lazy(() => import('./pages/Causes'));
+const Explorer = lazy(() => import('./pages/Explorer'));
+const Predict = lazy(() => import('./pages/Predict'));
+const Model = lazy(() => import('./pages/Model'));
+
+function PageFallback() {
+  return (
+    <div role="status">
+      <span className="sr-only">Loading page</span>
+      <Skeleton className="h-96" />
+    </div>
+  );
+}
 
 export default function App() {
-  const [loaderComplete, setLoaderComplete] = useState(false);
-
-  const handleLoaderComplete = useCallback(() => {
-    console.log('[App] loaderComplete updated: true');
-    setLoaderComplete(true);
-  }, []);
-
   return (
-    <LenisProvider>
-      <div className="relative min-h-screen bg-[#010101] text-white selection:bg-white/20 selection:text-white">
-        {/* Full-screen initial page loader */}
-        <PageLoader onComplete={handleLoaderComplete} />
-
-        {/* Desktop Cursor Glow */}
-        <CursorGlow />
-
-        {/* Global Navbar */}
-        <Navbar />
-
-        {/* Flight Path Scroll Progress (right edge, md+) */}
-        <FlightPathProgress />
-
-        <main>
-          {/* Hero Section with rich motion */}
-          <HeroSection isReady={loaderComplete} />
-
-          {/* "Why" Section (id="causes") */}
-          <StatementSection />
-
-          {/* Flight Delay Predictor (id="predictor") */}
-          <PredictorSection />
-
-          {/* Method Section (id="method") */}
-          <MethodSection />
-
-          {/* Ambient Scrolling Marquee */}
-          <AmbientMarquee />
-
-          {/* Closing Section & Minimal Footer (id="data") */}
-          <FinalSection />
-        </main>
-      </div>
-    </LenisProvider>
+    <Suspense fallback={<PageFallback />}>
+      <Routes>
+        <Route path="/" element={<HeroSection />} />
+        <Route element={<Shell />}>
+          <Route path="/overview" element={<Overview />} />
+          <Route path="/causes" element={<Causes />} />
+          <Route path="/explorer" element={<Explorer />} />
+          <Route path="/predict" element={<Predict />} />
+          <Route path="/model" element={<Model />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }

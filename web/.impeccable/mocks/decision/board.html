@@ -1,0 +1,72 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&family=Geist+Mono:wght@400&family=Instrument+Serif&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1440px;height:900px;overflow:hidden;background:#010101;color:#f2f1ec;font:300 14px/1.4 Geist,sans-serif}
+.top{display:flex;align-items:center;gap:40px;height:64px;padding:0 40px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand{font:400 22px 'Instrument Serif',serif}
+.tabs{display:flex;gap:4px}
+.tab{padding:8px 14px;border-radius:999px;color:rgba(242,241,236,.6);font-size:13px}
+.tab.on{background:rgba(255,255,255,.08);color:#f2f1ec}
+.strip{margin-left:auto;font:400 12px 'Geist Mono',monospace;color:rgba(242,241,236,.5);letter-spacing:.04em}
+.strip b{color:#f2f1ec;font-weight:400}
+main{padding:32px 40px;display:grid;grid-template-columns:1fr 420px;gap:32px}
+h1{font:400 44px/1 'Instrument Serif',serif;margin-bottom:6px}
+.sub{color:rgba(242,241,236,.55);font-size:13px;margin-bottom:24px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:28px}
+.kpi{padding:16px 0}
+.kpi+.kpi{padding-left:20px;border-left:1px solid rgba(255,255,255,.08)}
+.lab{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(242,241,236,.5)}
+.val{font:400 40px/1.1 'Instrument Serif',serif;font-variant-numeric:tabular-nums;margin-top:6px}
+.val.amber{color:#e8a54b}
+.board{font:400 13px 'Geist Mono',monospace}
+.row{display:grid;grid-template-columns:90px 120px 1fr 80px 80px;align-items:center;height:36px;border-bottom:1px solid rgba(255,255,255,.06)}
+.row.head{color:rgba(242,241,236,.45);font:400 11px Geist;letter-spacing:.16em;text-transform:uppercase}
+.bar{height:6px;background:rgba(255,255,255,.06);border-radius:3px;margin-right:24px}
+.bar i{display:block;height:6px;border-radius:3px;background:#e8a54b}
+.r{text-align:right}
+.lit{color:#e8a54b}
+aside .card{border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;margin-bottom:20px}
+aside h2{font:400 24px 'Instrument Serif',serif;margin:6px 0 14px}
+.mini .row{grid-template-columns:28px 1fr 70px;height:32px}
+.split{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:10px 0 12px}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:rgba(242,241,236,.7)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+</style></head><body>
+<header class="top"><div class="brand">Flight Delay Prediction</div>
+<nav class="tabs"><span class="tab on">Overview</span><span class="tab">Causes</span><span class="tab">Explorer</span><span class="tab">Predict</span><span class="tab">Model</span></nav>
+<div class="strip"><b>5,819,079</b> flights · 2015-01-01 → 2015-12-31 · stats built 13 Oct</div></header>
+<main><section>
+<h1>US domestic flights, 2015</h1><p class="sub">Arrival 15+ minutes late counts as delayed (US DOT). Cancelled and diverted flights have no arrival outcome.</p>
+<div class="kpis">
+<div class="kpi"><div class="lab">Flights</div><div class="val">5,819,079</div></div>
+<div class="kpi"><div class="lab">Delay rate</div><div class="val amber">18.6%</div></div>
+<div class="kpi"><div class="lab">Avg arrival delay</div><div class="val">+4.4 min</div></div>
+<div class="kpi"><div class="lab">Cancelled</div><div class="val">1.54%</div></div></div>
+<div class="board">
+<div class="row head"><span>Month</span><span>Split</span><span>Delay rate</span><span class="r">Rate</span><span class="r">Cancel</span></div>
+<div class="row"><span>Jan</span><span>train</span><div class="bar"><i style="width:70%"></i></div><span class="r">21.0%</span><span class="r">2.6%</span></div>
+<div class="row"><span>Feb</span><span>train</span><div class="bar"><i style="width:78%"></i></div><span class="r lit">23.3%</span><span class="r">4.0%</span></div>
+<div class="row"><span>Mar</span><span>train</span><div class="bar"><i style="width:65%"></i></div><span class="r">19.4%</span><span class="r">1.9%</span></div>
+<div class="row"><span>Apr</span><span>train</span><div class="bar"><i style="width:57%"></i></div><span class="r">17.2%</span><span class="r">0.8%</span></div>
+<div class="row"><span>May</span><span>train</span><div class="bar"><i style="width:61%"></i></div><span class="r">18.3%</span><span class="r">0.9%</span></div>
+<div class="row"><span>Jun</span><span>train</span><div class="bar"><i style="width:78%"></i></div><span class="r lit">23.5%</span><span class="r">1.6%</span></div>
+<div class="row"><span>Jul</span><span>train</span><div class="bar"><i style="width:70%"></i></div><span class="r">20.9%</span><span class="r">0.9%</span></div>
+<div class="row"><span>Aug</span><span>train</span><div class="bar"><i style="width:62%"></i></div><span class="r">18.7%</span><span class="r">1.0%</span></div>
+<div class="row"><span>Sep</span><span>train</span><div class="bar"><i style="width:43%"></i></div><span class="r">13.0%</span><span class="r">0.4%</span></div>
+<div class="row"><span>Oct</span><span>test</span><div class="bar"><i style="width:41%"></i></div><span class="r">12.4%</span><span class="r">0.5%</span></div>
+<div class="row"><span>Nov</span><span>test</span><div class="bar"><i style="width:51%"></i></div><span class="r">15.3%</span><span class="r">0.9%</span></div>
+</div></section>
+<aside>
+<div class="card"><div class="lab">Worst airlines · ≥500 flights</div><h2>Delay rate ranking</h2>
+<div class="board mini">
+<div class="row"><span>01</span><span>NK Spirit</span><span class="r lit">29.7%</span></div>
+<div class="row"><span>02</span><span>F9 Frontier</span><span class="r lit">26.2%</span></div>
+<div class="row"><span>03</span><span>B6 JetBlue</span><span class="r">22.6%</span></div>
+<div class="row"><span>04</span><span>MQ Envoy</span><span class="r">21.7%</span></div>
+<div class="row"><span>05</span><span>UA United</span><span class="r">20.6%</span></div></div></div>
+<div class="card"><div class="lab">Delay minutes by cause</div><h2>Late aircraft leads</h2>
+<div class="split"><i style="width:39.8%;background:#e8a54b"></i><i style="width:32.2%;background:#7c9bd1"></i><i style="width:22.9%;background:#9a8fc4"></i><i style="width:4.9%;background:#5fa38a"></i></div>
+<div class="legend"><span><i class="dot" style="background:#e8a54b"></i>Late aircraft 39.8%</span><span><i class="dot" style="background:#7c9bd1"></i>Carrier 32.2%</span><span><i class="dot" style="background:#9a8fc4"></i>NAS 22.9%</span><span><i class="dot" style="background:#5fa38a"></i>Weather 4.9%</span></div></div>
+</aside></main></body></html>

@@ -4,6 +4,7 @@ import { flightsFilter } from '../../src/analytics/flights.js';
 import { delayRatePipeline } from '../../src/analytics/delay-rate.js';
 import { causesPipeline } from '../../src/analytics/causes.js';
 import { trendPipeline, trendSource } from '../../src/analytics/series.js';
+import { heatmapPipeline } from '../../src/analytics/heatmap.js';
 import { STATS_BUILDS } from '../../src/stats/builders.js';
 
 const stageNames = (pipeline: object[]): string[] =>
@@ -38,6 +39,7 @@ describe('stats build pipelines', () => {
       stats_cause_monthly: '$match',
       stats_cancellation: '$match',
       stats_delay_buckets: '$match',
+      stats_dow_hour: '$group', // every flight; neither key depends on an airport id
     });
   });
 
@@ -52,6 +54,13 @@ describe('stats build pipelines', () => {
 });
 
 describe('read pipelines', () => {
+  it('reads heatmap cells in day-of-week, hour order without _id', () => {
+    expect(heatmapPipeline()).toEqual([
+      { $sort: { dow: 1, hour: 1 } },
+      { $project: { _id: 0, dow: 1, hour: 1, flights: 1, completed: 1, delayed: 1, delayRate: 1 } },
+    ]);
+  });
+
   it('ranks by delay rate with a key tiebreak and applies minFlights and limit', () => {
     const pipeline = delayRatePipeline({ by: 'route', minFlights: 500, limit: 5, order: 'worst' });
     expect(pipeline).toContainEqual({

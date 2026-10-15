@@ -9,6 +9,7 @@ import {
   DelayDistributionResponseSchema,
   DelayRateResponseSchema,
   FlightsResponseSchema,
+  HeatmapResponseSchema,
   MetaResponseSchema,
   SummaryResponseSchema,
   TrendResponseSchema,
@@ -407,6 +408,23 @@ describe('analytics API (MongoDB integration)', () => {
     expect(byHour.get(17)?.lateAircraftShare).toBeCloseTo(40 / 60);
     expect(byHour.get(20)?.totalMinutes).toBe(0);
     expect(byHour.get(20)?.lateAircraftShare).toBeNull();
+  });
+
+  it('heatmap: delay rate per (day of week, departure hour) cell', async (context) => {
+    if (!client) return context.skip();
+    const body = HeatmapResponseSchema.parse(await get('/api/analytics/heatmap'));
+    // No airport key, so the numeric-origin flight 8 counts and coverage is complete.
+    expect(body.coverage).toBeNull();
+    // Mon 08: flights 1, 2, 5, 6 -> 3 completed (6 diverted), 2 delayed (1, 5).
+    // Mon 20: flight 7 on time. Tue 17: flight 3 delayed, 4 cancelled.
+    // Thu 08: flight 8 delayed. Thu 20: flight 9 cancelled -> no outcome, rate null.
+    expect(body.cells).toEqual([
+      { dow: 1, hour: 8, flights: 4, completed: 3, delayed: 2, delayRate: 2 / 3 },
+      { dow: 1, hour: 20, flights: 1, completed: 1, delayed: 0, delayRate: 0 },
+      { dow: 2, hour: 17, flights: 2, completed: 1, delayed: 1, delayRate: 1 },
+      { dow: 4, hour: 8, flights: 1, completed: 1, delayed: 1, delayRate: 1 },
+      { dow: 4, hour: 20, flights: 1, completed: 0, delayed: 0, delayRate: null },
+    ]);
   });
 
   it('cancellations overall, by airline and by month', async (context) => {

@@ -16,3 +16,9 @@ __pycache__/
 
 # Personal Claude Code settings (project .claude/ config is tracked)
 .claude/settings.local.json
+# Playwright MCP scratch (page snapshots, console logs)
+.playwright-mcp/
+
+# Impeccable review captures (duplicates of docs/screenshots)
+web/.impeccable/review/
+web/.impeccable/questions/

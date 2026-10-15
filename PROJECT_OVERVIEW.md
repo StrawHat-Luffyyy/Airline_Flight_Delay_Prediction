@@ -248,6 +248,7 @@ All query/params validated with zod; errors in the shape `{ error: { code, messa
 | GET | `/analytics/delay-rate?by=airline\|origin\|route\|dow\|hour&minFlights=500&limit=20` | Delay rate ranking |
 | GET | `/analytics/trend?airline=&origin=&granularity=day\|month` | Time series from `stats_daily` |
 | GET | `/analytics/cascade` | Late-aircraft share by hour |
+| GET | `/analytics/heatmap` | Delay rate per (day of week × scheduled hour) cell, from `stats_dow_hour` (added in Phase 6 for the Explorer heatmap) |
 | GET | `/flights?airline=&origin=&dest=&from=&to=&limit=&cursor=` | Browse raw flights (index-backed) |
 | POST | `/predict` | Body: `{date, airline, origin, dest, schedDepHour}` -> `{probability, label, threshold, topFactors[]}` |
 | GET | `/model/metrics` | Latest `model_runs` document |

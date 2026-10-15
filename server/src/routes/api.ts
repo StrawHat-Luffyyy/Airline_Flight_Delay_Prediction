@@ -12,6 +12,7 @@ import { getCauses } from '../analytics/causes.js';
 import { loadDataQuality, loadLabels, type Labels } from '../analytics/common.js';
 import { getDelayRate } from '../analytics/delay-rate.js';
 import { getFlights } from '../analytics/flights.js';
+import { getHeatmap } from '../analytics/heatmap.js';
 import { getMeta } from '../analytics/meta.js';
 import {
   getCancellations,
@@ -90,6 +91,10 @@ export function apiRouter({ getDb, cacheTtlMs }: ApiRouterOptions): Router {
         getCancellations(getDb(), query, await labels()),
       ),
     );
+  });
+
+  router.get('/analytics/heatmap', async (_request, response) => {
+    response.json(await cached('heatmap', () => getHeatmap(getDb())));
   });
 
   router.get('/analytics/delay-distribution', async (_request, response) => {

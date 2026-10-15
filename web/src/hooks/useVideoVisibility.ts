@@ -55,9 +55,9 @@ function getOrCreateSharedObserver(): IntersectionObserver | null {
         });
       },
       {
-        threshold: 0, // Triggers as soon as the video is fully scrolled out of the viewport
+        threshold: 0, // Any visible pixel counts as intersecting; fires when the last pixel leaves
         rootMargin: '100px 0px 100px 0px', // Buffer so video resumes seamlessly on scroll
-      }
+      },
     );
   }
 
@@ -152,7 +152,7 @@ function registerVideo(video: HTMLVideoElement, playbackRate: number): () => voi
  */
 export function useVideoVisibility(
   videoRef: RefObject<HTMLVideoElement | null>,
-  playbackRate = 0.7
+  playbackRate = 0.7,
 ) {
   useEffect(() => {
     const video = videoRef.current;
@@ -162,6 +162,3 @@ export function useVideoVisibility(
     return unregister;
   }, [videoRef, playbackRate]);
 }
-
-// Backwards-compatible alias
-export const useVideoAutoPause = useVideoVisibility;

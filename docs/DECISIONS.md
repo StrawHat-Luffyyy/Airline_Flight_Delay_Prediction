@@ -419,3 +419,73 @@ Tests: 121 pass. They include new fixture tests for combined trends, coverage on
 - No end-to-end test compares `predictDelay`'s encoded row with the exported row for real test flights.
 - `encoders.json` does not record the `delay_lookup` buildId it was trained against. The build is deterministic over the train split, so this only matters after re-ingestion.
 - No rate limiting on `/predict`; that is Phase 7 scope.
+
+## Phase 6: dashboard (2026-10-15)
+
+**Product context and structure.**
+- `web/PRODUCT.md` records the user's answers:
+  - the primary audience is examiners at a viva/demo;
+  - the cinematic landing is kept as a compact intro (`/`) only;
+  - the plain name "Flight Delay Prediction" replaces "Holding Pattern".
+- **Page structure.** The user chose it from three sketches built with real API numbers: "Departure board" (impeccable surface roll, seed `d59af782`). The direction contract is in `web/.impeccable/surfaces/src-app-tsx.md`; the sketches are in `web/.impeccable/mocks/decision/`.
+  - Every ranking is a hairline-ruled board in tabular figures, with the delay rate as the one lit amber column.
+  - The dusk palette encodes data: amber = delayed or delay rate, blue = on time, red = cancelled, and one hue per cause.
+  - The Predict panel is the only glass surface.
+- **Signature move.** When a ranking re-sorts or refilters, its rows glide to their new rank and changed rows hold an amber lamp for 1.2 s. Under `prefers-reduced-motion` nothing moves.
+- The skill's decision page (`serve-question`) hung without output in this harness, so the choice was asked through the structured question tool instead.
+
+**Stack** (§5, with deviations):
+- React 19 is kept (the AI Studio scaffold shipped 19; §5 says 18; it is compatible and newer).
+- `react-router` 7 in library mode, `@tanstack/react-query` 5 and `recharts` 3. `motion` is used only for the board re-rank.
+- Pages are `React.lazy` chunks, so recharts (about 104 kB gzip) is not in the intro bundle.
+- **Removed AI Studio leftovers:** `@google/genai`, `express`, `dotenv`, `framer-motion`, `lenis`, `tsx`, `esbuild`, `metadata.json`, the `index.html` fetch shim, `DISABLE_HMR`, the debug logs, the fake predictor and every unverifiable claim listed in FRONTEND_AUDIT §4 (FAA, NOAA, the contact address, expected delay minutes).
+- **API client.**
+  - `web/src/api/client.ts` validates every response with the `@flight-delay/shared` zod schemas.
+  - Non-2xx responses become `ApiError {status, code, message, details}`; a response that does not match its schema is code `CONTRACT`.
+  - Hooks never reuse previous rows across a change of entity (`by`), only across sort, minimum or limit changes.
+- **Lint and tests.** `npm run lint` now also lints `web/src` (typescript-eslint plus `eslint-plugin-react-hooks` 7.1.1). The web unit tests (`web/src/**/*.test.ts`) run under the root `npm test`.
+
+**New endpoint: `GET /api/analytics/heatmap`** (Explorer hour × weekday heatmap; added to §9).
+- `build:stats` adds `stats_dow_hour`: one `$group` over all flights by `(dayOfWeek, schedDepHour)`, 168 documents, built in 13.0 s inside a 137.9 s full rebuild.
+- Neither key depends on an airport, so no flight is excluded and `coverage` is always `null`.
+- The read is a sort and projection of the 168 docs. `explain:report` measured 9 ms median and 12 ms max over HTTP.
+
+**`$facet`: still not used (the Phase 3 deferral is resolved as "not needed").**
+- Overview makes separate cached requests for summary, monthly trend, worst airlines, cause shares and the delay histogram.
+- Each is a read of a small pre-aggregated collection (all under about 30 ms), and react-query fetches them in parallel.
+- A single `$facet` request would only merge the two `stats_daily` reads, at the cost of a bespoke endpoint.
+
+**Facts the UI states without reading them from an API field:**
+- the train/test split (Jan-Sep train, Oct-Dec test, §7);
+- the US DOT 15-minute delay definition;
+- the note that cause minutes are reported only for flights 15+ minutes late (§3);
+- the note that weather and upstream delays are known only after departure.
+
+Every number shown comes from the API.
+
+**Data quirk.** One airport name in `airports` (JFK) contains a U+FFFD replacement character from the source CSV. The Predict selects strip it for display only. A fix at ingest is left for Phase 7.
+
+**Browser verification (Playwright, live API, full data).**
+- All six routes were captured at 1440×900 and 390×844, plus the Predict result and the Explorer route-flights panel. The captures are in `docs/screenshots/`.
+- There was no horizontal page overflow and no console errors after a favicon was added.
+- The impeccable detector reported 0 findings.
+- The finish review ran as a degraded substitute (the shipped reviewer agent is not installed) and returned `fix`.
+- Fixed in the same batch:
+  - the heatmap transposed for mobile, plus a screen-reader table;
+  - the Predict select padding;
+  - amber kept only for "delayed" on the Model page, with feature importance shown as a board;
+  - mobile table columns;
+  - the train/test chart labels;
+  - glass kept only on Predict;
+  - mono kept only for figures;
+  - carrier codes on the airline boards and a live leading-cause heading;
+  - Predict retry, validation and network errors.
+- **The fix batch caused two regressions, both found in the recapture and fixed:**
+  - an `sr-only` table widened the mobile page, so the wrapper is now `sr-only`;
+  - the mobile importance bars disappeared, so `RateCell` gained `barOnMobile`.
+- The reviewer's verdict pass scored all 8 fixes and the regression resolved: `ship`. That verdict covers the scored fixes only.
+- **ts-reviewer must-fix items, both fixed:**
+  - stale previous-entity rows rendered while a new `by` loaded;
+  - `web/` was not linted.
+- The re-rank lamp was verified live: 14 rows lit after Worst→Best on Explorer.
+- **Screenshots.** 16 full-page PNGs: six pages plus the Predict result and the route-flights panel, each at desktop and mobile width. They are quantised to 256 colours (ffmpeg `palettegen` and `paletteuse`, no dither): 1.4 MB total, down from 2.9 MB.

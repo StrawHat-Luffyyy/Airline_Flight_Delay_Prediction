@@ -18,6 +18,7 @@ export const STATS_COLLECTIONS = [
   'stats_cause_monthly',
   'stats_cancellation',
   'stats_delay_buckets',
+  'stats_dow_hour',
 ] as const;
 export type StatsCollection = (typeof STATS_COLLECTIONS)[number];
 
@@ -231,6 +232,23 @@ export function statsDelayBucketsPipeline(buildId: string): Document[] {
   ];
 }
 
+/**
+ * (day of week, scheduled departure hour): the Explorer heatmap (§10), 7 x 24 = 168 documents.
+ * Covers every flight: neither key depends on an airport, so there is nothing to filter first.
+ */
+export function statsDowHourPipeline(buildId: string): Document[] {
+  return [
+    {
+      $group: {
+        _id: { dow: '$dayOfWeek', hour: '$schedDepHour' },
+        ...OUTCOME_ACCUMULATORS,
+      },
+    },
+    { $set: { dow: '$_id.dow', hour: '$_id.hour', ...DERIVED_RATES, buildId } },
+    merge('stats_dow_hour'),
+  ];
+}
+
 export interface StatsBuild {
   collection: StatsCollection;
   pipeline: (buildId: string) => Document[];
@@ -253,4 +271,5 @@ export const STATS_BUILDS: readonly StatsBuild[] = [
   { collection: 'stats_cause_monthly', pipeline: statsCauseMonthlyPipeline, indexes: [] },
   { collection: 'stats_cancellation', pipeline: statsCancellationPipeline, indexes: [] },
   { collection: 'stats_delay_buckets', pipeline: statsDelayBucketsPipeline, indexes: [] },
+  { collection: 'stats_dow_hour', pipeline: statsDowHourPipeline, indexes: [] },
 ];
