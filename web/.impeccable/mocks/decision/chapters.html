@@ -1,0 +1,33 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1440px;height:900px;overflow:hidden;background:#010101;color:#f2f1ec;font:300 15px/1.5 Geist,sans-serif;display:grid;grid-template-columns:300px 1fr}
+.idx{padding:40px 36px;border-right:1px solid rgba(255,255,255,.07)}
+.brand{font:400 20px 'Instrument Serif',serif;margin-bottom:48px}
+.ch{display:flex;gap:14px;padding:12px 0;color:rgba(242,241,236,.45);border-top:1px solid rgba(255,255,255,.06)}
+.ch b{font:400 12px Geist;letter-spacing:.1em;width:22px}
+.ch.on{color:#f2f1ec}.ch.on b{color:#e8a54b}
+main{padding:56px 72px}
+.lab{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(242,241,236,.5)}
+h1{font:400 76px/1.02 'Instrument Serif',serif;max-width:980px;margin:18px 0 22px}
+h1 em{color:#e8a54b;font-style:italic}
+.lede{max-width:720px;color:rgba(242,241,236,.65);margin-bottom:36px}
+.facts{display:flex;gap:48px;margin-bottom:36px}
+.facts div{font:400 30px 'Instrument Serif',serif}
+.facts span{display:block;font:300 12px Geist;color:rgba(242,241,236,.5);letter-spacing:.12em;text-transform:uppercase}
+.chart{height:260px;position:relative;border-top:1px solid rgba(255,255,255,.08);padding-top:16px}
+svg{width:100%;height:200px}
+.months{display:flex;justify-content:space-between;font-size:11px;color:rgba(242,241,236,.4)}
+</style></head><body>
+<aside class="idx"><div class="brand">Flight Delay Prediction</div>
+<div class="ch on"><b>01</b>Overview</div><div class="ch"><b>02</b>Causes</div><div class="ch"><b>03</b>Explorer</div><div class="ch"><b>04</b>Predict</div><div class="ch"><b>05</b>Model</div></aside>
+<main><div class="lab">01 · Overview · 5,819,079 flights, 2015</div>
+<h1><em>18.6%</em> of the 5.7M completed flights arrived 15 or more minutes late.</h1>
+<p class="lede">Delay rates peaked in February and June (23.3% and 23.5%) and bottomed out in October (12.4%), the first month of the held-out test period.</p>
+<div class="facts"><div>+4.4 min<span>avg arrival delay</span></div><div>1.54%<span>cancelled</span></div><div>15,187<span>diverted</span></div></div>
+<div class="chart"><div class="lab">Monthly delay rate</div>
+<svg viewBox="0 0 1000 200" preserveAspectRatio="none"><polyline fill="none" stroke="#e8a54b" stroke-width="2" points="0,70 91,44 182,88 273,112 364,99 455,43 545,71 636,96 727,158 818,165 909,131 1000,75"/></svg>
+<div class="months"><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span></div></div>
+</main></body></html>

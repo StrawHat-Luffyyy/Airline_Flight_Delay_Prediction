@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "dev": "concurrently -k -n server,web \"npm:dev --workspace=@flight-delay/server\" \"npm:dev --workspace=@flight-delay/web\"",
-    "lint": "eslint server shared",
+    "lint": "eslint server shared web/src web/vite.config.ts",
     "typecheck": "npm run typecheck --workspace=@flight-delay/server && npm run typecheck --workspace=@flight-delay/shared && tsc --noEmit -p web/tsconfig.json",
     "test": "vitest run",
     "build:web": "npm run build --workspace=@flight-delay/web",
@@ -27,6 +27,7 @@
   "devDependencies": {
     "concurrently": "^9.2.1",
     "eslint": "^9.39.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "prettier": "^3.6.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.2",

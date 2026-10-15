@@ -1,0 +1,447 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-15T13:56:05.236Z",
+  "title": "Design System: Flight Delay Prediction",
+  "extensions": {
+    "colorMeta": {
+      "ground": {
+        "role": "neutral",
+        "displayName": "Night Ground",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Warm Ink",
+        "tonalRamp": [
+          "oklch(15% 0.006 100)",
+          "oklch(26% 0.006 100)",
+          "oklch(38% 0.006 100)",
+          "oklch(49% 0.006 100)",
+          "oklch(61% 0.006 100)",
+          "oklch(72% 0.006 100)",
+          "oklch(84% 0.006 100)",
+          "oklch(95% 0.006 100)"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Ink 2",
+        "tonalRamp": [
+          "oklch(15% 0.006 100)",
+          "oklch(26% 0.006 100)",
+          "oklch(38% 0.006 100)",
+          "oklch(49% 0.006 100)",
+          "oklch(61% 0.006 100)",
+          "oklch(72% 0.006 100)",
+          "oklch(84% 0.006 100)",
+          "oklch(95% 0.006 100)"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Ink 3",
+        "tonalRamp": [
+          "oklch(15% 0.006 100)",
+          "oklch(26% 0.006 100)",
+          "oklch(38% 0.006 100)",
+          "oklch(49% 0.006 100)",
+          "oklch(61% 0.006 100)",
+          "oklch(72% 0.006 100)",
+          "oklch(84% 0.006 100)",
+          "oklch(95% 0.006 100)"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Hairline"
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Strong Hairline"
+      },
+      "wash": {
+        "role": "neutral",
+        "displayName": "Wash"
+      },
+      "tooltip-surface": {
+        "role": "neutral",
+        "displayName": "Tooltip Black",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "delayed": {
+        "role": "primary",
+        "displayName": "Departure Amber",
+        "tonalRamp": [
+          "oklch(15% 0.125 70)",
+          "oklch(26% 0.125 70)",
+          "oklch(38% 0.125 70)",
+          "oklch(49% 0.125 70)",
+          "oklch(61% 0.125 70)",
+          "oklch(72% 0.125 70)",
+          "oklch(84% 0.125 70)",
+          "oklch(95% 0.125 70)"
+        ]
+      },
+      "ontime": {
+        "role": "secondary",
+        "displayName": "Dusk Blue",
+        "tonalRamp": [
+          "oklch(15% 0.09 262)",
+          "oklch(26% 0.09 262)",
+          "oklch(38% 0.09 262)",
+          "oklch(49% 0.09 262)",
+          "oklch(61% 0.09 262)",
+          "oklch(72% 0.09 262)",
+          "oklch(84% 0.09 262)",
+          "oklch(95% 0.09 262)"
+        ]
+      },
+      "cancelled": {
+        "role": "secondary",
+        "displayName": "Signal Red",
+        "tonalRamp": [
+          "oklch(15% 0.15 35)",
+          "oklch(26% 0.15 35)",
+          "oklch(38% 0.15 35)",
+          "oklch(49% 0.15 35)",
+          "oklch(61% 0.15 35)",
+          "oklch(72% 0.15 35)",
+          "oklch(84% 0.15 35)",
+          "oklch(95% 0.15 35)"
+        ]
+      },
+      "cause-late": {
+        "role": "primary",
+        "displayName": "Departure Amber (late-aircraft cause)",
+        "tonalRamp": [
+          "oklch(15% 0.125 70)",
+          "oklch(26% 0.125 70)",
+          "oklch(38% 0.125 70)",
+          "oklch(49% 0.125 70)",
+          "oklch(61% 0.125 70)",
+          "oklch(72% 0.125 70)",
+          "oklch(84% 0.125 70)",
+          "oklch(95% 0.125 70)"
+        ]
+      },
+      "cause-carrier": {
+        "role": "secondary",
+        "displayName": "Dusk Blue (carrier cause)",
+        "tonalRamp": [
+          "oklch(15% 0.09 262)",
+          "oklch(26% 0.09 262)",
+          "oklch(38% 0.09 262)",
+          "oklch(49% 0.09 262)",
+          "oklch(61% 0.09 262)",
+          "oklch(72% 0.09 262)",
+          "oklch(84% 0.09 262)",
+          "oklch(95% 0.09 262)"
+        ]
+      },
+      "cause-nas": {
+        "role": "tertiary",
+        "displayName": "NAS Violet",
+        "tonalRamp": [
+          "oklch(15% 0.08 290)",
+          "oklch(26% 0.08 290)",
+          "oklch(38% 0.08 290)",
+          "oklch(49% 0.08 290)",
+          "oklch(61% 0.08 290)",
+          "oklch(72% 0.08 290)",
+          "oklch(84% 0.08 290)",
+          "oklch(95% 0.08 290)"
+        ]
+      },
+      "cause-weather": {
+        "role": "tertiary",
+        "displayName": "Weather Green",
+        "tonalRamp": [
+          "oklch(15% 0.085 168)",
+          "oklch(26% 0.085 168)",
+          "oklch(38% 0.085 168)",
+          "oklch(49% 0.085 168)",
+          "oklch(61% 0.085 168)",
+          "oklch(72% 0.085 168)",
+          "oklch(84% 0.085 168)",
+          "oklch(95% 0.085 168)"
+        ]
+      },
+      "cause-security": {
+        "role": "tertiary",
+        "displayName": "Security Sand",
+        "tonalRamp": [
+          "oklch(15% 0.015 85)",
+          "oklch(26% 0.015 85)",
+          "oklch(38% 0.015 85)",
+          "oklch(49% 0.015 85)",
+          "oklch(61% 0.015 85)",
+          "oklch(72% 0.015 85)",
+          "oklch(84% 0.015 85)",
+          "oklch(95% 0.015 85)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The intro title only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "One page title per page (PageHeader)."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section titles above a hairline rule."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "KPI values and the Predict verdict; serif tabular figures."
+      },
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "Top-bar name."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Intros and explanatory copy, 65-75ch."
+      },
+      "ui": {
+        "displayName": "UI",
+        "purpose": "Tabs, buttons, factor rows, notes."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels, legends, KPI labels; sentence case."
+      },
+      "column-head": {
+        "displayName": "Column head",
+        "purpose": "Board column headers in ink-3, sentence case."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "Board cells, sub-figures, data strip, dates and IDs."
+      }
+    },
+    "shadows": [
+      {
+        "name": "glass-highlight",
+        "value": "inset 0 1px 1px rgba(255, 255, 255, 0.1)",
+        "purpose": "Top highlight of the glass treatment; Predict panel and its submit button only."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The single easing for glide, lamp, rise and gauge fill."
+      },
+      {
+        "name": "board-glide",
+        "value": "550ms layout position, ease-out-expo",
+        "purpose": "Board rows move to their new rank on re-sort or refilter."
+      },
+      {
+        "name": "board-row-enter",
+        "value": "300ms opacity",
+        "purpose": "New board rows fade in."
+      },
+      {
+        "name": "lamp",
+        "value": "1200ms, rgba(232,165,75,0.2) to 0, ease-out-expo",
+        "purpose": "Rows whose rank changed hold an amber lamp, then fade."
+      },
+      {
+        "name": "rise",
+        "value": "700ms translateY(10px) + opacity, ease-out-expo, 120ms stagger",
+        "purpose": "Intro title and copy entrance."
+      },
+      {
+        "name": "sheen",
+        "value": "1.6s linear infinite",
+        "purpose": "Loading skeleton."
+      },
+      {
+        "name": "rate-bar",
+        "value": "500ms width",
+        "purpose": "RateCell bar width changes."
+      },
+      {
+        "name": "gauge-fill",
+        "value": "900ms stroke-dasharray, ease-out-expo",
+        "purpose": "Predict gauge arc fill."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animations and transitions at 0.001ms; no glide, no lamp; poster image replaces video",
+        "purpose": "prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Page Tabs",
+      "kind": "nav",
+      "refersTo": "tab-active",
+      "description": "Top-bar navigation: five pill tabs, the active one filled with the strong hairline.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-tab ds-tab-active\" href=\"#\">Overview</a><a class=\"ds-tab\" href=\"#\">Causes</a><a class=\"ds-tab\" href=\"#\">Explorer</a><a class=\"ds-tab\" href=\"#\">Predict</a><a class=\"ds-tab\" href=\"#\">Model</a></nav>",
+      "css": ".ds-nav{display:flex;gap:4px;background:var(--color-ground);padding:12px;font-family:var(--font-sans);font-weight:300}.ds-tab{display:block;white-space:nowrap;border-radius:9999px;padding:8px 14px;font-size:13px;color:var(--color-ink-2);text-decoration:none;transition:color .15s}.ds-tab:hover{color:var(--color-ink)}.ds-tab-active{background:var(--color-rule-strong);color:var(--color-ink)}.ds-tab:focus-visible{outline:2px solid var(--color-delayed);outline-offset:3px}"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Default action pill: Retry, Load more, Open dashboard.",
+      "html": "<button class=\"ds-btn-outline\">Retry</button>",
+      "css": ".ds-btn-outline{border-radius:9999px;border:1px solid var(--color-rule-strong);background:transparent;color:var(--color-ink);padding:6px 16px;font-family:var(--font-sans);font-weight:300;font-size:14px;cursor:pointer;transition:background-color .15s}.ds-btn-outline:hover{background:var(--color-wash)}.ds-btn-outline:focus-visible{outline:2px solid var(--color-delayed);outline-offset:3px}"
+    },
+    {
+      "name": "Glass Submit",
+      "kind": "button",
+      "refersTo": "button-glass",
+      "description": "The only glass button: Score this flight, inside the Predict panel.",
+      "html": "<button class=\"ds-btn-glass\">Score this flight</button>",
+      "css": ".ds-btn-glass{position:relative;width:100%;border:none;border-radius:9999px;padding:12px 24px;font-family:var(--font-sans);font-weight:300;font-size:14px;color:var(--color-ink);background:rgba(255,255,255,.02);background-blend-mode:luminosity;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:inset 0 1px 1px rgba(255,255,255,.1);cursor:pointer;transition:background-color .15s}.ds-btn-glass::before{content:\"\";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(180deg,rgba(255,255,255,.4) 0%,rgba(255,255,255,.12) 20%,rgba(255,255,255,0) 40%,rgba(255,255,255,0) 60%,rgba(255,255,255,.12) 80%,rgba(255,255,255,.4) 100%);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}.ds-btn-glass:hover{background:rgba(255,255,255,.07)}.ds-btn-glass:focus-visible{outline:2px solid var(--color-delayed);outline-offset:3px}.ds-btn-glass:disabled{opacity:.6}"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "chip",
+      "refersTo": "segmented-option-active",
+      "description": "Pill toggle group on a wash track; the active option inverts to ink.",
+      "html": "<div class=\"ds-seg\" role=\"group\" aria-label=\"Group by\"><button class=\"ds-seg-opt\" aria-pressed=\"true\">Airline</button><button class=\"ds-seg-opt\" aria-pressed=\"false\">Origin</button><button class=\"ds-seg-opt\" aria-pressed=\"false\">Destination</button></div>",
+      "css": ".ds-seg{display:inline-flex;gap:4px;border-radius:9999px;background:var(--color-wash);padding:4px;font-family:var(--font-sans);font-weight:300}.ds-seg-opt{border:none;border-radius:9999px;padding:6px 14px;font-size:13px;background:transparent;color:var(--color-ink-2);cursor:pointer;transition:color .15s,background-color .15s}.ds-seg-opt:hover{color:var(--color-ink)}.ds-seg-opt[aria-pressed=true]{background:var(--color-ink);color:var(--color-ground)}.ds-seg-opt:focus-visible{outline:2px solid var(--color-delayed);outline-offset:3px}"
+    },
+    {
+      "name": "Select Field",
+      "kind": "input",
+      "refersTo": "select-field",
+      "description": "Labelled native select with a drawn chevron; amber border on focus, red message on error.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-airline\">Airline</label><div class=\"ds-field-wrap\"><select id=\"ds-airline\" class=\"ds-select\"><option>AA American Airlines Inc.</option></select><svg viewBox=\"0 0 12 12\" class=\"ds-chev\" aria-hidden=\"true\"><path d=\"M2 4.5 6 8l4-3.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/></svg></div></div>",
+      "css": ".ds-field{font-family:var(--font-sans);font-weight:300;max-width:320px}.ds-field-label{display:block;margin-bottom:6px;font-size:12px;color:var(--color-ink-2)}.ds-field-wrap{position:relative}.ds-select{width:100%;appearance:none;border-radius:8px;border:1px solid var(--color-rule-strong);background:rgba(1,1,1,.6);padding:10px 36px 10px 12px;font:inherit;font-size:14px;color:var(--color-ink);color-scheme:dark}.ds-select:focus-visible{border-color:var(--color-delayed);outline:2px solid var(--color-delayed);outline-offset:3px}.ds-chev{position:absolute;right:12px;top:50%;width:12px;height:12px;transform:translateY(-50%);color:var(--color-ink-2);pointer-events:none}"
+    },
+    {
+      "name": "Departure Board",
+      "kind": "custom",
+      "refersTo": "board-row",
+      "description": "Signature ranking table: mono tabular rows, zero-padded rank, amber RateCell; re-ranked rows glide and hold an amber lamp.",
+      "html": "<table class=\"ds-board\"><thead><tr><th>#</th><th>Code</th><th>Airline</th><th class=\"r\">Delay rate</th></tr></thead><tbody><tr class=\"ds-lamp\"><td class=\"rk\">01</td><td class=\"c\">NK</td><th scope=\"row\">Spirit Air Lines</th><td class=\"r\"><span class=\"ds-rate\"><span class=\"ds-track\"><span class=\"ds-bar\" style=\"width:100%\"></span></span><span class=\"ds-val\">29.7%</span></span></td></tr><tr><td class=\"rk\">02</td><td class=\"c\">F9</td><th scope=\"row\">Frontier Airlines Inc.</th><td class=\"r\"><span class=\"ds-rate\"><span class=\"ds-track\"><span class=\"ds-bar\" style=\"width:88%\"></span></span><span class=\"ds-val\">26.2%</span></span></td></tr></tbody></table>",
+      "css": ".ds-board{width:100%;border-collapse:collapse;text-align:left;font-family:var(--font-mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--color-ink);background:var(--color-ground)}.ds-board thead tr{border-bottom:1px solid var(--color-rule-strong)}.ds-board thead th{padding:8px;font-family:var(--font-sans);font-size:11px;font-weight:400;letter-spacing:.025em;color:var(--color-ink-3)}.ds-board tbody tr{height:36px;border-bottom:1px solid var(--color-rule)}.ds-board tbody tr:hover{background:var(--color-wash)}.ds-board td,.ds-board tbody th{padding:4px 8px}.ds-board tbody th{font-family:var(--font-sans);font-weight:300}.ds-board .rk,.ds-board .c{color:var(--color-ink-3)}.ds-board .r{text-align:right}.ds-rate{display:flex;align-items:center;justify-content:flex-end;gap:12px}.ds-track{display:block;flex:1;min-width:40px;height:6px;border-radius:9999px;background:var(--color-wash)}.ds-bar{display:block;height:6px;border-radius:9999px;background:var(--color-delayed);transition:width .5s}.ds-val{width:56px;text-align:right;color:var(--color-delayed)}@keyframes ds-lamp{from{background-color:rgba(232,165,75,.2)}to{background-color:rgba(232,165,75,0)}}.ds-lamp>td,.ds-lamp>th{animation:ds-lamp 1.2s cubic-bezier(.16,1,.3,1) forwards}@media (prefers-reduced-motion:reduce){.ds-lamp>td,.ds-lamp>th{animation:none}}"
+    },
+    {
+      "name": "Query Error Block",
+      "kind": "custom",
+      "refersTo": "button-outline",
+      "description": "QueryState error: hairline-ruled block, red title, API message, Retry pill.",
+      "html": "<div class=\"ds-err\" role=\"alert\"><p class=\"ds-err-t\">Could not load the airline ranking.</p><p class=\"ds-err-m\">The request did not get an answer.</p><button class=\"ds-err-b\">Retry</button></div>",
+      "css": ".ds-err{border-top:1px solid var(--color-rule);border-bottom:1px solid var(--color-rule);padding:20px 0;font-family:var(--font-sans);font-weight:300;font-size:14px}.ds-err p{margin:0}.ds-err-t{color:var(--color-cancelled)}.ds-err-m{margin-top:4px;max-width:65ch;color:var(--color-ink-2)}.ds-err-b{margin-top:12px;border-radius:9999px;border:1px solid var(--color-rule-strong);background:transparent;color:var(--color-ink);padding:6px 16px;font:inherit;cursor:pointer}.ds-err-b:hover{background:var(--color-wash)}.ds-err-b:focus-visible{outline:2px solid var(--color-delayed);outline-offset:3px}"
+    },
+    {
+      "name": "KPI Rule Row",
+      "kind": "card",
+      "refersTo": "figure",
+      "description": "Headline figures in a hairline-framed row instead of cards; serif figure, mono sub-figure, amber only for the delay rate.",
+      "html": "<dl class=\"ds-kpi\"><div><dt>Flights</dt><dd class=\"v\">5,819,079</dd><dd class=\"s\">5,714,008 completed</dd></div><div><dt>Delay rate</dt><dd class=\"v a\">18.6%</dd><dd class=\"s\">1,063,439 arrived 15+ min late</dd></div></dl>",
+      "css": ".ds-kpi{display:grid;grid-template-columns:1fr 1fr;margin:0;border-top:1px solid var(--color-rule-strong);border-bottom:1px solid var(--color-rule-strong);font-family:var(--font-sans);font-weight:300}.ds-kpi>div{padding:16px 0}.ds-kpi>div+div{border-left:1px solid var(--color-rule);padding-left:20px}.ds-kpi dt{font-size:12px;color:var(--color-ink-2)}.ds-kpi dd{margin:0}.ds-kpi .v{margin-top:6px;font-family:var(--font-display);font-size:clamp(1.75rem,3vw,2.5rem);line-height:1.1;font-variant-numeric:tabular-nums;color:var(--color-ink)}.ds-kpi .a{color:var(--color-delayed)}.ds-kpi .s{margin-top:4px;font-family:var(--font-mono);font-size:11px;color:var(--color-ink-3)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Departure Board",
+    "overview": "Every ranking is a departure board. Airlines, airports, routes and months are rows in fixed tabular columns on a near-black ground, and the delay rate is the lit amber column. The system rejects the category default of a grey card grid of identical chart tiles: blocks are separated by hairline rules, not boxes, and a single page reads top to bottom as one continuous board.\n\nThe world is dark and quiet so the data can glow. Ink is warm off-white stepped down in three levels; colour is spent only on encoding data (the dusk palette), never on decoration. A serif (Instrument Serif) gives page titles and headline figures a printed, editorial voice; Geist carries the interface; Geist Mono with tabular figures carries board rows so digits line up like split-flap characters. Density is high but calm: 36px rows, 11-13px UI text, and generous 40px gutters between the main column and the side column.\n\nThere is one moment of material: the Predict panel is the only glass surface, because scoring a flight is the one place the visitor acts rather than reads. Motion is reserved for the signature move: when a board re-sorts or refilters, rows glide to their new rank and changed rows hold an amber lamp, then fade.",
+    "keyCharacteristics": [
+      "Near-black ground (#010101), warm ink stepped by three levels, hairline rules instead of cards.",
+      "Dusk palette as data encoding: amber delayed, blue on time, red cancelled, violet NAS, green weather.",
+      "Serif for titles and headline figures, Geist for UI, Geist Mono tabular figures for data.",
+      "Departure-board tables with an inline delay-rate bar and a lamp on re-rank.",
+      "One glass surface, on Predict only.",
+      "Every data block has loading, error-with-retry and empty states."
+    ],
+    "rules": [
+      {
+        "name": "The Lit Column Rule",
+        "body": "Amber means delayed or delay rate. If a value is not about delay, it is not amber; a non-delay share uses the ink tone of RateCell.",
+        "section": "colors"
+      },
+      {
+        "name": "The Paired Encoding Rule",
+        "body": "Delayed versus on time is always amber versus blue, in every chart, gauge, factor bar and matrix.",
+        "section": "colors"
+      },
+      {
+        "name": "The Colour Is Data Rule",
+        "body": "Saturated colour appears only to encode a data category. Chrome, buttons and headings stay in ink.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Means Measured Rule",
+        "body": "Geist Mono is for figures, dates, codes and IDs. Names (airlines, airports, features) inside a mono board switch back to Geist.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "body": "Labels and column heads are sentence case at 11-12px in ink-2 or ink-3. There are no uppercase eyebrow labels above titles.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Glass Rule",
+        "body": "Glass (the `liquid-glass` treatment) exists only on the Predict panel and its submit button. Every other surface sits flat on the ground.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No-Card Rule",
+        "body": "Blocks are divided by hairline rules, not boxed in cards with shadows or fills.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do show rankings and breakdowns as departure boards: fixed tabular columns, Geist Mono tabular figures, 36px rows, hairline dividers.",
+      "Do use Departure Amber (#e8a54b) only for delayed flights or delay rates, and pair it with Dusk Blue (#7c9bd1) for on time.",
+      "Do separate blocks with hairline rules (rgba(255,255,255,0.08)) and a serif section title.",
+      "Do set page titles, section titles and headline figures in Instrument Serif at weight 400.",
+      "Do keep Geist Mono for figures, dates, codes and IDs, and switch names back to Geist.",
+      "Do wrap every API-backed block in QueryState so it has loading, error-with-Retry and empty states.",
+      "Do honour `prefers-reduced-motion`: no glide, no lamp, no rise, near-zero transitions, poster image instead of video.",
+      "Do use the 2px amber focus ring (3px offset) for every interactive element."
+    ],
+    "donts": [
+      "Don't build card grids of identical chart tiles or put content in shadowed cards.",
+      "Don't use amber for anything that is not about delay (decoration, headings, generic highlights, buttons).",
+      "Don't use the glass treatment anywhere except the Predict panel and its submit button.",
+      "Don't set prose, names or headings in Geist Mono.",
+      "Don't add uppercase eyebrow labels above titles; labels are sentence case.",
+      "Don't add drop shadows; the only shadow is the glass inset highlight.",
+      "Don't show any number the API does not provide."
+    ]
+  }
+}

@@ -202,6 +202,23 @@ export const DelayDistributionResponseSchema = z.object({
 });
 export type DelayDistributionResponse = z.infer<typeof DelayDistributionResponseSchema>;
 
+/** One (day of week, scheduled departure hour) cell of the Explorer heatmap. */
+export const HeatmapCellSchema = z.object({
+  /** 1 = Monday .. 7 = Sunday. */
+  dow: z.number().int().min(1).max(7),
+  hour: z.number().int().min(0).max(23),
+  flights: z.number(),
+  completed: z.number(),
+  delayed: z.number(),
+  delayRate: rate,
+});
+export const HeatmapResponseSchema = z.object({
+  /** Always null: neither key depends on an airport id, so every flight is counted. */
+  coverage: CoverageSchema,
+  cells: z.array(HeatmapCellSchema),
+});
+export type HeatmapResponse = z.infer<typeof HeatmapResponseSchema>;
+
 export const MetaResponseSchema = z.object({
   flights: z.number(),
   dateRange: z.object({ from: z.string(), to: z.string() }).nullable(),

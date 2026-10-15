@@ -1,0 +1,42 @@
+{
+  "title": "Choose the dashboard's structure",
+  "question": "The visual world stays (near-black, Instrument Serif display, Geist body, dusk palette for data). Pick how the five pages are organised and where the signature move lives.",
+  "options": [
+    {
+      "id": "board",
+      "label": "Departure board",
+      "kicker": "THE ROLL",
+      "thesis": "Every ranking is a departure board: rows of airlines, airports and routes in fixed tabular columns, with the delay rate as the lit column.",
+      "palette": ["#010101", "#f2f1ec", "#e8a54b", "#7c9bd1", "#d0614a"],
+      "materials": ["tabular figures on black", "amber row lamps for delay"],
+      "viewport": "Top bar with the five pages as tabs and a live data strip (5,819,079 flights · stats built date); Overview opens on four KPI figures, then the 12 months as board rows each with its delay-rate bar.",
+      "risk": "Charts (stacked causes, cascade line) must sit beside the boards as equals, or the page reads as a table app.",
+      "raised": [
+        { "from": "gate board challenger", "raise": "A re-sorted ranking moves rows in place and keeps the changed row lit, instead of redrawing the list." }
+      ],
+      "html": ".impeccable/mocks/decision/board.html"
+    },
+    {
+      "id": "workbench",
+      "label": "Scope workbench",
+      "thesis": "A persistent left column picks the airline and airport in scope; the canvas re-reads trend and raw flights for that scope.",
+      "palette": ["#010101", "#f2f1ec", "#e8a54b", "#7c9bd1"],
+      "materials": ["side rail navigation", "scope chips"],
+      "viewport": "Left rail with page links and the scope pickers (airline, origin); canvas with KPI row, monthly trend for the scope, and the index-backed flights table below.",
+      "risk": "Only trend and /flights accept a scope; causes and rankings are network-wide, so the scope must say plainly what it does not filter.",
+      "html": ".impeccable/mocks/decision/workbench.html"
+    },
+    {
+      "id": "chapters",
+      "label": "Findings chapters",
+      "thesis": "Each page opens with one finding as a serif sentence computed from the data, then the chart that proves it: a viva told in order.",
+      "palette": ["#010101", "#f2f1ec", "#e8a54b", "#7c9bd1"],
+      "materials": ["serif finding headlines", "sticky chapter index"],
+      "viewport": "Sticky chapter index on the left (01 Overview … 05 Model); the first viewport states '18.6% of 5.7M completed flights arrived 15+ minutes late' in large serif, with the monthly trend beneath.",
+      "risk": "Finding sentences must be generated strictly from API values, never hand-written claims.",
+      "html": ".impeccable/mocks/decision/chapters.html"
+    }
+  ],
+  "reroll": true,
+  "steer": true
+}

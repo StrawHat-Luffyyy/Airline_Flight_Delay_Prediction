@@ -1,298 +1,162 @@
-import React, { useRef, useEffect } from 'react';
-import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion';
-import { MagneticButton } from './MagneticButton';
-import { useLenis } from '../context/LenisContext';
+import { useReducedMotion } from 'motion/react';
+import { useRef } from 'react';
+import { Link } from 'react-router';
+import { useMeta, useSummary } from '../api/hooks';
 import { useVideoVisibility } from '../hooks/useVideoVisibility';
+import { formatInteger, formatPercent, formatSignedMinutes } from '../lib/format';
+import { ErrorBlock, Skeleton } from './QueryState';
 
-const VIDEO_URL = '/videos/airplane-dusk.mp4';
-const VIDEO_FALLBACK_WEBM = '/videos/airplane-dusk.webm';
+const VIDEO_WEBM = '/videos/airplane-dusk.webm';
+const VIDEO_MP4 = '/videos/airplane-dusk.mp4';
 const POSTER_URL = '/videos/airplane-dusk-poster.jpg';
 
-interface HeroSectionProps {
-  isReady?: boolean;
-}
-
-export const HeroSection: React.FC<HeroSectionProps> = ({ isReady = true }) => {
-  const heroRef = useRef<HTMLElement>(null);
+function BackgroundVideo({ reduced }: { reduced: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const shouldReduceMotion = useReducedMotion();
-  const { scrollTo } = useLenis();
-
-  useEffect(() => {
-    console.log('[HeroSection] isReady state changed:', isReady);
-  }, [isReady]);
-
-  // Pause video when fully off-screen & enforce slower 0.7 playbackRate
   useVideoVisibility(videoRef, 0.7);
 
-  // Scroll tracking across the pinned h-[250vh] range
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ['start start', 'end end'],
-  });
-
-  // 0-30%: video zooms 1.0 to 1.15. Last 15% (85-100%): scales to 1.08 exit
-  const videoScale = useTransform(
-    scrollYProgress,
-    [0, 0.3, 0.85, 1.0],
-    [1.0, 1.15, 1.15, 1.08]
-  );
-
-  // Parallax subtle drift
-  const videoY = useTransform(scrollYProgress, [0, 1], ['0%', '6%']);
-
-  // CTA, subtitle, eyebrow, and scroll hint: visible only during 0-30%
-  const initialElementsOpacity = useTransform(scrollYProgress, [0, 0.22, 0.3], [1, 1, 0]);
-  const initialPointerEvents = useTransform(scrollYProgress, (v) => (v > 0.25 ? 'none' : 'auto'));
-
-  // 30-60%: Headline lines slide apart
-  // Line 1 moves up -12vh, Line 2 moves down +12vh
-  const line1Y = useTransform(scrollYProgress, [0.3, 0.58], ['0vh', '-12vh']);
-  const line2Y = useTransform(scrollYProgress, [0.3, 0.58], ['0vh', '12vh']);
-
-  // Headline fades to 0 and blurs to 6px
-  const headlineOpacity = useTransform(scrollYProgress, [0.3, 0.52], [1, 0]);
-  const headlineBlurVal = useTransform(scrollYProgress, [0.3, 0.52], [0, 6]);
-  const headlineFilter = useTransform(
-    headlineBlurVal,
-    (b) => `blur(${Math.max(0, b)}px)`
-  );
-
-  // 35-65%: Centered serif line "Millions of flights. One forecast." masked line reveal
-  const serifLineY = useTransform(scrollYProgress, [0.35, 0.48], ['100%', '0%']);
-  const serifLineOpacity = useTransform(
-    scrollYProgress,
-    [0.35, 0.46, 0.58, 0.68],
-    [0, 1, 1, 0]
-  );
-
-  // 65-100%: Black overlay fades in to opacity 1 for smooth cut to black (strictly 0 at scroll 0)
-  const blackOverlayOpacity = useTransform(scrollYProgress, [0.65, 0.95], [0, 1]);
-
-  const line1Chars = Array.from('SEE THE DELAY');
-  const line2Chars = Array.from('BEFORE IT HAPPENS');
-
+  if (reduced) {
+    return (
+      <img
+        src={POSTER_URL}
+        alt=""
+        className="h-full w-full object-cover object-center"
+        decoding="async"
+      />
+    );
+  }
   return (
-    <section
-      ref={heroRef}
-      id="top"
-      className={`relative w-full bg-[#0a0d14] select-none ${
-        shouldReduceMotion ? 'min-h-screen' : 'h-[250vh]'
-      }`}
+    <video
+      ref={videoRef}
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      aria-hidden="true"
+      className="h-full w-full object-cover object-center"
     >
-      {/* Sticky top-0 h-screen pinned viewport */}
-      <div
-        className={`${
-          shouldReduceMotion
-            ? 'relative w-full min-h-screen flex flex-col justify-center items-center'
-            : 'sticky top-0 h-screen w-full overflow-hidden flex flex-col justify-center items-center'
-        }`}
-      >
-        {/* Full-screen Background Video (100vw x 100vh) */}
-        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none bg-[#0a0d14]">
-          <motion.div
-            style={{
-              scale: shouldReduceMotion ? 1 : videoScale,
-              y: shouldReduceMotion ? '0%' : videoY,
-            }}
-            className="w-full h-full origin-center [will-change:transform]"
-          >
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
-              poster={POSTER_URL}
-              className="w-full h-full object-cover object-center"
-            >
-              <source src={VIDEO_URL} type="video/mp4" />
-              <source src={VIDEO_FALLBACK_WEBM} type="video/webm" />
-            </video>
-          </motion.div>
+      <source src={VIDEO_WEBM} type="video/webm" />
+      <source src={VIDEO_MP4} type="video/mp4" />
+    </video>
+  );
+}
 
-          {/* Base cinematic dark scrim */}
-          <div className="absolute inset-0 bg-black/35" />
-
-          {/* Radial depth vignette */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_rgba(0,0,0,0.2)_0%,_rgba(0,0,0,0.75)_100%)]" />
-
-          {/* Exit Black Overlay (strictly 0 at scroll 0, fades to 1 at 65-95%) */}
-          <motion.div
-            style={{ opacity: shouldReduceMotion ? 0 : blackOverlayOpacity }}
-            className="absolute inset-0 bg-[#010101] pointer-events-none [will-change:opacity]"
-          />
-
-          {/* 300px Bottom gradient to smoothly transition to next section */}
-          <div className="absolute bottom-0 inset-x-0 h-[300px] bg-gradient-to-b from-transparent to-[#010101] pointer-events-none" />
-        </div>
-
-        {/* Hero Content Wrapper: Vertically and Horizontally Centered */}
-        <div className="relative z-10 w-full h-full flex flex-col items-center justify-center text-center px-5 sm:px-8 max-w-5xl mx-auto">
-          {/* Eyebrow: visible 0-30% */}
-          <motion.p
-            style={{
-              opacity: shouldReduceMotion ? 1 : initialElementsOpacity,
-            }}
-            initial={{ opacity: 0, y: 16 }}
-            animate={isReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
-            transition={{ duration: 0.8, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="text-white/60 text-xs uppercase tracking-[0.3em] font-light mb-6 [will-change:opacity]"
-          >
-            AIRLINE FLIGHT DELAY PREDICTION
-          </motion.p>
-
-          {/* Split Sliding Headline */}
-          <motion.h1
-            style={{
-              opacity: shouldReduceMotion ? 1 : headlineOpacity,
-              filter: shouldReduceMotion ? 'none' : headlineFilter,
-            }}
-            className="font-serif-display font-normal text-white text-4xl sm:text-6xl md:text-8xl lg:text-9xl leading-[1.08] tracking-tight mb-8 relative [will-change:transform,opacity,filter]"
-          >
-            {/* Line 1: SEE THE DELAY (moves up -12vh during 30-60%) */}
-            <motion.span
-              style={{
-                y: shouldReduceMotion ? '0vh' : line1Y,
-              }}
-              className="block overflow-hidden py-1 [will-change:transform]"
-            >
-              <motion.span
-                initial={{ y: '110%' }}
-                animate={isReady ? { y: 0 } : { y: '110%' }}
-                transition={{
-                  duration: 1.1,
-                  delay: 0.1,
-                  ease: [0.16, 1, 0.3, 1],
-                }}
-                className="inline-block"
-              >
-                {line1Chars.map((char, i) => (
-                  <motion.span
-                    key={i}
-                    initial={{ filter: 'blur(8px)' }}
-                    animate={isReady ? { filter: 'blur(0px)' } : { filter: 'blur(8px)' }}
-                    transition={{
-                      duration: 0.6,
-                      delay: 0.15 + i * 0.02,
-                      ease: [0.16, 1, 0.3, 1],
-                    }}
-                    className="inline-block"
-                  >
-                    {char === ' ' ? '\u00A0' : char}
-                  </motion.span>
-                ))}
-              </motion.span>
-            </motion.span>
-
-            {/* Line 2: BEFORE IT HAPPENS (moves down +12vh during 30-60%) */}
-            <motion.span
-              style={{
-                y: shouldReduceMotion ? '0vh' : line2Y,
-              }}
-              className="block overflow-hidden py-1 [will-change:transform]"
-            >
-              <motion.span
-                initial={{ y: '110%' }}
-                animate={isReady ? { y: 0 } : { y: '110%' }}
-                transition={{
-                  duration: 1.1,
-                  delay: 0.22,
-                  ease: [0.16, 1, 0.3, 1],
-                }}
-                className="inline-block"
-              >
-                {line2Chars.map((char, i) => (
-                  <motion.span
-                    key={i}
-                    initial={{ filter: 'blur(8px)' }}
-                    animate={isReady ? { filter: 'blur(0px)' } : { filter: 'blur(8px)' }}
-                    transition={{
-                      duration: 0.6,
-                      delay: 0.25 + i * 0.02,
-                      ease: [0.16, 1, 0.3, 1],
-                    }}
-                    className="inline-block"
-                  >
-                    {char === ' ' ? '\u00A0' : char}
-                  </motion.span>
-                ))}
-              </motion.span>
-            </motion.span>
-          </motion.h1>
-
-          {/* Subtitle: visible 0-30% */}
-          <motion.p
-            style={{
-              opacity: shouldReduceMotion ? 1 : initialElementsOpacity,
-            }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={isReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.9, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="text-white/70 font-light leading-relaxed max-w-xs sm:max-w-md text-sm sm:text-base md:text-lg mb-10 mx-auto [will-change:opacity]"
-          >
-            Millions of historical flights, decoded to predict delays{' '}
-            <br className="hidden sm:inline" />
-            and reveal what truly causes them.
-          </motion.p>
-
-          {/* CTA Button: visible 0-30% */}
-          <motion.div
-            style={{
-              opacity: shouldReduceMotion ? 1 : initialElementsOpacity,
-              pointerEvents: shouldReduceMotion ? 'auto' : initialPointerEvents,
-            }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={isReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.8, delay: 0.65, ease: [0.16, 1, 0.3, 1] }}
-            className="[will-change:opacity]"
-          >
-            <MagneticButton
-              onClick={() => scrollTo('#predictor', { offset: 0, duration: 1.6 })}
-            >
-              Predict a Flight
-            </MagneticButton>
-          </motion.div>
-
-          {/* New Centered Serif Line revealed during 30-60%: "Millions of flights. One forecast." */}
-          {!shouldReduceMotion && (
-            <motion.div
-              style={{
-                opacity: serifLineOpacity,
-              }}
-              className="absolute inset-0 flex items-center justify-center pointer-events-none px-6 z-20 [will-change:opacity]"
-            >
-              <div className="overflow-hidden py-3">
-                <motion.p
-                  style={{
-                    y: serifLineY,
-                  }}
-                  className="font-serif-display italic text-3xl sm:text-5xl md:text-6xl lg:text-7xl text-white font-normal text-center tracking-tight leading-tight [will-change:transform]"
-                >
-                  Millions of flights. One forecast.
-                </motion.p>
-              </div>
-            </motion.div>
-          )}
-        </div>
-
-        {/* Scroll Hint: absolute bottom-8, visible 0-30% */}
-        <motion.div
-          style={{
-            opacity: shouldReduceMotion ? 1 : initialElementsOpacity,
-          }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center [will-change:opacity]"
+function Figures() {
+  const summary = useSummary();
+  if (summary.isError) {
+    return (
+      <ErrorBlock
+        error={summary.error}
+        label="the headline figures"
+        onRetry={() => void summary.refetch()}
+      />
+    );
+  }
+  if (!summary.data) {
+    return (
+      <div role="status">
+        <span className="sr-only">Loading headline figures</span>
+        <Skeleton className="h-16" />
+      </div>
+    );
+  }
+  const figures = [
+    { label: 'Delay rate', value: formatPercent(summary.data.delayRate), tone: 'text-delayed' },
+    { label: 'Cancel rate', value: formatPercent(summary.data.cancelRate, 2), tone: '' },
+    {
+      label: 'Avg arrival delay',
+      value: formatSignedMinutes(summary.data.avgArrDelay),
+      tone: '',
+    },
+  ];
+  return (
+    <dl className="grid grid-cols-3 border-y border-white/15">
+      {figures.map((figure, index) => (
+        <div
+          key={figure.label}
+          className={`py-3 ${index > 0 ? 'border-l border-white/10 pl-4' : ''}`}
         >
-          <div className="w-[1px] h-[48px] bg-white/40 relative overflow-hidden">
-            <motion.div
-              animate={{ y: [-4, 48], opacity: [0, 1, 0] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute top-0 left-[-1.5px] w-[4px] h-[8px] bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.9)]"
-            />
+          <dt className="text-xs text-ink-2">{figure.label}</dt>
+          <dd
+            className={`display-num mt-1 text-[clamp(1.5rem,4vw,2.25rem)] leading-none ${figure.tone}`}
+          >
+            {figure.value}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function Sentence() {
+  const meta = useMeta();
+  if (meta.isError) {
+    return (
+      <p className="text-ink-2" role="alert">
+        The dataset summary could not be loaded.{' '}
+        <button
+          type="button"
+          onClick={() => void meta.refetch()}
+          className="text-ink underline underline-offset-4"
+        >
+          Retry
+        </button>
+      </p>
+    );
+  }
+  if (!meta.data) {
+    return (
+      <div role="status">
+        <span className="sr-only">Loading dataset summary</span>
+        <Skeleton className="h-6 max-w-md" />
+      </div>
+    );
+  }
+  return (
+    <p className="max-w-[40ch] text-lg leading-relaxed text-ink sm:text-xl">
+      <span className="num">{formatInteger(meta.data.flights)}</span> US domestic flights from 2015,
+      stored in MongoDB and used to train a delay-prediction model.
+    </p>
+  );
+}
+
+/** The compact intro: one viewport, no scroll-jacking, then hand off to the dashboard. */
+export function HeroSection() {
+  const reduced = useReducedMotion() === true;
+  return (
+    <section className="relative isolate flex min-h-screen w-full items-end overflow-hidden bg-ground">
+      <div className="absolute inset-0 -z-10" aria-hidden="true">
+        <BackgroundVideo reduced={reduced} />
+        <div className="absolute inset-0 bg-black/55" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,rgba(0,0,0,0.1)_0%,rgba(0,0,0,0.8)_100%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-b from-transparent to-ground" />
+      </div>
+
+      <div className="mx-auto w-full max-w-[1440px] px-5 pb-12 pt-24 md:px-10 md:pb-16">
+        <div className="max-w-2xl space-y-6">
+          <h1 className="rise font-display text-[clamp(3rem,9vw,6rem)] font-normal leading-[0.98] text-balance">
+            Flight Delay Prediction
+          </h1>
+          <div className="rise space-y-6" style={{ animationDelay: '120ms' }}>
+            <Sentence />
+            <Figures />
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <Link
+                to="/overview"
+                className="inline-flex items-center rounded-full border border-rule-strong px-7 py-3 text-sm text-ink hover:bg-wash"
+              >
+                Open dashboard
+              </Link>
+              <Link
+                to="/predict"
+                className="inline-flex items-center rounded-full px-5 py-3 text-sm text-ink-2 underline-offset-4 hover:text-ink hover:underline"
+              >
+                Score a flight
+              </Link>
+            </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
-};
+}

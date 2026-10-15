@@ -1,36 +1,21 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <script>
-      (function() {
-        try {
-          var currentFetch = window.fetch;
-          var descriptor = {
-            get: function() { return currentFetch; },
-            set: function(val) { currentFetch = val; },
-            configurable: true,
-            enumerable: true
-          };
-          try { Object.defineProperty(window, 'fetch', descriptor); } catch (e) {}
-          try { Object.defineProperty(Window.prototype, 'fetch', descriptor); } catch (e) {}
-        } catch (_) {}
-      })();
-    </script>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Holding Pattern — Flight Delay Prediction</title>
-    <meta name="description" content="Millions of historical flights, decoded to predict delays and reveal what truly causes them." />
-    <meta property="og:title" content="Holding Pattern — Flight Delay Prediction" />
-    <meta property="og:description" content="Millions of historical flights, decoded to predict delays and reveal what truly causes them." />
+    <title>Flight Delay Prediction</title>
+    <meta name="description" content="US domestic flights from 2015 stored in MongoDB, analysed with aggregation pipelines, and used to train a model that scores whether a flight will arrive 15 or more minutes late." />
+    <meta property="og:title" content="Flight Delay Prediction" />
+    <meta property="og:description" content="A dashboard over the 2015 US domestic flights dataset: delay and cancellation analytics, a flight explorer, and a delay-prediction model with its test metrics." />
     <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#010101" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
   </head>
-  <body class="bg-[#010101] text-white antialiased overflow-x-clip selection:bg-white/20 selection:text-white">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
