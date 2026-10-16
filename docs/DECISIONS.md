@@ -570,3 +570,26 @@ The §12 `simulate:stream` is also not built.
 - **Not run:**
   - The `security-review` skill: it diffs against `origin/HEAD`, which is not set in this clone. The `vibe-security` audit above covered the same scope.
   - A test with `MongoServerSelectionError`: its constructor needs a topology description, so the test uses `MongoNetworkError`. Both classes go through the same branch.
+
+## Post-Phase 7 fix: Predict offered routes that cannot be scored (2026-10-16)
+
+**Problem (user report).** Many flights scored on the Predict page failed with "No 2015 flights on UST-SMX; distance and schedule are unknown" (422 `UNKNOWN_ROUTE`).
+- **Cause.** The form let any of the 322 origins be paired with any of 321 destinations. Only 4,695 routes were flown in 2015, and `/predict` needs a flown route for its distance and scheduled-time inputs (Phase 5). An origin averages 14.6 destinations (min 1, max 169), so roughly 95% of the pairs the form allowed could never be scored. UST, for example, only flew to TTN and IAD.
+- **The API was behaving as designed;** the form was offering invalid input.
+
+**Fix.**
+- **New endpoint** `GET /api/routes?origin=XXX`, which returns `{ origin, destinations: [{ dest, flights }] }` busiest first from `stats_route`.
+  - It reads a stats collection (4,695 docs): 13-17 ms cold over HTTP.
+  - It is validated with zod (bad code → 400), and an origin with no departures gives an empty list.
+  - It is added to the `explain:report` endpoint list.
+- **Predict form.** The Destination select now lists only those destinations, with flight counts. A destination the new origin never flew to falls back to its busiest route. That value is derived, not synced in an effect.
+- **Form states.** It shows a loading state, an error state with Retry, and an empty state. Submit is disabled until the routes have loaded.
+- **Not filtered:** the airline is still any of the 14. `stats_route` has no airline key, and the model scores airline and route independently.
+
+**Verified.**
+- A builder test, plus an integration test covering two origins, an origin with no departures, an invalid code and a missing code.
+- In the browser (Playwright, live API, desktop and mobile), the user's case scores:
+  - US, UST, 2015-12-22, 20:00 offers only TTN (166 flights) and IAD (3);
+  - UST→TTN scores 33.1%, "Likely delayed";
+  - ORD keeps LAX as its default among its 162 destinations.
+- `docs/screenshots/predict-*.png` were recaptured.

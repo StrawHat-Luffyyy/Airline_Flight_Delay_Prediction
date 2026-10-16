@@ -9,7 +9,7 @@ import {
 import { useMemo, useState, type FormEvent } from 'react';
 import { z } from 'zod';
 import { ApiError } from '../api/client';
-import { useMeta, usePredict } from '../api/hooks';
+import { useMeta, usePredict, useRoutes } from '../api/hooks';
 import { QueryState, Skeleton } from '../components/QueryState';
 import { FIELD_CLASS, Note, PageHeader, SelectField } from '../components/ui';
 import {
@@ -338,15 +338,30 @@ function PredictForm({
     () => [...meta.airports].sort((a, b) => a.code.localeCompare(b.code)),
     [meta.airports],
   );
+  const airportNames = useMemo(
+    () => new Map(meta.airports.map((airport) => [airport.code, airport.name])),
+    [meta.airports],
+  );
+
+  // Only routes flown in 2015 can be scored (/predict needs their distance and schedule), so the
+  // destination list comes from the origin's routes. A destination the new origin never flew to
+  // falls back to that origin's busiest route.
+  const routes = useRoutes(form.origin);
+  const destinations = routes.data?.destinations ?? [];
+  const dest = destinations.some((route) => route.dest === form.dest)
+    ? form.dest
+    : (destinations[0]?.dest ?? '');
+  const routesReady = routes.isSuccess && dest !== '';
 
   const set = (field: keyof FormState) => (value: string) =>
     setForm((current) => ({ ...current, [field]: value }));
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    const { errors: found, ok } = validate(form);
+    const current = { ...form, dest };
+    const { errors: found, ok } = validate(current);
     setErrors(found);
-    if (ok) onSubmit(toBody(form));
+    if (ok && routesReady) onSubmit(toBody(current));
   };
 
   return (
@@ -401,20 +416,46 @@ function PredictForm({
         </SelectField>
         <SelectField
           label="Destination"
-          value={form.dest}
+          value={dest}
           onChange={(event) => set('dest')(event.target.value)}
           error={errors.dest}
+          disabled={!routesReady}
         >
-          {airports.map((airport) => (
-            <option key={airport.code} value={airport.code}>
-              {airport.code} {airport.name}
+          {routesReady ? (
+            destinations.map((route) => (
+              <option key={route.dest} value={route.dest}>
+                {route.dest} {airportNames.get(route.dest) ?? ''} · {formatInteger(route.flights)}{' '}
+                flights
+              </option>
+            ))
+          ) : (
+            <option value="">
+              {routes.isPending
+                ? 'Loading routes…'
+                : routes.isError
+                  ? 'Routes unavailable'
+                  : `No 2015 departures from ${form.origin}`}
             </option>
-          ))}
+          )}
         </SelectField>
       </div>
-      <p className="-mt-2 text-[12px] text-ink-3">
-        Focus a list and type an airport code to jump to it.
-      </p>
+      {routes.isError ? (
+        <p className="-mt-2 text-[12px] text-cancelled" role="alert">
+          Could not load the routes from {form.origin}: {routes.error.message}{' '}
+          <button
+            type="button"
+            onClick={() => void routes.refetch()}
+            className="text-ink underline underline-offset-2"
+          >
+            Retry
+          </button>
+        </p>
+      ) : (
+        <p className="-mt-2 text-[12px] text-ink-3">
+          Destinations list only the routes flown from {form.origin} in 2015, busiest first (
+          {routesReady ? formatInteger(destinations.length) : '…'}). Type a code to jump to it.
+        </p>
+      )}
 
       <SelectField
         label="Scheduled departure hour"
@@ -431,7 +472,7 @@ function PredictForm({
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || !routesReady}
         className="liquid-glass w-full rounded-full px-6 py-3 text-sm text-ink transition-colors disabled:opacity-60"
       >
         {pending ? 'Scoring…' : 'Score this flight'}

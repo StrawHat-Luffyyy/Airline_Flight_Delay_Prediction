@@ -10,6 +10,7 @@ import {
   DelayRateResponseSchema,
   FlightsResponseSchema,
   HeatmapResponseSchema,
+  RoutesResponseSchema,
   MetaResponseSchema,
   SummaryResponseSchema,
   TrendResponseSchema,
@@ -408,6 +409,26 @@ describe('analytics API (MongoDB integration)', () => {
     expect(byHour.get(17)?.lateAircraftShare).toBeCloseTo(40 / 60);
     expect(byHour.get(20)?.totalMinutes).toBe(0);
     expect(byHour.get(20)?.lateAircraftShare).toBeNull();
+  });
+
+  it('routes: the destinations flown from an origin, busiest first', async (context) => {
+    if (!client) return context.skip();
+    // ATL -> JFK: DL flights 5, 6, 7 (Feb) and 9 (Oct, cancelled) = 4 flights. JFK -> LAX: AA 1-4.
+    expect(RoutesResponseSchema.parse(await get('/api/routes?origin=ATL'))).toEqual({
+      origin: 'ATL',
+      destinations: [{ dest: 'JFK', flights: 4 }],
+    });
+    expect(RoutesResponseSchema.parse(await get('/api/routes?origin=JFK')).destinations).toEqual([
+      { dest: 'LAX', flights: 4 },
+    ]);
+    // A valid code with no departures is an empty list, not an error.
+    expect(RoutesResponseSchema.parse(await get('/api/routes?origin=LAX')).destinations).toEqual(
+      [],
+    );
+    expect(
+      ((await get('/api/routes?origin=ab', 400)) as { error: { code: string } }).error.code,
+    ).toBe('VALIDATION_ERROR');
+    await get('/api/routes', 400);
   });
 
   it('heatmap: delay rate per (day of week, departure hour) cell', async (context) => {

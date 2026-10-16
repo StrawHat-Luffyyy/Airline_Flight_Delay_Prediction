@@ -22,6 +22,7 @@ import {
   TrendQuerySchema,
 } from '@flight-delay/shared';
 import { HEATMAP_SOURCE, heatmapPipeline } from '../analytics/heatmap.js';
+import { ROUTES_SOURCE, routesPipeline } from '../analytics/routes.js';
 
 export const API_LIMIT_MS = 1_000;
 
@@ -132,6 +133,11 @@ function checks(page2Cursor: string | null): ApiCheck[] {
       explain: aggregate(CANCELLATIONS_SOURCE, cancellationsPipeline({ by: 'airline' })),
     },
     { path: '/api/analytics/delay-distribution', source: 'stats_delay_buckets' },
+    {
+      path: '/api/routes?origin=ORD',
+      source: ROUTES_SOURCE,
+      explain: aggregate(ROUTES_SOURCE, routesPipeline({ origin: 'ORD' })),
+    },
     {
       path: '/api/analytics/heatmap',
       source: HEATMAP_SOURCE,

@@ -10,6 +10,7 @@ import {
   MetaResponseSchema,
   ModelMetricsResponseSchema,
   PredictResponseSchema,
+  RoutesResponseSchema,
   SummaryResponseSchema,
   TrendResponseSchema,
   type CancellationsQuery,
@@ -106,6 +107,15 @@ export function useDelayDistribution() {
         undefined,
         signal,
       ),
+  });
+}
+
+/** Destinations flown from `origin` in 2015, busiest first (only these can be scored). */
+export function useRoutes(origin: string) {
+  return useQuery({
+    queryKey: ['routes', origin],
+    enabled: origin !== '',
+    queryFn: ({ signal }) => apiGet('/api/routes', RoutesResponseSchema, { origin }, signal),
   });
 }
 
