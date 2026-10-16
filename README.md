@@ -107,6 +107,7 @@ Everything is under `/api`.
 | GET | `/analytics/cancellations` | `by=overall\|airline\|month` |
 | GET | `/analytics/delay-distribution` | Arrival-delay histogram (`$bucket`) |
 | GET | `/analytics/heatmap` | Delay rate per (day of week, scheduled hour) cell |
+| GET | `/routes` | `origin` (required): destinations flown from it in 2015 with flight counts, busiest first. The Predict form uses it, because only these routes can be scored |
 | GET | `/flights` | Requires one of `airline`, `origin`, `route`, or `from` + `to` (YYYY-MM-DD); `dest` only with `origin` or `route`; `limit` ≤ 100; `cursor` = the previous page's `nextCursor` |
 | POST | `/predict` | Body `{ date, airline, origin, dest, schedDepHour }` → `{ probability, label, threshold, modelVersion, derived, topFactors }` |
 | GET | `/model/metrics` | The `model_runs` document of the deployed model |

@@ -5,6 +5,7 @@ import { delayRatePipeline } from '../../src/analytics/delay-rate.js';
 import { causesPipeline } from '../../src/analytics/causes.js';
 import { trendPipeline, trendSource } from '../../src/analytics/series.js';
 import { heatmapPipeline } from '../../src/analytics/heatmap.js';
+import { routesPipeline } from '../../src/analytics/routes.js';
 import { STATS_BUILDS } from '../../src/stats/builders.js';
 
 const stageNames = (pipeline: object[]): string[] =>
@@ -54,6 +55,14 @@ describe('stats build pipelines', () => {
 });
 
 describe('read pipelines', () => {
+  it('reads one origin routes, busiest first, with a stable tiebreak', () => {
+    expect(routesPipeline({ origin: 'ORD' })).toEqual([
+      { $match: { origin: 'ORD' } },
+      { $sort: { flights: -1, dest: 1 } },
+      { $project: { _id: 0, dest: 1, flights: 1 } },
+    ]);
+  });
+
   it('reads heatmap cells in day-of-week, hour order without _id', () => {
     expect(heatmapPipeline()).toEqual([
       { $sort: { dow: 1, hour: 1 } },

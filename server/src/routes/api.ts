@@ -5,6 +5,7 @@ import {
   CausesQuerySchema,
   DelayRateQuerySchema,
   FlightsQuerySchema,
+  RoutesQuerySchema,
   TrendQuerySchema,
   type DataQuality,
 } from '@flight-delay/shared';
@@ -13,6 +14,7 @@ import { loadDataQuality, loadLabels, type Labels } from '../analytics/common.js
 import { getDelayRate } from '../analytics/delay-rate.js';
 import { getFlights } from '../analytics/flights.js';
 import { getHeatmap } from '../analytics/heatmap.js';
+import { getRoutes } from '../analytics/routes.js';
 import { getMeta } from '../analytics/meta.js';
 import {
   getCancellations,
@@ -99,6 +101,11 @@ export function apiRouter({ getDb, cacheTtlMs }: ApiRouterOptions): Router {
 
   router.get('/analytics/delay-distribution', async (_request, response) => {
     response.json(await cached('delay-distribution', () => getDelayDistribution(getDb())));
+  });
+
+  router.get('/routes', async (request, response) => {
+    const query = parseQuery(RoutesQuerySchema, request.query);
+    response.json(await cached(`routes:${query.origin}`, () => getRoutes(getDb(), query)));
   });
 
   // Raw flight browsing is index-backed and paginated, so it is not cached.

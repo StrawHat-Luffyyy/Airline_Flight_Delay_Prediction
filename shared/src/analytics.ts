@@ -34,6 +34,12 @@ export const CancellationsQuerySchema = z.object({
 });
 export type CancellationsQuery = z.infer<typeof CancellationsQuerySchema>;
 
+/** GET /routes: the destinations flown from one origin (feeds the Predict form). */
+export const RoutesQuerySchema = z.object({
+  origin: z.string().regex(AIRPORT_CODE, 'origin must be a 3-character IATA code'),
+});
+export type RoutesQuery = z.infer<typeof RoutesQuerySchema>;
+
 // ---------- Response schemas ----------
 
 const rate = z.number().nullable();
@@ -218,6 +224,16 @@ export const HeatmapResponseSchema = z.object({
   cells: z.array(HeatmapCellSchema),
 });
 export type HeatmapResponse = z.infer<typeof HeatmapResponseSchema>;
+
+/**
+ * Destinations with at least one 2015 flight from `origin`, busiest first. Only these routes have
+ * the distance and scheduled time /predict needs (any other pair answers 422 UNKNOWN_ROUTE).
+ */
+export const RoutesResponseSchema = z.object({
+  origin: z.string(),
+  destinations: z.array(z.object({ dest: z.string(), flights: z.number() })),
+});
+export type RoutesResponse = z.infer<typeof RoutesResponseSchema>;
 
 export const MetaResponseSchema = z.object({
   flights: z.number(),
