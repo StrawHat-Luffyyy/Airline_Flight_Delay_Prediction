@@ -614,3 +614,33 @@ The user asked for this. The scope is the `/` hero only; it keeps the incumbent 
 **Not done.** Reaching a small hero bundle would need a different split: a CSS-only entrance in the eager chunk, plus a lazily loaded Motion layer for parallax, the scroll stage and the magnetic button. That is offered to the user as a follow-up.
 
 **Bug found and fixed during the build.** Motion moves array-mapped `useTransform(scrollYProgress, …)` opacity onto a native ViewTimeline. On the sticky stage its range was wrong: the content faded and then snapped back to opacity 1, and the hand-off never appeared. Function transforms keep these values on Motion's JS path. The hero also uses `m` components under `LazyMotion` with `domAnimation`.
+
+### Intro hero: CSS entrance and a lazy Motion layer (2026-10-16, follow-up)
+
+**The user asked for this after the first hero commit.** The split is:
+- **Eager path, with no animation library:**
+  - CSS keyframes play the headline mask, the path draw and the background loops;
+  - the Web Animations API plays the rise and hairline entrances;
+  - requestAnimationFrame drives the count-ups and the plane loop.
+- **Lazy chunk:** `web/src/components/hero/enhance.ts` (4.4 KB gzip plus a shared 9.5 KB Motion core) loads once the browser is idle after first paint. It adds mouse parallax, the scroll stage with its hand-off, and the magnetic primary action, using Motion's framework-free API (`motionValue`, `springValue`, `styleEffect`, `scroll`).
+- **Reduced motion:** the Motion chunk is never requested; verified in Playwright, 0 requests.
+
+**Bundle sizes, corrected.** Eager JS = the entry chunk plus the chunks `index.html` preloads, gzip:
+
+| Build | Eager JS (gzip) |
+|---|---|
+| Before the hero work | 124.8 KB (84.1 KB entry + a preloaded 40.7 KB chunk) |
+| First hero commit (`f64f4b0`) | 172.7 KB |
+| Now | 128.2 KB |
+
+The earlier entry for this upgrade quoted 85.0 KB → 174.7 KB. That compared the entry chunk alone and missed the preloaded chunk, so the real first-commit increase was +47.9 KB, not +90 KB. After this change the hero costs +3.3 KB eager.
+
+**Bug found while verifying.** Motion's framework-free `scroll(cb, { target, offset })` is driven by a native ViewTimeline that mis-ranges this sticky stage: progress stalled at 0.5 at the bottom of the scroll. A two-argument callback stays on Motion's JS path, and progress is now computed from `info.y.current` and the stage's offset and height.
+
+**Verified** in Playwright with the tab in front. A backgrounded Playwright tab is throttled to 1-3 fps, which first looked like a page performance problem; the unchanged Overview page measured the same.
+- **Entrance:** all stats in by +1.5 s.
+- **Scroll stage:** content opacity 1.00 at 0, 0.00 at 360 px, and 0.00 at 720 px with `inert`. The hand-off is at 0.67 at 540 px and 1.00 at 720 px. The background reaches scale 1.08 and blur 6px. The cue hides while scrolling and returns at the top.
+- **Parallax and magnet:** transforms apply.
+- **Layout:** no overflow and CTAs inside the first viewport at 1440, 768 and 390 px; no console errors.
+
+**LCP.** The headline paints first, at about 310-400 ms on the dev server. Chrome's final LCP element is now the subline paragraph, at about 760-880 ms: it is a larger text block, and it becomes visible at its scheduled 0.45 s entrance. Neither waits on the video, which is created on idle. Making the headline the LCP element again would mean one text block for the headline, which loses the line-by-line mask. That trade-off was left to the user.

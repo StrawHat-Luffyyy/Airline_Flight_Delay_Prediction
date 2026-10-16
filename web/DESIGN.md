@@ -331,9 +331,13 @@ Data that arrives late joins the sequence at its remaining delay; it never repla
 - a hairline scroll cue with a travelling segment appears at 1.8 s and scrolls to the hand-off.
 
 **Constraints.**
-- Scroll-linked values use function transforms: Motion's native ViewTimeline acceleration mis-ranged the sticky stage.
-- Motion components are `m.*` under `LazyMotion` with `domAnimation`.
-- Under `prefers-reduced-motion` the page is a plain one-viewport hero. Values are final immediately, the poster replaces the video, and there is no parallax, plane, scroll stage or cue.
+- **Eager path, no animation library.** It uses:
+  - CSS keyframes for the headline mask and the path draw;
+  - the Web Animations API for the rise and hairline entrances;
+  - requestAnimationFrame for the count-ups and the plane loop.
+- **Lazy layer.** `web/src/components/hero/enhance.ts` imports Motion's framework-free API once the browser is idle after first paint, and adds mouse parallax, the scroll stage and the magnetic action to the rendered elements.
+- **Scroll progress** comes from the page offset through a two-argument `scroll()` callback, on Motion's JS path. A `target`-based scroll is driven by a native ViewTimeline that mis-ranges the sticky stage.
+- **Under `prefers-reduced-motion`** the page is a plain one-viewport hero. Values are final immediately and the poster replaces the video. There is no parallax, plane, scroll stage or cue, and the Motion chunk is never requested.
 
 ## Do's and Don'ts
 

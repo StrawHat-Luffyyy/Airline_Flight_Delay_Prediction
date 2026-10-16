@@ -1,40 +1,18 @@
-import { m, useMotionValue, useSpring } from 'motion/react';
 import { ArrowRight, Plane } from 'lucide-react';
-import type { PointerEvent } from 'react';
+import type { RefObject } from 'react';
 import { Link } from 'react-router';
-import { HERO, MAGNET_SPRING } from '../../lib/motion';
+import { HERO } from '../../lib/motion';
 import { useEntrance } from './entrance';
 
-/** How far the primary button may follow the cursor, in px. */
-const MAGNET_MAX = 6;
-const MAGNET_PULL = 0.18;
-
-const finePointer = (): boolean => window.matchMedia('(pointer: fine)').matches;
-
-/** Primary action: leans toward the cursor (fine pointers only), arrow slides in, edge brightens. */
-function OpenDashboard({ reduced }: { reduced: boolean }) {
-  const x = useSpring(useMotionValue(0), MAGNET_SPRING);
-  const y = useSpring(useMotionValue(0), MAGNET_SPRING);
-
-  const follow = (event: PointerEvent<HTMLAnchorElement>) => {
-    if (reduced || event.pointerType !== 'mouse' || !finePointer()) return;
-    const box = event.currentTarget.getBoundingClientRect();
-    const dx = (event.clientX - (box.left + box.width / 2)) * MAGNET_PULL;
-    const dy = (event.clientY - (box.top + box.height / 2)) * MAGNET_PULL;
-    x.set(Math.max(-MAGNET_MAX, Math.min(MAGNET_MAX, dx)));
-    y.set(Math.max(-MAGNET_MAX, Math.min(MAGNET_MAX, dy)));
-  };
-  const release = () => {
-    x.set(0);
-    y.set(0);
-  };
-
+/**
+ * Primary action. The arrow slide-in and brighter edge are CSS; the magnetic lean toward the
+ * cursor is added later by the lazy enhancer, which drives `magnetRef` (fine pointers only).
+ */
+function OpenDashboard({ magnetRef }: { magnetRef: RefObject<HTMLDivElement | null> }) {
   return (
-    <m.div style={{ x, y }}>
+    <div ref={magnetRef}>
       <Link
         to="/overview"
-        onPointerMove={follow}
-        onPointerLeave={release}
         className="group relative inline-flex items-center rounded-full border border-rule-strong py-3 pl-7 pr-7 text-sm text-ink active:scale-[0.98]"
       >
         {/* Brighter edge on hover/focus: an overlay ring fading in (opacity only). */}
@@ -52,7 +30,7 @@ function OpenDashboard({ reduced }: { reduced: boolean }) {
           className="absolute right-4 -translate-x-1.5 opacity-0 transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100"
         />
       </Link>
-    </m.div>
+    </div>
   );
 }
 
@@ -80,17 +58,22 @@ function ScoreAFlight() {
   );
 }
 
-export function HeroActions({ reduced }: { reduced: boolean }) {
-  const [rowRef, rowStyle] = useEntrance<HTMLDivElement>(
+export function HeroActions({
+  reduced,
+  magnetRef,
+}: {
+  reduced: boolean;
+  magnetRef: RefObject<HTMLDivElement | null>;
+}) {
+  const [rowRef, rowEnter] = useEntrance<HTMLDivElement>(
+    'hero-rise',
     HERO.buttonsAt,
-    { opacity: [0, 1], y: [10, 0] },
     HERO.buttonsDuration,
     reduced,
-    { opacity: 0 },
   );
   return (
-    <div ref={rowRef} style={rowStyle} className="flex flex-wrap items-center gap-2 pt-2">
-      <OpenDashboard reduced={reduced} />
+    <div ref={rowRef} className={`flex flex-wrap items-center gap-2 pt-2 ${rowEnter}`}>
+      <OpenDashboard magnetRef={magnetRef} />
       <ScoreAFlight />
     </div>
   );
