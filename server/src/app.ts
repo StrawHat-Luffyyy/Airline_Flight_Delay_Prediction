@@ -1,8 +1,13 @@
 import cors from 'cors';
+import { rateLimit } from 'express-rate-limit';
 import express from 'express';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
-import { HealthResponseSchema, type HealthResponse } from '@flight-delay/shared';
+import {
+  HealthResponseSchema,
+  type ErrorResponse,
+  type HealthResponse,
+} from '@flight-delay/shared';
 import { env } from './config/env.js';
 import type { Db } from 'mongodb';
 import { getDb, pingMongo } from './db/client.js';
@@ -26,7 +31,12 @@ export interface AppOptions {
   model?: DelayModel | null;
   /** What /predict reads from MongoDB; defaults to the collections behind getDb. */
   referenceData?: ReferenceData;
+  /** Per-IP limit on POST /api/predict; defaults to PREDICT_RATE_LIMIT_PER_MIN per minute. */
+  predictRateLimit?: { limit: number; windowMs: number };
 }
+
+/** Bodies are tiny (/predict sends five fields, about 100 bytes); anything larger is refused. */
+const JSON_LIMIT = '10kb';
 
 export function createApp(options: AppOptions = {}) {
   const app = express();
@@ -38,7 +48,34 @@ export function createApp(options: AppOptions = {}) {
   app.use(pinoHttp({ logger }));
   app.use(helmet());
   app.use(cors({ origin: options.corsOrigin ?? env.CORS_ORIGIN }));
-  app.use(express.json());
+  // Rate-limit the one CPU-bound endpoint (6 ONNX rows + 4 DB reads per call), before body parsing so
+  // oversized or malformed bodies count too. In memory is enough for one local process (§9: no
+  // Redis). `trust proxy` is deliberately unset: the API is not behind a proxy, so the key is the
+  // socket address; behind one, every client would share a key.
+  const predictLimit = options.predictRateLimit ?? {
+    limit: env.PREDICT_RATE_LIMIT_PER_MIN,
+    windowMs: 60_000,
+  };
+  app.post(
+    '/api/predict',
+    rateLimit({
+      ...predictLimit,
+      standardHeaders: 'draft-7',
+      legacyHeaders: false,
+      handler: (_request, response, _next, limiterOptions) => {
+        // express-rate-limit has already set Retry-After to the time left in the window.
+        const body: ErrorResponse = {
+          error: {
+            code: 'RATE_LIMITED',
+            message: `Too many predictions: at most ${limiterOptions.limit} per ${Math.round(limiterOptions.windowMs / 1000)} s. Try again shortly.`,
+          },
+        };
+        response.status(429).json(body);
+      },
+    }),
+  );
+
+  app.use(express.json({ limit: JSON_LIMIT }));
 
   app.get('/api/health', async (_request, response) => {
     const mongoIsUp = await checkMongo();

@@ -80,7 +80,7 @@ export interface IngestRunDoc {
   finishedAt: Date;
   file: string;
   status: 'completed' | 'failed';
-  mode: 'drop' | 'append' | 'fresh';
+  mode: 'drop' | 'append' | 'fresh' | 'reference';
   rowsRead: number;
   rowsInserted: number;
   rowsRejected: number;

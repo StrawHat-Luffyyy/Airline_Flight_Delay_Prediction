@@ -11,6 +11,10 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']),
   // Browser origin allowed by CORS. The Vite dev server proxies /api, so this only matters for direct calls.
   CORS_ORIGIN: z.string().url().default('http://localhost:5173'),
+  // Interface the API binds to. Loopback by default: the app is local-only (PROJECT_OVERVIEW §2).
+  HOST: z.string().min(1).default('127.0.0.1'),
+  // POST /api/predict requests per client IP per minute (the only write-like, CPU-bound endpoint).
+  PREDICT_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(10_000).default(30),
 });
 
 export type Env = z.infer<typeof envSchema>;

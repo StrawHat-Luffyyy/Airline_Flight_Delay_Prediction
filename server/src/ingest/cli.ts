@@ -8,6 +8,13 @@ async function main(): Promise<void> {
   await connectToMongo();
   const summary = await runIngest(getDb(), args, logger);
   const { flights } = summary;
+  if (!flights) {
+    logger.info(
+      { airlines: summary.airlines.rowsInserted, airports: summary.airports.rowsInserted },
+      'Reference data reloaded (flights untouched)',
+    );
+    return;
+  }
   logger.info(
     {
       airlines: summary.airlines.rowsInserted,

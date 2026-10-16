@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      # The integration tests seed their own small databases (flight_delay_*_test) here;
+      # without a reachable MongoDB they skip instead of running.
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Fail fast if the service is unreachable: the integration tests would otherwise skip silently.
+      - name: Check MongoDB is reachable
+        working-directory: server
+        run: >-
+          node -e "const { MongoClient } = require('mongodb');
+          MongoClient.connect('mongodb://127.0.0.1:27017', { serverSelectionTimeoutMS: 30000 })
+          .then(async (c) => { await c.db('admin').command({ ping: 1 }); await c.close(); console.log('mongo ok'); })
+          .catch((e) => { console.error(e.message); process.exit(1); })"
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+      - run: npm run build -w @flight-delay/web
