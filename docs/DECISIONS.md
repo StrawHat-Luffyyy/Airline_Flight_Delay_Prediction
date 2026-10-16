@@ -489,3 +489,84 @@ Every number shown comes from the API.
   - `web/` was not linted.
 - The re-rank lamp was verified live: 14 rows lit after Worst→Best on Explorer.
 - **Screenshots.** 16 full-page PNGs: six pages plus the Predict result and the route-flights panel, each at desktop and mobile width. They are quantised to 256 colours (ffmpeg `palettegen` and `paletteuse`, no dither): 1.4 MB total, down from 2.9 MB.
+
+## Phase 7: hardening and docs (2026-10-16)
+
+**Hardening.** All changes were made test-first (`server/tests/hardening.test.ts`).
+- **Rate limit on `POST /api/predict`.**
+  - It uses `express-rate-limit` 8.7.0 with an in-memory store (one local process; §9 says no Redis).
+  - The limit is per client IP: `PREDICT_RATE_LIMIT_PER_MIN` per minute, default 30. It is the only CPU-bound endpoint: 6 ONNX rows and 4 MongoDB reads per call.
+  - Over the limit it answers `429 RATE_LIMITED` in the usual error shape, with RFC draft-7 `RateLimit` / `RateLimit-Policy` headers and the library's `Retry-After` (time left in the window).
+  - Read endpoints are not limited: they are cached reads of small stats collections.
+- **MongoDB outage → `503 DATABASE_UNAVAILABLE`,** not a generic 500. This covers `MongoServerSelectionError` and `MongoNetworkError`. The driver message (which can name hosts) is logged, not returned.
+- **JSON body limit 10 kB** (was the 100 kB default). A `/predict` body is about 100 bytes.
+- **Loopback by default.** The API binds to `HOST`, default `127.0.0.1`; set `0.0.0.0` to expose it. `vite` no longer runs with `--host=0.0.0.0`. Before this change the API, and through the Vite proxy the whole app, was reachable from any machine on the local network, although §2 says everything runs locally.
+- **Secrets scan.** No secret is tracked. `.env` and `atlas-credentials.env` are git-ignored and have never been committed.
+- **Live checks** against the running API on the full data:
+  - it listens on `127.0.0.1:3001` only;
+  - requests 1-30 return 200 and request 31 returns 429 (`RateLimit: limit=30, remaining=0, reset=55`), while `/api/meta` stays 200;
+  - with the MongoDB container stopped, data endpoints return 503 after about 5 s (the driver's server-selection timeout) and `/health` returns `degraded`;
+  - after `docker compose start mongo` the API recovered without a restart.
+
+**Airport names: the Phase 6 "data quirk" is fixed at ingest.**
+- 36 airport names in `airports.csv` contain a non-breaking space (bytes `C2 A0`, e.g. JFK), not a U+FFFD replacement character as Phase 6 assumed.
+- `transformAirportRow` / `transformAirlineRow` now collapse whitespace runs, including NBSP, to one space.
+- **New flag:** `npm run ingest -- --reference-only` reloads `airlines` and `airports` (upsert by code, logged in `ingest_runs` with mode `reference`) and never touches `flights`. Airport names are not denormalised into flights; only city and state are, and those had no NBSP.
+- After the reload, 0 of 322 airports had an NBSP or a double space. The dashboard's display-side workaround was removed.
+
+**CI.** `.github/workflows/ci.yml` (§14) runs on pushes to `main` and on pull requests, on Node 22 with a `mongo:7` service:
+- `npm ci`, typecheck, lint, format check;
+- `npm test`, where the integration tests run against the service instead of skipping;
+- the web build.
+
+`npm ci --dry-run` resolves cleanly from the lockfile. The workflow has not run on GitHub yet: nothing has been pushed in this session.
+
+**The README run steps were reproduced from scratch** on the full dataset, run in order exactly as the README documents them:
+
+| Step | Command | Exit | Time (s) |
+|---|---|---|---|
+| 1 | `ingest -- --drop` | 0 | 429 |
+| 2 | `resolve:airport-ids -- --apply` | 0 | 128 |
+| 3 | `build:indexes` | 0 | 155 |
+| 4 | `build:stats` | 0 | 220 |
+| 5 | `build:lookup` | 0 | 70 |
+| 6 | `ml:register` | 0 | 5 |
+
+- These times are slower than the earlier measurements because other jobs were sharing the machine (296 s for the earlier ingest).
+- The rebuilt database matches the one before the drop exactly:
+  - 5,819,079 flights, 8 indexes, 903.3 MB storage;
+  - every `stats_*` count, 36,420 `delay_lookup` entries and 249,130 cells;
+  - 3,147 flights with an unresolved airport.
+- `/api/predict` for ORD→LAX 17:00 on 2015-12-21 returned the same probability as in Phase 5 (0.3136).
+- Model training (`export:training`, `ml/train.py`) was not re-run: the committed artifacts are the deployed model.
+
+**Docs.**
+- **README:** exact run steps from a fresh clone, the full API table (now with `/analytics/heatmap`, `/predict` and `/model/*`), configuration and troubleshooting.
+- **`docs/BIGDATA_JUSTIFICATION.md`** covers §12 point by point. It was written by the `report-writer` agent from measured evidence.
+  - **Velocity** is described as supported by the design but **not demonstrated**: the optional `simulate:stream` was not built.
+  - **Sharding** is design only: the optional sharded compose file was not built.
+- **`docs/SCHEMA.md`:** all 19 collections, the fields, and each index with the query it serves.
+- **Size correction.** Phase 3 gave `stats_daily_origin` as "25.3 MB". It now measures 117.53 MB uncompressed (`collStats.size`) and 39.9 MB on disk (`storageSize`). Which size metric produced the Phase 3 figure was not recorded, so it is superseded by these two measurements. Units: the new docs use MB = 10^6 bytes, while EXPLAIN_RESULTS uses MiB.
+
+**Stretch goals not done (§11 Phase 7, optional):**
+- the sharded compose file;
+- scheduled `build:stats`;
+- SHAP-style per-prediction explanations. `/predict` keeps the occlusion factors from Phase 5.
+
+The §12 `simulate:stream` is also not built.
+
+**Phase 7 review (ts-reviewer: no must-fix items). Follow-ups applied:**
+- The `/predict` limiter now runs **before** JSON parsing, so malformed or oversized bodies count against the limit (tested). `trust proxy` stays unset on purpose: the app has no proxy in front of it.
+- The Vite proxy targets `http://127.0.0.1:3001`, matching the loopback-only API, so there is no `localhost` → `::1` ambiguity.
+- CI has a step that fails when the MongoDB service cannot be pinged, so integration tests can no longer pass by skipping. It also cancels superseded runs (`concurrency`).
+- `--reference-only` resolves `flights.csv` only after its early return.
+- A new test checks that an outage gives a 503 through the full `createApp` stack, not only through the error handler.
+- **Doc figures unified:**
+  - flights storage 903.3 MB, measured after the rebuild;
+  - analytics medians 5-39 ms, `/api/meta` 53 ms (EXPLAIN_RESULTS);
+  - both `--drop` ingest runs cited (296 s and 421 s);
+  - the partial-index comparison names its five indexes;
+  - the host specs and the data-directory size cite how they were read.
+- **Not run:**
+  - The `security-review` skill: it diffs against `origin/HEAD`, which is not set in this clone. The `vibe-security` audit above covered the same scope.
+  - A test with `MongoServerSelectionError`: its constructor needs a topology description, so the test uses `MongoNetworkError`. Both classes go through the same branch.

@@ -26,13 +26,6 @@ const MIN_DATE = '2015-01-01';
 const MAX_DATE = '2015-12-31';
 const HOURS = Array.from({ length: 24 }, (_unused, hour) => hour);
 
-const UNPRINTABLE = new RegExp('[\uFFFD\u00A0]+', 'g');
-
-/** Airport names in the source data can carry a stray replacement character. */
-function cleanName(name: string): string {
-  return name.replace(UNPRINTABLE, ' ').replace(/\s+/g, ' ').trim();
-}
-
 type FieldName = 'date' | 'airline' | 'origin' | 'dest' | 'schedDepHour';
 type FieldErrors = Partial<Record<FieldName, string>>;
 
@@ -123,6 +116,15 @@ function describeError(error: Error): { title: string; body: string } {
     }
     if (error.code === 'UNKNOWN_CODE' || error.code === 'UNKNOWN_ROUTE') {
       return { title: 'The model has no data for that selection', body: error.message };
+    }
+    if (error.code === 'RATE_LIMITED') {
+      return { title: 'Too many predictions in a row', body: error.message };
+    }
+    if (error.code === 'DATABASE_UNAVAILABLE') {
+      return {
+        title: 'The database is unavailable',
+        body: 'Check that MongoDB is running (docker compose up -d mongo), then try again.',
+      };
     }
     if (error.code === 'MODEL_UNAVAILABLE') {
       return {
@@ -393,7 +395,7 @@ function PredictForm({
         >
           {airports.map((airport) => (
             <option key={airport.code} value={airport.code}>
-              {airport.code} {cleanName(airport.name)}
+              {airport.code} {airport.name}
             </option>
           ))}
         </SelectField>
@@ -405,7 +407,7 @@ function PredictForm({
         >
           {airports.map((airport) => (
             <option key={airport.code} value={airport.code}>
-              {airport.code} {cleanName(airport.name)}
+              {airport.code} {airport.name}
             </option>
           ))}
         </SelectField>

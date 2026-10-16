@@ -23,8 +23,8 @@ async function start(): Promise<void> {
   await connectToMongo();
   const model = await loadModelOrNull();
   const app = createApp({ model });
-  const server = app.listen(env.PORT, () => {
-    logger.info({ port: env.PORT }, 'Flight delay API listening');
+  const server = app.listen(env.PORT, env.HOST, () => {
+    logger.info({ host: env.HOST, port: env.PORT }, 'Flight delay API listening');
   });
 
   const shutdown = (): void => {

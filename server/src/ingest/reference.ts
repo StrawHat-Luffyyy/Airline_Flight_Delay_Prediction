@@ -13,9 +13,14 @@ const AirportRowSchema = z.object({
   LONGITUDE: z.string(),
 });
 
+/** Collapses whitespace runs, including the non-breaking spaces in airports.csv, to one space. */
+function cleanText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
 function textOrNull(value: string): string | null {
-  const trimmed = value.trim();
-  return trimmed === '' ? null : trimmed;
+  const cleaned = cleanText(value);
+  return cleaned === '' ? null : cleaned;
 }
 
 function coordinate(value: string): number | null {
@@ -29,7 +34,7 @@ export function transformAirlineRow(raw: unknown): AirlineDoc | null {
   const parsed = AirlineRowSchema.safeParse(raw);
   if (!parsed.success) return null;
   const code = parsed.data.IATA_CODE.trim();
-  const name = parsed.data.AIRLINE.trim();
+  const name = cleanText(parsed.data.AIRLINE);
   return code === '' || name === '' ? null : { _id: code, name };
 }
 
@@ -42,7 +47,7 @@ export function transformAirportRow(raw: unknown): AirportDoc | null {
   if (code === '') return null;
   return {
     _id: code,
-    name: row.AIRPORT.trim(),
+    name: cleanText(row.AIRPORT),
     city: textOrNull(row.CITY),
     state: textOrNull(row.STATE),
     country: textOrNull(row.COUNTRY),

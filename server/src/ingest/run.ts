@@ -196,12 +196,13 @@ async function* acceptedFlights(
 export interface IngestSummary {
   airlines: IngestRunDoc;
   airports: IngestRunDoc;
-  flights: IngestRunDoc;
+  /** null for --reference-only, which never reads flights.csv. */
+  flights: IngestRunDoc | null;
 }
 
 export async function runIngest(db: Db, args: IngestArgs, logger: Logger): Promise<IngestSummary> {
   const dir = args.dir ?? DEFAULT_DATA_DIR;
-  const flightsFile = requireFile(dir, 'flights.csv');
+  const referenceOnly = args.mode === 'reference';
   const airlinesFile = requireFile(dir, 'airlines.csv');
   const airportsFile = requireFile(dir, 'airports.csv');
   const flights = collections.flights(db);
@@ -230,6 +231,10 @@ export async function runIngest(db: Db, args: IngestArgs, logger: Logger): Promi
     { airlines: airlines.run.rowsInserted, airports: airports.run.rowsInserted },
     'Loaded reference data',
   );
+  // Airport names are not denormalised into flights (only city/state, from the same rows), so a
+  // reference reload never leaves flights stale for name fixes.
+  if (referenceOnly) return { airlines: airlines.run, airports: airports.run, flights: null };
+  const flightsFile = requireFile(dir, 'flights.csv');
 
   if (args.mode === 'drop' && hasFlights) {
     await flights.drop();

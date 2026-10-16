@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
+import { MongoNetworkError, MongoServerSelectionError } from 'mongodb';
 import type { ErrorResponse } from '@flight-delay/shared';
 import { InvalidCursorError } from '../analytics/flights.js';
 import { logger } from '../logger.js';
@@ -61,6 +62,12 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, _request, resp
   }
   if (error instanceof InvalidCursorError) {
     response.status(400).json(errorBody('VALIDATION_ERROR', error.message));
+    return;
+  }
+  if (error instanceof MongoServerSelectionError || error instanceof MongoNetworkError) {
+    // The driver message can carry hosts; log it, answer generically.
+    logger.error({ err: error }, 'MongoDB unavailable');
+    response.status(503).json(errorBody('DATABASE_UNAVAILABLE', 'The database is unavailable'));
     return;
   }
   const status = clientErrorStatus(error);

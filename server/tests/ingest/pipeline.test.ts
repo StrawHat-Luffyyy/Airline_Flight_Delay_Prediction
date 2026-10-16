@@ -44,6 +44,25 @@ describe('reference rows', () => {
     expect(transformAirlineRow({ IATA_CODE: '', AIRLINE: 'x' })).toBeNull();
   });
 
+  it('normalises non-breaking and repeated spaces in reference text (JFK row in airports.csv)', () => {
+    const jfk = transformAirportRow({
+      IATA_CODE: 'JFK',
+      AIRPORT: 'John F. Kennedy International Airport (New York International Airport)',
+      CITY: 'New  York',
+      STATE: 'NY',
+      COUNTRY: 'USA',
+      LATITUDE: '40.63975',
+      LONGITUDE: '-73.77893',
+    });
+    expect(jfk?.name).toBe(
+      'John F. Kennedy International Airport (New York International Airport)',
+    );
+    expect(jfk?.city).toBe('New York');
+    expect(transformAirlineRow({ IATA_CODE: 'AA', AIRLINE: 'American Airlines Inc.' })?.name).toBe(
+      'American Airlines Inc.',
+    );
+  });
+
   it('maps airports.csv rows and keeps blank coordinates as null', () => {
     expect(
       transformAirportRow({
@@ -87,5 +106,18 @@ describe('parseIngestArgs', () => {
     expect(() => parseIngestArgs(['--drop', '--append'])).toThrow(/either --drop or --append/);
     expect(() => parseIngestArgs(['--limit', '0'])).toThrow(/--limit/);
     expect(() => parseIngestArgs(['--force'])).toThrow(/Unknown argument/);
+  });
+
+  it('accepts --reference-only alone (reloads airlines and airports, never flights)', () => {
+    expect(parseIngestArgs(['--reference-only'])).toMatchObject({ mode: 'reference' });
+    expect(parseIngestArgs(['--reference-only', '--dir', 'D:/data'])).toMatchObject({
+      mode: 'reference',
+      dir: 'D:/data',
+    });
+    expect(() => parseIngestArgs(['--reference-only', '--drop'])).toThrow(/--reference-only/);
+    expect(() => parseIngestArgs(['--reference-only', '--append'])).toThrow(/--reference-only/);
+    expect(() => parseIngestArgs(['--reference-only', '--limit', '10'])).toThrow(
+      /--reference-only/,
+    );
   });
 });
