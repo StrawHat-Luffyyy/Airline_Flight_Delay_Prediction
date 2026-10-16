@@ -593,3 +593,24 @@ The §12 `simulate:stream` is also not built.
   - UST→TTN scores 33.1%, "Likely delayed";
   - ORD keeps LAX as its default among its 162 destinations.
 - `docs/screenshots/predict-*.png` were recaptured.
+
+## Intro hero upgrade (2026-10-16)
+
+The user asked for this. The scope is the `/` hero only; it keeps the incumbent identity and its copy and numbers.
+- **Background.** It is a living dusk background: footage, two drifting cloud bands, a breathing sun, grain, and a flight-path arc with a looping plane on the right. Mouse parallax applies on desktop only.
+- **Entrance.** A single entrance sequence finishes by 1.7 s, with count-ups that cannot cause layout jitter.
+- **Interactions.** These are the magnetic primary action, the underline and plane on the secondary one, and stat tooltips. The tooltips are worded from the backend formulas (`DERIVED_RATES`) and show real counts from `/api/analytics/summary`.
+- **Scroll stage.** The scroll-linked exit runs on a 180dvh sticky stage and ends in a "Continue to the dashboard" hand-off. The user chose this when asked, because the intro has nothing below the hero to scroll into.
+- **Hero video.** There is no `/public/media/hero.mp4`. The existing `/videos/airplane-dusk.*` footage is used as the far layer: the poster paints first and the video is created when the browser is idle.
+
+**Measured.**
+- **Verified in Playwright** at 1440×900, 768×1024 and 390×844 on the live API: no horizontal overflow, CTAs inside the first viewport, no console errors.
+- **Scroll stage.** Content opacity was 1.00 at 0, 0.00 at the midpoint and 0.00 at the end, with the hand-off at 0.00 → 1.00, and the `inert` states swapped accordingly.
+- **Reduced motion.** Final values show at once, the page is one viewport tall, and no video is loaded.
+- **LCP.** The element is the headline span "Flight Delay", at 152-188 ms on the dev server.
+- **Bundle.** The eager entry chunk grew from 85.0 KB to 174.7 KB gzip. Before the change, Motion only loaded with the lazy dashboard pages; now the hero needs Motion's core at first load.
+- **Chunk-splitting experiment.** I tried a rolldown chunk group to move Motion's layout and drag features out of the entry. It saved about 20 KB, but the entry still imports Motion's projection core through the `m` components, so I reverted it.
+
+**Not done.** Reaching a small hero bundle would need a different split: a CSS-only entrance in the eager chunk, plus a lazily loaded Motion layer for parallax, the scroll stage and the magnetic button. That is offered to the user as a follow-up.
+
+**Bug found and fixed during the build.** Motion moves array-mapped `useTransform(scrollYProgress, …)` opacity onto a native ViewTimeline. On the sticky stage its range was wrong: the content faded and then snapped back to opacity 1, and the hand-off never appeared. Function transforms keep these values on Motion's JS path. The hero also uses `m` components under `LazyMotion` with `domAnimation`.
