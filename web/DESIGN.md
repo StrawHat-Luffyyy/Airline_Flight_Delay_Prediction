@@ -294,6 +294,47 @@ The glass panel holds the form; the result sits beside it on the ground. The gau
 ### Charts
 Recharts on the ground: horizontal grid lines only (rule), axis ticks 11px ink-3, tooltips on Tooltip Black with a strong-hairline border and 8px radius, no entry animation. Every chart has a `role="img"` label and its numbers also appear in an adjacent table or list.
 
+### Intro hero (the `/` page only)
+**Background.** A cabin-window-at-dusk background behind the unchanged left-aligned copy. Layers, from far to near:
+- the dusk footage, with the poster painting first and the video loading on idle;
+- two blurred cloud bands drifting at 180 s and 110 s per loop;
+- the footage's sun, breathing on a 7 s cycle;
+- film grain at 7% overlay.
+
+On fine pointers above 1024px, the layers shift 8, 12, 20 and 14px opposite the cursor through damped springs (`PARALLAX_SPRING`). A dark left and bottom wash keeps the copy at WCAG AA.
+
+**Atmosphere colours.** These are hero-only and are never used as data or UI colours:
+- cloud greys `rgba(108-150, 116-162, 136-182, 0.18-0.24)`;
+- sun `rgba(238, 112, 64, 0.22)` fading to `rgba(214, 88, 52, 0.08)`.
+
+**Flight path.** A 1px ink arc at 32% opacity on the right side, desktop only. It draws once (stroke-dashoffset), then a 14px lucide plane loops along it every 16 s. LAX, ORD and ATL dots and 11px mono labels breathe between 25% and 80% opacity.
+
+**Entrance** (one sequence, under 1.8 s; tokens in `web/src/lib/motion.ts`):
+1. The headline lines slide up out of masks with a 6px blur-to-sharp, staying opaque so the headline remains the LCP element.
+2. The subline rises, and its flight count counts up with tabular figures. Width is reserved by an invisible copy of the final value.
+3. Hairlines draw left to right.
+4. The three stats rise in a 100ms stagger and count up.
+5. The actions arrive last.
+
+Data that arrives late joins the sequence at its remaining delay; it never replays the sequence.
+
+**Actions.**
+- "Open dashboard" leans up to 6px toward the cursor, the label shifts to make room for a sliding arrow, and a brighter edge ring fades in.
+- "Score a flight" draws an underline from the left, and its plane nudges forward.
+- Stat cells are focusable. On hover or focus they show a 4% ink highlight and a Tooltip Black caption below the cell (radius `cell`). The caption carries the metric's definition and its real counts, from the summary API.
+
+**Scroll stage.** The hero is a 180dvh stage with a sticky frame:
+- the copy fades and rises 64px by halfway;
+- the sky scales to 1.08 and blurs to 6px;
+- "Continue to the dashboard" (serif, with an underline and an arrow) fades in from 55% to 85% and links to `/overview`;
+- hidden content is `inert`;
+- a hairline scroll cue with a travelling segment appears at 1.8 s and scrolls to the hand-off.
+
+**Constraints.**
+- Scroll-linked values use function transforms: Motion's native ViewTimeline acceleration mis-ranged the sticky stage.
+- Motion components are `m.*` under `LazyMotion` with `domAnimation`.
+- Under `prefers-reduced-motion` the page is a plain one-viewport hero. Values are final immediately, the poster replaces the video, and there is no parallax, plane, scroll stage or cue.
+
 ## Do's and Don'ts
 
 ### Do:

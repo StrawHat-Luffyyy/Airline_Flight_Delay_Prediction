@@ -1,94 +1,85 @@
-import { useReducedMotion } from 'motion/react';
-import { useRef } from 'react';
+import {
+  domAnimation,
+  LazyMotion,
+  m,
+  useMotionValue,
+  useMotionValueEvent,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+} from 'motion/react';
+import { ArrowRight } from 'lucide-react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Link } from 'react-router';
-import { useMeta, useSummary } from '../api/hooks';
-import { useVideoVisibility } from '../hooks/useVideoVisibility';
-import { formatInteger, formatPercent, formatSignedMinutes } from '../lib/format';
-import { ErrorBlock, Skeleton } from './QueryState';
+import { useMeta } from '../api/hooks';
+import { formatInteger } from '../lib/format';
+import { EASE_OUT_EXPO, HERO, PARALLAX_SPRING, ramp, resetHeroClock } from '../lib/motion';
+import { Skeleton } from './QueryState';
+import { CountUp, useEntrance } from './hero/entrance';
+import { HeroActions } from './hero/HeroActions';
+import { HeroBackground } from './hero/HeroBackground';
+import { HeroStats } from './hero/HeroStats';
 
-const VIDEO_WEBM = '/videos/airplane-dusk.webm';
-const VIDEO_MP4 = '/videos/airplane-dusk.mp4';
-const POSTER_URL = '/videos/airplane-dusk-poster.jpg';
+const HEADLINE_LINES = ['Flight Delay', 'Prediction'] as const;
+const fmtFlights = (value: number): string => formatInteger(Math.round(value));
 
-function BackgroundVideo({ reduced }: { reduced: boolean }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  useVideoVisibility(videoRef, 0.7);
-
-  if (reduced) {
-    return (
-      <img
-        src={POSTER_URL}
-        alt=""
-        className="h-full w-full object-cover object-center"
-        decoding="async"
-      />
-    );
-  }
+/** Each line slides up from behind its own mask, sharpening as it lands. */
+function Headline({ reduced }: { reduced: boolean }) {
   return (
-    <video
-      ref={videoRef}
-      autoPlay
-      muted
-      loop
-      playsInline
-      preload="metadata"
-      aria-hidden="true"
-      className="h-full w-full object-cover object-center"
-    >
-      <source src={VIDEO_WEBM} type="video/webm" />
-      <source src={VIDEO_MP4} type="video/mp4" />
-    </video>
-  );
-}
-
-function Figures() {
-  const summary = useSummary();
-  if (summary.isError) {
-    return (
-      <ErrorBlock
-        error={summary.error}
-        label="the headline figures"
-        onRetry={() => void summary.refetch()}
-      />
-    );
-  }
-  if (!summary.data) {
-    return (
-      <div role="status">
-        <span className="sr-only">Loading headline figures</span>
-        <Skeleton className="h-16" />
-      </div>
-    );
-  }
-  const figures = [
-    { label: 'Delay rate', value: formatPercent(summary.data.delayRate), tone: 'text-delayed' },
-    { label: 'Cancel rate', value: formatPercent(summary.data.cancelRate, 2), tone: '' },
-    {
-      label: 'Avg arrival delay',
-      value: formatSignedMinutes(summary.data.avgArrDelay),
-      tone: '',
-    },
-  ];
-  return (
-    <dl className="grid grid-cols-3 border-y border-white/15">
-      {figures.map((figure, index) => (
-        <div
-          key={figure.label}
-          className={`py-3 ${index > 0 ? 'border-l border-white/10 pl-4' : ''}`}
-        >
-          <dt className="text-xs text-ink-2">{figure.label}</dt>
-          <dd
-            className={`display-num mt-1 text-[clamp(1.5rem,4vw,2.25rem)] leading-none ${figure.tone}`}
+    <h1 className="font-display text-[clamp(3rem,9vw,6rem)] font-normal leading-[0.98]">
+      {HEADLINE_LINES.map((line, index) => (
+        <span key={line} className="block overflow-hidden pb-[0.08em]">
+          <m.span
+            className="block"
+            // Opaque from the first frame (only the mask and blur animate), so the headline is
+            // painted visibly at once and stays the LCP element.
+            initial={reduced ? false : { y: '105%', filter: 'blur(6px)' }}
+            animate={{ y: '0%', filter: 'blur(0px)' }}
+            transition={{
+              delay: index * HERO.lineStagger,
+              duration: HERO.lineDuration,
+              ease: EASE_OUT_EXPO,
+            }}
           >
-            {figure.value}
-          </dd>
-        </div>
+            {line}
+            {index < HEADLINE_LINES.length - 1 ? ' ' : null}
+          </m.span>
+        </span>
       ))}
-    </dl>
+    </h1>
   );
 }
 
-function Sentence() {
+/** Mounts only once the count is known, so its entrance always has an element to animate. */
+function SublineText({ flights, reduced }: { flights: number; reduced: boolean }) {
+  const [sublineRef, sublineStyle] = useEntrance<HTMLParagraphElement>(
+    HERO.sublineAt,
+    { opacity: [0, 1], y: [12, 0] },
+    HERO.sublineDuration,
+    reduced,
+    { opacity: 0 },
+  );
+  return (
+    <p
+      ref={sublineRef}
+      style={sublineStyle}
+      className="max-w-[40ch] text-lg leading-relaxed text-ink sm:text-xl"
+    >
+      <CountUp
+        value={flights}
+        format={fmtFlights}
+        at={HERO.sublineAt}
+        duration={HERO.countDuration}
+        reduced={reduced}
+        className="num"
+      />{' '}
+      US domestic flights from 2015, stored in MongoDB and used to train a delay-prediction model.
+    </p>
+  );
+}
+
+function Subline({ reduced }: { reduced: boolean }) {
   const meta = useMeta();
   if (meta.isError) {
     return (
@@ -106,57 +97,156 @@ function Sentence() {
   }
   if (!meta.data) {
     return (
-      <div role="status">
+      <div role="status" className="space-y-2">
         <span className="sr-only">Loading dataset summary</span>
         <Skeleton className="h-6 max-w-md" />
+        <Skeleton className="h-6 max-w-sm" />
       </div>
     );
   }
+  return <SublineText flights={meta.data.flights} reduced={reduced} />;
+}
+
+/** A hairline with a travelling segment; scrolls to the hand-off. Fades as scrolling begins. */
+function ScrollCue({ onActivate, opacity }: { onActivate: () => void; opacity: number }) {
   return (
-    <p className="max-w-[40ch] text-lg leading-relaxed text-ink sm:text-xl">
-      <span className="num">{formatInteger(meta.data.flights)}</span> US domestic flights from 2015,
-      stored in MongoDB and used to train a delay-prediction model.
-    </p>
+    <m.button
+      type="button"
+      onClick={onActivate}
+      aria-label="Scroll to continue to the dashboard"
+      className="absolute bottom-6 left-1/2 hidden h-12 w-8 -translate-x-1/2 items-start justify-center sm:flex"
+      initial={{ opacity: 0 }}
+      animate={{ opacity }}
+      transition={{ duration: 0.6, ease: EASE_OUT_EXPO }}
+    >
+      <span className="relative block h-full w-px overflow-hidden bg-white/15">
+        <span className="hero-cue-dot absolute inset-x-0 top-0 block h-1/3 bg-ink/80" />
+      </span>
+    </m.button>
   );
 }
 
-/** The compact intro: one viewport, no scroll-jacking, then hand off to the dashboard. */
+/**
+ * The intro. A sticky frame inside a taller scroll stage: on load the headline, figures and
+ * actions arrive in one sequence; scrolling then lifts the copy away, softens the sky, and hands
+ * off to the dashboard. Under prefers-reduced-motion it is a plain one-viewport page.
+ */
 export function HeroSection() {
   const reduced = useReducedMotion() === true;
-  return (
-    <section className="relative isolate flex min-h-screen w-full items-end overflow-hidden bg-ground">
-      <div className="absolute inset-0 -z-10" aria-hidden="true">
-        <BackgroundVideo reduced={reduced} />
-        <div className="absolute inset-0 bg-black/55" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,rgba(0,0,0,0.1)_0%,rgba(0,0,0,0.8)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-b from-transparent to-ground" />
-      </div>
+  const stageRef = useRef<HTMLDivElement>(null);
+  const handoffRef = useRef<HTMLDivElement>(null);
+  const [cueVisible, setCueVisible] = useState(false);
+  const [handoffActive, setHandoffActive] = useState(false);
 
-      <div className="mx-auto w-full max-w-[1440px] px-5 pb-12 pt-24 md:px-10 md:pb-16">
-        <div className="max-w-2xl space-y-6">
-          <h1 className="rise font-display text-[clamp(3rem,9vw,6rem)] font-normal leading-[0.98] text-balance">
-            Flight Delay Prediction
-          </h1>
-          <div className="rise space-y-6" style={{ animationDelay: '120ms' }}>
-            <Sentence />
-            <Figures />
-            <div className="flex flex-wrap items-center gap-3 pt-2">
+  useEffect(() => resetHeroClock, []);
+  useEffect(() => {
+    if (reduced) return;
+    const timer = window.setTimeout(() => setCueVisible(true), HERO.cueAt * 1000);
+    return () => window.clearTimeout(timer);
+  }, [reduced]);
+
+  // Scroll stage: 0 at the top, 1 once the stage has scrolled through.
+  const { scrollYProgress } = useScroll({ target: stageRef, offset: ['start start', 'end end'] });
+  // Function transforms on purpose: Motion hands array-mapped scroll opacity to a native
+  // ViewTimeline, whose range is wrong for a sticky stage (opacity snapped back to 1 at the end).
+  const contentOpacity = useTransform(scrollYProgress, (v) => 1 - ramp(v, 0, 0.5));
+  const contentY = useTransform(scrollYProgress, (v) => -64 * ramp(v, 0, 0.5));
+  const bgScale = useTransform(scrollYProgress, (v) => 1 + 0.08 * ramp(v, 0, 1));
+  const bgBlur = useTransform(scrollYProgress, (v) => `blur(${(6 * ramp(v, 0, 1)).toFixed(2)}px)`);
+  const handoffOpacity = useTransform(scrollYProgress, (v) => ramp(v, 0.55, 0.85));
+  const handoffY = useTransform(scrollYProgress, (v) => 20 * (1 - ramp(v, 0.55, 0.85)));
+  const [scrolled, setScrolled] = useState(false);
+  useMotionValueEvent(scrollYProgress, 'change', (progress) => {
+    setScrolled(progress > 0.04);
+    setHandoffActive(progress > 0.6);
+  });
+
+  // Mouse parallax, desktop fine pointers only; springs give the damping.
+  const pointerX = useSpring(useMotionValue(0), PARALLAX_SPRING);
+  const pointerY = useSpring(useMotionValue(0), PARALLAX_SPRING);
+  const onPointerMove = (event: PointerEvent<HTMLElement>) => {
+    if (reduced || event.pointerType !== 'mouse' || window.innerWidth < 1024) return;
+    pointerX.set(event.clientX / window.innerWidth - 0.5);
+    pointerY.set(event.clientY / window.innerHeight - 0.5);
+  };
+  const onPointerLeave = () => {
+    pointerX.set(0);
+    pointerY.set(0);
+  };
+
+  const toHandoff = () => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const top = stage.offsetTop + stage.offsetHeight - window.innerHeight;
+    window.scrollTo({ top, behavior: 'smooth' });
+    handoffRef.current?.querySelector('a')?.focus({ preventScroll: true });
+  };
+
+  return (
+    // `m` components + only the domAnimation features keep the eager bundle small; the dashboard's
+    // Board (layout animations) loads full `motion` in its own lazy chunk.
+    <LazyMotion features={domAnimation} strict>
+      <div ref={stageRef} className={reduced ? undefined : 'relative h-[180dvh]'}>
+        <section
+          onPointerMove={onPointerMove}
+          onPointerLeave={onPointerLeave}
+          className="sticky top-0 isolate flex min-h-[100dvh] w-full items-end overflow-hidden bg-ground"
+        >
+          <HeroBackground
+            reduced={reduced}
+            pointerX={pointerX}
+            pointerY={pointerY}
+            scale={bgScale}
+            blur={bgBlur}
+          />
+
+          <m.div
+            className="mx-auto w-full max-w-[1440px] px-5 pb-16 pt-24 md:px-10 md:pb-20"
+            style={reduced ? undefined : { opacity: contentOpacity, y: contentY }}
+            inert={handoffActive}
+          >
+            <div className="max-w-2xl space-y-6">
+              <Headline reduced={reduced} />
+              <div className="space-y-6">
+                <Subline reduced={reduced} />
+                <HeroStats reduced={reduced} />
+                <HeroActions reduced={reduced} />
+              </div>
+            </div>
+          </m.div>
+
+          {reduced ? null : (
+            <m.div
+              ref={handoffRef}
+              className="absolute inset-x-0 top-1/2 mx-auto w-full max-w-[1440px] -translate-y-1/2 px-5 md:px-10"
+              style={{ opacity: handoffOpacity, y: handoffY }}
+              inert={!handoffActive}
+            >
               <Link
                 to="/overview"
-                className="inline-flex items-center rounded-full border border-rule-strong px-7 py-3 text-sm text-ink hover:bg-wash"
+                className="group inline-flex items-baseline gap-4 font-display text-[clamp(2rem,5vw,3.5rem)] leading-tight text-ink"
               >
-                Open dashboard
+                <span className="relative">
+                  Continue to the dashboard
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-x-0 bottom-1 h-px origin-left scale-x-0 bg-current transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-x-100 group-focus-visible:scale-x-100"
+                  />
+                </span>
+                <ArrowRight
+                  aria-hidden="true"
+                  className="size-[0.6em] translate-y-[0.05em] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1.5"
+                  strokeWidth={1.25}
+                />
               </Link>
-              <Link
-                to="/predict"
-                className="inline-flex items-center rounded-full px-5 py-3 text-sm text-ink-2 underline-offset-4 hover:text-ink hover:underline"
-              >
-                Score a flight
-              </Link>
-            </div>
-          </div>
-        </div>
+            </m.div>
+          )}
+
+          {reduced ? null : (
+            <ScrollCue onActivate={toHandoff} opacity={cueVisible && !scrolled ? 1 : 0} />
+          )}
+        </section>
       </div>
-    </section>
+    </LazyMotion>
   );
 }

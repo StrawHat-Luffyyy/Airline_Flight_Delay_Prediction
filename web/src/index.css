@@ -203,6 +203,137 @@ a.liquid-glass:hover {
   animation: rise 0.7s var(--ease-out-expo) both;
 }
 
+/* ---------- Intro hero: living background (transform / opacity / filter only) ---------- */
+
+/* A cloud band twice the frame width, tiled every half, so translating by -50% loops seamlessly. */
+.hero-cloud {
+  position: absolute;
+  left: 0;
+  width: 200%;
+  background-repeat: repeat-x;
+  background-size: 50% 100%;
+  filter: blur(22px);
+  animation: hero-cloud-drift var(--drift, 140s) linear infinite;
+  will-change: transform;
+}
+
+.hero-cloud--far {
+  top: 18%;
+  height: 34%;
+  opacity: 0.32;
+  --drift: 180s;
+  background-image:
+    radial-gradient(38% 46% at 18% 55%, rgba(150, 162, 182, 0.22), transparent 70%),
+    radial-gradient(30% 40% at 52% 40%, rgba(132, 146, 170, 0.18), transparent 70%),
+    radial-gradient(34% 44% at 82% 60%, rgba(150, 160, 178, 0.2), transparent 70%);
+}
+
+.hero-cloud--near {
+  top: 52%;
+  height: 40%;
+  opacity: 0.38;
+  --drift: 110s;
+  background-image:
+    radial-gradient(42% 50% at 25% 50%, rgba(120, 128, 146, 0.24), transparent 72%),
+    radial-gradient(36% 46% at 70% 58%, rgba(108, 116, 136, 0.22), transparent 72%);
+}
+
+@keyframes hero-cloud-drift {
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/* The dusk sun already in the footage, breathing slowly. */
+.hero-sun {
+  position: absolute;
+  left: 58%;
+  top: 33%;
+  width: min(30vw, 440px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    rgba(238, 112, 64, 0.22) 0%,
+    rgba(214, 88, 52, 0.08) 40%,
+    transparent 70%
+  );
+  mix-blend-mode: screen;
+  animation: hero-sun-pulse 7s ease-in-out infinite alternate;
+}
+
+@keyframes hero-sun-pulse {
+  from {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0.9;
+    transform: scale(1.08);
+  }
+}
+
+/* Film grain on a bounded layer inside the (sticky, non-scrolling) hero frame. */
+.hero-grain {
+  position: absolute;
+  inset: -50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.9'/%3E%3C/svg%3E");
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  animation: hero-grain 0.9s steps(3) infinite;
+  pointer-events: none;
+}
+
+@keyframes hero-grain {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  33% {
+    transform: translate3d(-3%, 2%, 0);
+  }
+  66% {
+    transform: translate3d(2%, -3%, 0);
+  }
+  100% {
+    transform: translate3d(-1%, 1%, 0);
+  }
+}
+
+/* Airport dots on the flight-path arc fade in and out, out of step with each other. */
+.hero-airport {
+  animation: hero-airport 5.5s ease-in-out infinite;
+}
+
+@keyframes hero-airport {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Scroll cue: a short segment travelling down a hairline. */
+.hero-cue-dot {
+  animation: hero-cue 2.2s var(--ease-out-expo) infinite;
+}
+
+@keyframes hero-cue {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(260%);
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
