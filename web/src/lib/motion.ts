@@ -1,10 +1,17 @@
 /**
  * Motion tokens for the intro hero: durations (seconds), easings and the entrance timeline.
- * The whole entrance finishes by 1.7 s (buttons at 1.2 s + 0.5 s).
+ * The whole entrance finishes by 1.7 s (buttons at 1.2 s + 0.5 s). This file must not import the
+ * `motion` package: the entrance is CSS + requestAnimationFrame so the eager bundle stays small,
+ * and only the lazy enhancer (hero/enhance.ts) loads Motion.
  */
 
 /** Confident deceleration; the same curve as --ease-out-expo in index.css. */
 export const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
+
+/** easeOutExpo for JS-driven tweens (count-ups); matches EASE_OUT_EXPO closely. */
+export function easeOutExpo(t: number): number {
+  return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
+}
 
 /** Immediate feedback (hover, press). */
 export const FEEDBACK_S = 0.18;

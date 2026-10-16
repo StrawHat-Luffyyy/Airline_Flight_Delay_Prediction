@@ -70,22 +70,20 @@ function StatCell({
 }) {
   const captionId = useId();
   const at = HERO.statsAt + index * HERO.statStagger;
-  const [cellRef, cellStyle] = useEntrance<HTMLDivElement>(
+  const [cellRef, cellEnter] = useEntrance<HTMLDivElement>(
+    'hero-rise',
     at,
-    { opacity: [0, 1], y: [12, 0] },
     HERO.statDuration,
     reduced,
-    { opacity: 0 },
   );
   const last = index === count - 1;
 
   return (
     <div
       ref={cellRef}
-      style={cellStyle}
       tabIndex={0}
       aria-describedby={captionId}
-      className={`group relative py-3 outline-none ${index > 0 ? 'border-l border-white/10 pl-3 sm:pl-4' : ''}`}
+      className={`group relative py-3 outline-none ${cellEnter} ${index > 0 ? 'border-l border-white/10 pl-3 sm:pl-4' : ''}`}
     >
       {/* Soft highlight: opacity only. */}
       <span
@@ -118,28 +116,24 @@ function StatCell({
 
 /** Hairlines draw left to right, then each stat rises and counts up, in stagger. */
 function StatRow({ stats, reduced }: { stats: Stat[]; reduced: boolean }) {
-  const hairline = { scaleX: [0, 1] };
-  const [topRef, topStyle] = useEntrance<HTMLSpanElement>(
+  const [topRef, topEnter] = useEntrance<HTMLSpanElement>(
+    'hero-draw',
     HERO.hairlinesAt,
-    hairline,
     HERO.hairlineDuration,
     reduced,
-    { transform: 'scaleX(0)' },
   );
-  const [bottomRef, bottomStyle] = useEntrance<HTMLSpanElement>(
+  const [bottomRef, bottomEnter] = useEntrance<HTMLSpanElement>(
+    'hero-draw',
     HERO.hairlinesAt + 0.08,
-    hairline,
     HERO.hairlineDuration,
     reduced,
-    { transform: 'scaleX(0)' },
   );
   return (
     <dl className="relative grid grid-cols-3">
       <span
         ref={topRef}
-        style={topStyle}
         aria-hidden="true"
-        className="absolute inset-x-0 top-0 h-px origin-left bg-white/15"
+        className={`absolute inset-x-0 top-0 h-px origin-left bg-white/15 ${topEnter}`}
       />
       {stats.map((stat, index) => (
         <StatCell
@@ -152,9 +146,8 @@ function StatRow({ stats, reduced }: { stats: Stat[]; reduced: boolean }) {
       ))}
       <span
         ref={bottomRef}
-        style={bottomStyle}
         aria-hidden="true"
-        className="absolute inset-x-0 bottom-0 h-px origin-left bg-white/15"
+        className={`absolute inset-x-0 bottom-0 h-px origin-left bg-white/15 ${bottomEnter}`}
       />
     </dl>
   );

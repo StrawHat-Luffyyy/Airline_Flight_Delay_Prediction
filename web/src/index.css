@@ -205,6 +205,58 @@ a.liquid-glass:hover {
 
 /* ---------- Intro hero: living background (transform / opacity / filter only) ---------- */
 
+/* Entrance (CSS only, so the eager bundle carries no animation library). Delays come from
+   web/src/lib/motion.ts via --delay; data-dependent blocks set it at mount (see hero/entrance.tsx). */
+
+/* Headline lines slide up out of their mask and sharpen; opaque throughout so the headline stays
+   the LCP element. */
+.hero-line {
+  animation: hero-mask-up 0.7s var(--ease-out-expo) var(--delay, 0s) both;
+}
+
+@keyframes hero-mask-up {
+  from {
+    transform: translateY(105%);
+    filter: blur(6px);
+  }
+  to {
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+/* Pre-entrance states; hero/entrance.tsx plays the entrance with the Web Animations API. */
+.hero-rise {
+  opacity: 0;
+}
+
+.hero-draw {
+  transform: scaleX(0);
+}
+
+/* Flight-path arc draws itself once (pathLength="1" on the path). */
+.hero-path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: hero-path-draw 1.6s var(--ease-out-expo) 0.6s forwards;
+}
+
+@keyframes hero-path-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* The scroll cue fades in once the scroll stage is live, and out once scrolling starts. */
+.hero-cue {
+  opacity: 0;
+  transition: opacity 0.6s var(--ease-out-expo);
+}
+
+.hero-cue[data-visible] {
+  opacity: 1;
+}
+
 /* A cloud band twice the frame width, tiled every half, so translating by -50% loops seamlessly. */
 .hero-cloud {
   position: absolute;
