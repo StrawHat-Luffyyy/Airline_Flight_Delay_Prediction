@@ -4,6 +4,9 @@ import {
   buildRouteArcs,
   chapterAt,
   frame,
+  greatCircleMiles,
+  introShot,
+  nearestTurn,
   greatCirclePoints,
   latLonToVec3,
   parseRouteKey,
@@ -98,8 +101,8 @@ describe('buildRouteArcs', () => {
   it('keeps routes whose two airports have coordinates, tagged by kind', () => {
     const arcs = buildRouteArcs(
       [
-        { key: 'DCA-JFK', delayRate: 0.35, flights: 1027, completed: 913 },
-        { key: 'ABQ-SLC', delayRate: 0.05, flights: 1036, completed: 1031 },
+        { key: 'DCA-JFK', delayRate: 0.35, flights: 1027, completed: 913, avgArrDelay: 20.3 },
+        { key: 'ABQ-SLC', delayRate: 0.05, flights: 1036, completed: 1031, avgArrDelay: -8.4 },
       ],
       airports,
       'late',
@@ -112,6 +115,7 @@ describe('buildRouteArcs', () => {
       delayRate: 0.35,
       flights: 1027,
       completed: 913,
+      avgArrDelay: 20.3,
     });
     expect(arcs[0]!.points).toHaveLength(17);
     // The midpoint lies between the two airports.
@@ -180,5 +184,44 @@ describe('frame', () => {
     const halfHeight = distance * Math.tan((15 * Math.PI) / 180);
     close(x, 0.5 * halfHeight * 2);
     close(y, -halfHeight);
+  });
+});
+
+describe('greatCircleMiles', () => {
+  it('measures LAX to JFK at about 2,475 statute miles', () => {
+    const miles = greatCircleMiles(
+      { latitude: 33.94254, longitude: -118.40807 },
+      { latitude: 40.63975, longitude: -73.77893 },
+    );
+    expect(miles).toBeGreaterThan(2460);
+    expect(miles).toBeLessThan(2490);
+  });
+
+  it('is 0 for the same airport', () => {
+    expect(greatCircleMiles({ latitude: 10, longitude: 20 }, { latitude: 10, longitude: 20 })).toBe(0);
+  });
+});
+
+describe('nearestTurn', () => {
+  it('rounds an accumulated spin to the closest whole revolution', () => {
+    expect(nearestTurn(10)).toBe(0);
+    expect(nearestTurn(200)).toBe(360);
+    expect(nearestTurn(-190)).toBe(-360);
+    expect(nearestTurn(725)).toBe(720);
+  });
+});
+
+describe('introShot', () => {
+  it('starts wide and turned, and lands exactly on the framed pose', () => {
+    const start = introShot(0);
+    expect(start.size).toBeLessThan(1);
+    expect(start.lon).not.toBe(0);
+    expect(introShot(1)).toEqual({ size: 1, lon: 0, lat: 0 });
+    expect(introShot(5)).toEqual({ size: 1, lon: 0, lat: 0 });
+  });
+
+  it('is monotonic: the camera never backs out while settling', () => {
+    const sizes = [0, 0.2, 0.4, 0.6, 0.8, 1].map((t) => introShot(t).size);
+    for (let i = 1; i < sizes.length; i += 1) expect(sizes[i]!).toBeGreaterThanOrEqual(sizes[i - 1]!);
   });
 });

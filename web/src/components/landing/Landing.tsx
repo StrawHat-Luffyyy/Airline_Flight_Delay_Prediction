@@ -18,10 +18,10 @@ import {
   HandoffChapter,
   ModelChapter,
   PredictChapter,
-  RouteReadout,
   RoutesChapter,
   VolumeChapter,
 } from './Chapters';
+import { GlobeControls, GlobeTooltip, RouteDetails } from './GlobeHud';
 import { Hero } from './Hero';
 import { useRouteRankings } from './useRouteRankings';
 
@@ -101,10 +101,14 @@ export function Landing() {
     () =>
       (meta.data?.airports ?? []).flatMap((airport) =>
         airport.latitude !== null && airport.longitude !== null
-          ? [{ code: airport.code, latitude: airport.latitude, longitude: airport.longitude }]
+          ? [{ ...airport, latitude: airport.latitude, longitude: airport.longitude }]
           : [],
       ),
     [meta.data],
+  );
+  const airportsByCode = useMemo(
+    () => new Map(airports.map((airport) => [airport.code, airport])),
+    [airports],
   );
   const arcs = useMemo(
     () => [
@@ -147,7 +151,7 @@ export function Landing() {
       {/* The orbit: fixed behind every chapter. */}
       <div
         role="img"
-        aria-label="A globe of the United States at night. Airports glow where they are; amber arcs are the routes most often late in 2015 and blue arcs the most punctual."
+        aria-label="A globe of the United States at night. Airports glow where they are; amber arcs are the routes most often late in 2015 and blue arcs the most punctual. The same routes are listed in the routes section."
         className="fixed inset-0 z-0"
       >
         <div aria-hidden="true" className="landing-orbit-hint absolute inset-0" />
@@ -172,7 +176,7 @@ export function Landing() {
       {/* Legibility scrims: from the left on desktop, from below on phones. */}
       <div aria-hidden="true" className="landing-scrim pointer-events-none fixed inset-0 z-[1]" />
 
-      <main className="relative z-10">
+      <main className="pointer-events-none relative z-10">
         <Hero
           reduced={reduced}
           sectionRef={heroRef}
@@ -186,7 +190,13 @@ export function Landing() {
         <HandoffChapter sectionRef={handoffRef} />
       </main>
 
-      {interactive ? <RouteReadout arcs={arcs} /> : null}
+      {globeReady ? (
+        <>
+          {interactive ? <GlobeControls /> : null}
+          {interactive ? <GlobeTooltip arcs={arcs} airports={airportsByCode} /> : null}
+          <RouteDetails arcs={arcs} airports={airportsByCode} />
+        </>
+      ) : null}
     </div>
   );
 }
