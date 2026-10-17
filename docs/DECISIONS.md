@@ -644,3 +644,39 @@ The earlier entry for this upgrade quoted 85.0 KB → 174.7 KB. That compared th
 - **Layout:** no overflow and CTAs inside the first viewport at 1440, 768 and 390 px; no console errors.
 
 **LCP.** The headline paints first, at about 310-400 ms on the dev server. Chrome's final LCP element is now the subline paragraph, at about 760-880 ms: it is a larger text block, and it becomes visible at its scheduled 0.45 s entrance. Neither waits on the video, which is created on idle. Making the headline the LCP element again would mean one text block for the headline, which loses the line-by-line mask. That trade-off was left to the user.
+
+### Landing redesign: night-orbit globe and scroll story (2026-10-17)
+
+**Asked for:** a cinematic, aviation-themed landing page with a 3D globe of flight routes, scroll transitions and parallax, inspired by motionsites.ai. The user picked three options in a question round:
+- a hero plus a scroll story;
+- the most and least delay-prone routes as the globe's arcs;
+- a night orbit that replaces the dusk video.
+
+**What was built:**
+- **Globe.** `web/src/components/globe/` uses React Three Fiber and three.js. It draws 110m Natural Earth coastlines (`world-atlas`), airports at their real coordinates, and 20 route arcs: the 10 worst and 10 best routes with at least 1,000 flights, from `/api/analytics/delay-rate?by=route`.
+- **Chapters.** `web/src/components/landing/` holds six full-viewport chapters, each re-framing the globe.
+- **Geometry.** The pure geometry (`geo.ts`) covers lat/lon to vector, great-circle arcs, chapter-from-scroll and aspect-aware framing. It is unit-tested without WebGL (20 tests).
+
+**API change (additive).** `/api/meta` airports now carry `latitude` and `longitude`, from airports.csv; they are null where the file has none (3 of 322). The integration test asserts both cases. No consumer breaks; Predict ignores the new fields.
+
+**Removed:**
+- `HeroSection.tsx`, `hero/HeroBackground.tsx` and `hero/enhance.ts`;
+- the dusk video and poster (`web/public/videos/`, 7.5 MB);
+- the scroll cue.
+
+`hero/HeroStats`, `hero/HeroActions` and `hero/entrance` are kept: the headline mask, count-ups, stat captions and magnetic action carry over unchanged.
+
+**Bundle (gzip):**
+
+| Chunk | Size | Loaded |
+|---|---|---|
+| Eager JS | 129.6 KB before, 131.7 KB now | at first paint |
+| Globe | 258 KB (three.js, R3F, coastlines) | lazily, once the browser is idle |
+| Motion layer | 7.4 KB | lazily, once the browser is idle |
+
+**Simplest options taken:**
+- **No new endpoint.** Two calls to the existing delay-rate ranking (`order=worst` and `order=best`) instead of a "busiest routes" endpoint.
+- **No drei.** Everything is drawn with plain three.js and R3F.
+- **Readout wording.** The delay rate is stated as a share of completed flights, matching the API formula, with the scheduled count beside it.
+
+**Dev note.** `optimizeDeps.include` in `web/vite.config.ts` pre-bundles three, R3F, topojson-client and motion. Without it, Vite discovered them when the lazy chunk first loaded and re-bundled React mid-session, which put two React copies on the page and gave an "Invalid hook call" in the canvas.

@@ -4,6 +4,11 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // The globe chunk is lazy, so the dev optimizer would discover these late and re-bundle React
+  // mid-session (two React copies). Pre-bundle them up front.
+  optimizeDeps: {
+    include: ['three', '@react-three/fiber', 'topojson-client', 'motion'],
+  },
   server: {
     proxy: {
       '/api': {
