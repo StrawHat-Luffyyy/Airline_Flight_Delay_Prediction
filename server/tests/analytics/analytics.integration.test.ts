@@ -47,6 +47,10 @@ const CITIES: Record<string, [string, string]> = {
   LAX: ['Los Angeles', 'CA'],
   ATL: ['Atlanta', 'GA'],
 };
+const COORDS: Record<string, [number, number]> = {
+  JFK: [40.63975, -73.77893],
+  LAX: [33.94254, -118.40807],
+};
 const DOW: Record<string, number> = {
   '2015-01-05': 1,
   '2015-01-06': 2,
@@ -182,8 +186,9 @@ beforeAll(async () => {
       city,
       state,
       country: 'USA',
-      latitude: null,
-      longitude: null,
+      // ATL keeps null coordinates, as some reference rows do.
+      latitude: COORDS[code]?.[0] ?? null,
+      longitude: COORDS[code]?.[1] ?? null,
     })) as unknown as Document[],
   );
   await db.collection('flights').insertMany(FIXTURE.map((f) => ({ ...f })));
@@ -589,6 +594,14 @@ describe('analytics API (MongoDB integration)', () => {
     expect(body.dateRange).toEqual({ from: '2015-01-05', to: '2015-10-01' });
     expect(body.airlines).toHaveLength(2);
     expect(body.airports).toHaveLength(3);
+    expect(body.airports.find((a) => a.code === 'LAX')).toMatchObject({
+      latitude: 33.94254,
+      longitude: -118.40807,
+    });
+    expect(body.airports.find((a) => a.code === 'ATL')).toMatchObject({
+      latitude: null,
+      longitude: null,
+    });
     expect(body.statsBuiltAt).not.toBeNull();
   });
 

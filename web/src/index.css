@@ -203,7 +203,7 @@ a.liquid-glass:hover {
   animation: rise 0.7s var(--ease-out-expo) both;
 }
 
-/* ---------- Intro hero: living background (transform / opacity / filter only) ---------- */
+/* ---------- Landing hero entrance (transform / opacity / filter only) ---------- */
 
 /* Entrance (CSS only, so the eager bundle carries no animation library). Delays come from
    web/src/lib/motion.ts via --delay; data-dependent blocks set it at mount (see hero/entrance.tsx). */
@@ -234,155 +234,45 @@ a.liquid-glass:hover {
   transform: scaleX(0);
 }
 
-/* Flight-path arc draws itself once (pathLength="1" on the path). */
-.hero-path {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: hero-path-draw 1.6s var(--ease-out-expo) 0.6s forwards;
+/* ---------- Landing: night orbit ---------- */
+
+/* Where the globe will be, before three.js has loaded: a faint limb glow, never an empty void. */
+.landing-orbit-hint {
+  background: radial-gradient(circle at 50% 24%, rgba(169, 184, 204, 0.08), transparent 32%);
 }
 
-@keyframes hero-path-draw {
-  to {
-    stroke-dashoffset: 0;
-  }
+/* Legibility: the copy column on phones gets its own fade so it reads over the globe. */
+.landing-scrim {
+  background: linear-gradient(180deg, rgba(1, 1, 1, 0) 0%, rgba(1, 1, 1, 0.1) 34%, rgba(1, 1, 1, 0.55) 70%);
 }
 
-/* The scroll cue fades in once the scroll stage is live, and out once scrolling starts. */
-.hero-cue {
-  opacity: 0;
-  transition: opacity 0.6s var(--ease-out-expo);
+.landing-copy {
+  position: relative;
 }
 
-.hero-cue[data-visible] {
-  opacity: 1;
-}
-
-/* A cloud band twice the frame width, tiled every half, so translating by -50% loops seamlessly. */
-.hero-cloud {
+.landing-copy::before {
+  content: '';
   position: absolute;
-  left: 0;
-  width: 200%;
-  background-repeat: repeat-x;
-  background-size: 50% 100%;
-  filter: blur(22px);
-  animation: hero-cloud-drift var(--drift, 140s) linear infinite;
-  will-change: transform;
-}
-
-.hero-cloud--far {
-  top: 18%;
-  height: 34%;
-  opacity: 0.32;
-  --drift: 180s;
-  background-image:
-    radial-gradient(38% 46% at 18% 55%, rgba(150, 162, 182, 0.22), transparent 70%),
-    radial-gradient(30% 40% at 52% 40%, rgba(132, 146, 170, 0.18), transparent 70%),
-    radial-gradient(34% 44% at 82% 60%, rgba(150, 160, 178, 0.2), transparent 70%);
-}
-
-.hero-cloud--near {
-  top: 52%;
-  height: 40%;
-  opacity: 0.38;
-  --drift: 110s;
-  background-image:
-    radial-gradient(42% 50% at 25% 50%, rgba(120, 128, 146, 0.24), transparent 72%),
-    radial-gradient(36% 46% at 70% 58%, rgba(108, 116, 136, 0.22), transparent 72%);
-}
-
-@keyframes hero-cloud-drift {
-  to {
-    transform: translate3d(-50%, 0, 0);
-  }
-}
-
-/* The dusk sun already in the footage, breathing slowly. */
-.hero-sun {
-  position: absolute;
-  left: 58%;
-  top: 33%;
-  width: min(30vw, 440px);
-  aspect-ratio: 1;
-  translate: -50% -50%;
-  border-radius: 9999px;
-  background: radial-gradient(
-    circle,
-    rgba(238, 112, 64, 0.22) 0%,
-    rgba(214, 88, 52, 0.08) 40%,
-    transparent 70%
-  );
-  mix-blend-mode: screen;
-  animation: hero-sun-pulse 7s ease-in-out infinite alternate;
-}
-
-@keyframes hero-sun-pulse {
-  from {
-    opacity: 0.55;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0.9;
-    transform: scale(1.08);
-  }
-}
-
-/* Film grain on a bounded layer inside the (sticky, non-scrolling) hero frame. */
-.hero-grain {
-  position: absolute;
-  inset: -50%;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.9'/%3E%3C/svg%3E");
-  opacity: 0.07;
-  mix-blend-mode: overlay;
-  animation: hero-grain 0.9s steps(3) infinite;
+  inset: -4rem -1.25rem -2rem;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(1, 1, 1, 0) 0%, rgba(1, 1, 1, 0.82) 4rem, rgba(1, 1, 1, 0.9) 100%);
   pointer-events: none;
 }
 
-@keyframes hero-grain {
-  0% {
-    transform: translate3d(0, 0, 0);
+@media (min-width: 768px) {
+  .landing-orbit-hint {
+    background: radial-gradient(circle at 74% 52%, rgba(169, 184, 204, 0.08), transparent 36%);
   }
-  33% {
-    transform: translate3d(-3%, 2%, 0);
-  }
-  66% {
-    transform: translate3d(2%, -3%, 0);
-  }
-  100% {
-    transform: translate3d(-1%, 1%, 0);
-  }
-}
 
-/* Airport dots on the flight-path arc fade in and out, out of step with each other. */
-.hero-airport {
-  animation: hero-airport 5.5s ease-in-out infinite;
-}
+  /* The globe owns the right; the left third darkens so the copy holds AA over any arc. */
+  .landing-scrim {
+    background:
+      linear-gradient(90deg, rgba(1, 1, 1, 0.94) 0%, rgba(1, 1, 1, 0.8) 36%, rgba(1, 1, 1, 0) 62%),
+      linear-gradient(0deg, rgba(1, 1, 1, 0.5) 0%, rgba(1, 1, 1, 0) 28%);
+  }
 
-@keyframes hero-airport {
-  0%,
-  100% {
-    opacity: 0.25;
-  }
-  50% {
-    opacity: 0.8;
-  }
-}
-
-/* Scroll cue: a short segment travelling down a hairline. */
-.hero-cue-dot {
-  animation: hero-cue 2.2s var(--ease-out-expo) infinite;
-}
-
-@keyframes hero-cue {
-  0% {
-    transform: translateY(-100%);
-    opacity: 0;
-  }
-  30% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(260%);
-    opacity: 0;
+  .landing-copy::before {
+    content: none;
   }
 }
 

@@ -294,50 +294,40 @@ The glass panel holds the form; the result sits beside it on the ground. The gau
 ### Charts
 Recharts on the ground: horizontal grid lines only (rule), axis ticks 11px ink-3, tooltips on Tooltip Black with a strong-hairline border and 8px radius, no entry animation. Every chart has a `role="img"` label and its numbers also appear in an adjacent table or list.
 
-### Intro hero (the `/` page only)
-**Background.** A cabin-window-at-dusk background behind the unchanged left-aligned copy. Layers, from far to near:
-- the dusk footage, with the poster painting first and the video loading on idle;
-- two blurred cloud bands drifting at 180 s and 110 s per loop;
-- the footage's sun, breathing on a 7 s cycle;
-- film grain at 7% overlay.
+### Landing (the `/` page only)
+**Concept: night orbit.** A dark globe hangs in a star field on the right (on phones, at the top). Its coastlines are 110m Natural Earth line work in ink at 26%, under a 15-degree graticule at 4.5%. Airports glow as warm points at their airports.csv coordinates (`/api/meta`). Route arcs come from the delay-rate ranking (`/api/analytics/delay-rate?by=route`, at least 1,000 flights): the 10 most often late in Departure Amber and the 10 most punctual in Dusk Blue, with a pulse running origin to destination. Everything drawn is real data; nothing is decorative geometry.
 
-On fine pointers above 1024px, the layers shift 8, 12, 20 and 14px opposite the cursor through damped springs (`PARALLAX_SPRING`). A dark left and bottom wash keeps the copy at WCAG AA.
+**Scroll story.** Six full-viewport chapters, each a serif title over Geist body copy at 15px (one step above Body for projector legibility), all left-aligned on desktop and low on phones:
+1. Hero: title, live flight count, the KPI rule row with captions, the two actions.
+2. Volume: flights, airports and airlines from `/api/meta`, plus the date range in mono.
+3. Routes: two five-row departure boards (most often late, most punctual) beside the arcs.
+4. Predict: the five inputs as pills, and the tuned threshold from `/api/model/metrics`.
+5. Model: test ROC-AUC for baseline, logistic regression and LightGBM. The served model is in ink, the others in ink-3.
+6. Hand-off: "Continue to the dashboard" at display size over a hairline-ruled row of the five pages.
 
-**Atmosphere colours.** These are hero-only and are never used as data or UI colours:
-- cloud greys `rgba(108-150, 116-162, 136-182, 0.18-0.24)`;
-- sun `rgba(238, 112, 64, 0.22)` fading to `rgba(214, 88, 52, 0.08)`.
+The globe re-frames per chapter (pose table in `GlobeScene.tsx`: facing lat/lon, size and offset as fractions of the viewport, arc and airport brightness), eased with smoothstep between chapters and damped per frame.
 
-**Flight path.** A 1px ink arc at 32% opacity on the right side, desktop only. It draws once (stroke-dashoffset), then a 14px lucide plane loops along it every 16 s. LAX, ORD and ATL dots and 11px mono labels breathe between 25% and 80% opacity.
+**Signature interaction.** Pointing at a board row (hover, focus or tap) lights that arc, dims the rest, and turns the globe to face the route's midpoint. A fixed readout bottom-right (desktop) gives the route, its delay rate as a Figure, the completed-flight count it is a share of, and the scheduled count. Hovering an arc on the globe lights it and shows the readout without turning the globe. Mouse drag spins the globe, which eases back to the chapter's framing.
 
-**Entrance** (one sequence, under 1.8 s; tokens in `web/src/lib/motion.ts`):
-1. The headline lines slide up out of masks with a 6px blur-to-sharp, staying opaque so the headline remains the LCP element.
-2. The subline rises, and its flight count counts up with tabular figures. Width is reserved by an invisible copy of the final value.
-3. Hairlines draw left to right.
-4. The three stats rise in a 100ms stagger and count up.
-5. The actions arrive last.
+**Atmosphere colours** (landing only, never data or UI): limb `#a9b8cc` (rim and a 1.07 back-side halo, additive), city-light `#ffe9c4`, and the pre-load hint `rgba(169, 184, 204, 0.08)`. Scrims are functional: on desktop, left to right from ground at 94% to clear at 62%; on phones, each copy block gets its own fade.
 
-Data that arrives late joins the sequence at its remaining delay; it never replays the sequence.
-
-**Actions.**
-- "Open dashboard" leans up to 6px toward the cursor, the label shifts to make room for a sliding arrow, and a brighter edge ring fades in.
-- "Score a flight" draws an underline from the left, and its plane nudges forward.
-- Stat cells are focusable. On hover or focus they show a 4% ink highlight and a Tooltip Black caption below the cell (radius `cell`). The caption carries the metric's definition and its real counts, from the summary API.
-
-**Scroll stage.** The hero is a 180dvh stage with a sticky frame:
-- the copy fades and rises 64px by halfway;
-- the sky scales to 1.08 and blurs to 6px;
-- "Continue to the dashboard" (serif, with an underline and an arrow) fades in from 55% to 85% and links to `/overview`;
-- hidden content is `inert`;
-- a hairline scroll cue with a travelling segment appears at 1.8 s and scrolls to the hand-off.
+**Motion.**
+- **Entrance:** unchanged from the previous hero (headline mask, count-ups, hairlines, stats, actions, all by 1.7 s).
+- **Arcs:** draw in from 0.9 s, staggered by 70 ms.
+- **Hero exit:** the copy fades, lifts 48px and blurs 4px over the first 60% of a viewport.
+- **Chapter reveals:** each block rises 28px out of an 8px blur, staggered by 90 ms, once.
+- **Parallax:** cursor parallax tilts the globe up to 5 degrees.
+- **Magnet:** the primary action leans up to 6px toward the cursor.
 
 **Constraints.**
-- **Eager path, no animation library.** It uses:
-  - CSS keyframes for the headline mask and the path draw;
-  - the Web Animations API for the rise and hairline entrances;
-  - requestAnimationFrame for the count-ups and the plane loop.
-- **Lazy layer.** `web/src/components/hero/enhance.ts` imports Motion's framework-free API once the browser is idle after first paint, and adds mouse parallax, the scroll stage and the magnetic action to the rendered elements.
-- **Scroll progress** comes from the page offset through a two-argument `scroll()` callback, on Motion's JS path. A `target`-based scroll is driven by a native ViewTimeline that mis-ranges the sticky stage.
-- **Under `prefers-reduced-motion`** the page is a plain one-viewport hero. Values are final immediately and the poster replaces the video. There is no parallax, plane, scroll stage or cue, and the Motion chunk is never requested.
+- **Eager path:** no three.js and no Motion. The copy, figures and entrance render first.
+- **Lazy chunks** load once the browser is idle: the globe (`globe/GlobeScene.tsx`: three, React Three Fiber, world-atlas) and the Motion layer (`landing/enhance.ts`).
+- **Shared state:** scroll and pointer reach the globe through a render-free store (`globe/store.ts`), never React state.
+- **No WebGL:** an error boundary leaves the copy on the night ground.
+- **Under `prefers-reduced-motion`:**
+  - the globe is one still frame (`frameloop="demand"`), re-rendered only when the focused route changes;
+  - there is no drift, drag, parallax, arc draw-in, pulse, scroll re-framing or reveal;
+  - the Motion chunk is never requested.
 
 ## Do's and Don'ts
 

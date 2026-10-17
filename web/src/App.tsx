@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
-import { HeroSection } from './components/HeroSection';
+import { Landing } from './components/landing/Landing';
 import { Skeleton } from './components/QueryState';
 import { Shell } from './components/Shell';
 
@@ -23,7 +23,7 @@ export default function App() {
   return (
     <Suspense fallback={<PageFallback />}>
       <Routes>
-        <Route path="/" element={<HeroSection />} />
+        <Route path="/" element={<Landing />} />
         <Route element={<Shell />}>
           <Route path="/overview" element={<Overview />} />
           <Route path="/causes" element={<Causes />} />

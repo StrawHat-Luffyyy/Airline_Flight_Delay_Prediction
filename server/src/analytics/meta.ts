@@ -23,7 +23,14 @@ export async function getMeta(db: Db): Promise<MetaResponse> {
     flights: count,
     dateRange: first && last ? { from: isoDay(first.date), to: isoDay(last.date) } : null,
     airlines: airlines.map((a) => ({ code: a._id, name: a.name })),
-    airports: airports.map((a) => ({ code: a._id, name: a.name, city: a.city, state: a.state })),
+    airports: airports.map((a) => ({
+      code: a._id,
+      name: a.name,
+      city: a.city,
+      state: a.state,
+      latitude: a.latitude,
+      longitude: a.longitude,
+    })),
     statsBuiltAt: lastRun ? lastRun.finishedAt.toISOString() : null,
     dataQuality: lastRun?.dataQuality ?? null,
   };

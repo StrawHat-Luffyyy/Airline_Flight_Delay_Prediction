@@ -245,6 +245,9 @@ export const MetaResponseSchema = z.object({
       name: z.string(),
       city: z.string().nullable(),
       state: z.string().nullable(),
+      /** WGS84 degrees from airports.csv; null for the few reference rows without coordinates. */
+      latitude: z.number().nullable(),
+      longitude: z.number().nullable(),
     }),
   ),
   /** When build:stats last completed (ISO), or null if stats were never built. */

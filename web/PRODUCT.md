@@ -29,7 +29,7 @@ Every figure comes from the project's own pipeline over the real dataset (about 
   - Explorer;
   - Predict: inputs are date, airline, origin, destination and scheduled departure hour;
   - Model.
-- **Landing:** a compact intro sits in front of the pages.
+- **Landing:** a night-orbit globe of real routes behind a short scroll story (volume, routes, prediction, honest evaluation) that hands off to the pages.
 
 ## Capabilities and Constraints
 - All data comes from the Express API (`/api/meta`, `/api/analytics/*`, `/api/flights`, `/api/predict`, `/api/model/*`). Types come from `@flight-delay/shared` zod schemas.
@@ -42,7 +42,7 @@ Every figure comes from the project's own pipeline over the real dataset (about 
 - Live API data over the ingested dataset.
 - `ml/artifacts/metrics.json`: baseline vs logistic regression vs LightGBM, confusion matrix and feature importance.
 - `docs/DECISIONS.md` and `docs/EXPLAIN_RESULTS.md`.
-- The existing dusk airplane video and poster: `web/public/videos/`.
+- Airport coordinates from airports.csv (via `/api/meta`) and 110m Natural Earth coastlines (the `world-atlas` package, public domain) for the landing globe.
 
 The product has no FAA or NOAA data, no testimonials, no contact address and no expected-minutes prediction; none of these may be invented.
 
