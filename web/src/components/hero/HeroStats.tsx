@@ -106,7 +106,7 @@ function StatCell({
       <span
         id={captionId}
         role="tooltip"
-        className={`pointer-events-none absolute top-full z-10 mt-2 w-max max-w-[min(26ch,80vw)] -translate-y-1 rounded-md border border-white/12 bg-ground/90 px-3 py-2 text-[12px] leading-snug text-ink-2 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100 ${last ? 'right-0' : 'left-0'}`}
+        className={`pointer-events-none absolute top-full z-10 mt-2 w-max max-w-[min(26ch,80vw)] -translate-y-1 rounded-md border border-white/12 bg-ground px-3 py-2 text-[12px] leading-snug text-ink-2 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100 ${last ? 'right-0' : 'left-0'}`}
       >
         {stat.caption}
       </span>
@@ -129,7 +129,8 @@ function StatRow({ stats, reduced }: { stats: Stat[]; reduced: boolean }) {
     reduced,
   );
   return (
-    <dl className="relative grid grid-cols-3">
+    // z-10: captions drop below the row, so the row must stack above the hero actions.
+    <dl className="relative z-10 grid grid-cols-3">
       <span
         ref={topRef}
         aria-hidden="true"
