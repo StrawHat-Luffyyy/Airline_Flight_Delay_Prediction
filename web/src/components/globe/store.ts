@@ -1,9 +1,11 @@
 import { useSyncExternalStore } from 'react';
 
 /**
- * Shared, render-free state between the landing page's DOM and the WebGL globe. Scroll and
- * pointer write here every frame without touching React; the globe reads it inside useFrame.
- * Only `focus` (the route a reader points at, from either side) notifies React subscribers.
+ * Shared state between the landing page's DOM and the WebGL globe.
+ *
+ * `globe` is render-free: scroll, cursor, drag and zoom write it every frame without touching
+ * React, and the globe reads it inside useFrame. The interaction state below it (what is hovered,
+ * what is selected) changes rarely and notifies subscribers, so React panels and the globe agree.
  */
 export const globe = {
   /** Fractional chapter index from the scroll position (0 = hero). */
@@ -11,48 +13,121 @@ export const globe = {
   /** Cursor position, -0.5..0.5 of the viewport, for parallax (fine pointers only). */
   pointerX: 0,
   pointerY: 0,
-  /** Extra rotation from dragging the globe, in degrees; eases back to the chapter pose. */
+  /** Extra rotation from dragging, in degrees; eases back once the visitor lets go. */
   dragLon: 0,
   dragLat: 0,
+  /** Visitor zoom multiplier on the chapter's framing (1 = as framed). */
+  zoom: 1,
+  /** performance.now() of the last drag or zoom; auto-rotation waits for a quiet spell. */
+  lastInteraction: -Infinity,
+  /** True while a mouse button is held on the globe. */
+  dragging: false,
 };
 
-let focus: string | null = null;
-/** Where the focus came from: a board row turns the globe to the route, an arc under the cursor does not. */
-let focusSource: 'board' | 'globe' = 'globe';
+export const ZOOM_MIN = 0.7;
+export const ZOOM_MAX = 2.6;
+
+export function zoomBy(factor: number): void {
+  globe.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, globe.zoom * factor));
+  globe.lastInteraction = performance.now();
+  notify();
+}
+
+export function resetView(): void {
+  globe.zoom = 1;
+  globe.dragLon = 0;
+  globe.dragLat = 0;
+  notify();
+}
+
+// ---------- Interaction state ----------
+
+export type Hover = { kind: 'route'; id: string } | { kind: 'airport'; code: string } | null;
+/** Where a hover came from: a board row steers the globe to its route, the globe itself does not. */
+export type HoverSource = 'board' | 'globe';
+
+interface Interaction {
+  hover: Hover;
+  hoverSource: HoverSource;
+  selected: string | null;
+}
+
+let state: Interaction = { hover: null, hoverSource: 'globe', selected: null };
 const listeners = new Set<() => void>();
 
-export function setFocusRoute(id: string | null, source: 'board' | 'globe' = 'globe'): void {
-  if (id === focus) return;
-  focus = id;
-  focusSource = source;
+function notify(): void {
   for (const listener of listeners) listener();
 }
 
-/** The route the globe should turn to face, or null. */
+function sameHover(a: Hover, b: Hover): boolean {
+  if (a === null || b === null) return a === b;
+  if (a.kind === 'route' && b.kind === 'route') return a.id === b.id;
+  if (a.kind === 'airport' && b.kind === 'airport') return a.code === b.code;
+  return false;
+}
+
+function update(next: Partial<Interaction>): void {
+  const merged = { ...state, ...next };
+  if (
+    merged.selected === state.selected &&
+    merged.hoverSource === state.hoverSource &&
+    sameHover(merged.hover, state.hover)
+  ) {
+    return;
+  }
+  state = merged;
+  notify();
+}
+
+export function setHover(hover: Hover, source: HoverSource = 'globe'): void {
+  update({ hover, hoverSource: source });
+}
+
+/** Clears the hover only if it is still `hover` (a late "out" must not wipe a newer "over"). */
+export function clearHover(hover: Hover): void {
+  if (sameHover(state.hover, hover)) update({ hover: null });
+}
+
+export function setSelected(id: string | null): void {
+  update({ selected: id });
+}
+
+export function getInteraction(): Interaction {
+  return state;
+}
+
+/** The route drawn lit: the hovered one, else the selected one. */
+export function getHighlightRoute(): string | null {
+  return state.hover?.kind === 'route' ? state.hover.id : state.selected;
+}
+
+/** The route the globe turns to face: a board-hovered route, else the selected one. */
 export function getSteerRoute(): string | null {
-  return focusSource === 'board' ? focus : null;
+  if (state.hover?.kind === 'route' && state.hoverSource === 'board') return state.hover.id;
+  return state.selected;
 }
 
-export function getFocusRoute(): string | null {
-  return focus;
-}
-
-export function subscribeFocus(listener: () => void): () => void {
+export function subscribe(listener: () => void): () => void {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
-/** The highlighted route id (e.g. "DCA-JFK"), or null. */
-export function useFocusRoute(): string | null {
-  return useSyncExternalStore(subscribeFocus, getFocusRoute, () => null);
+export function useInteraction(): Interaction {
+  return useSyncExternalStore(subscribe, getInteraction, getInteraction);
 }
 
-/** Reset on unmount so a revisit starts at the hero pose. */
+/** Reset on unmount so a revisit starts at the hero pose with nothing selected. */
 export function resetGlobe(): void {
   globe.chapter = 0;
   globe.pointerX = 0;
   globe.pointerY = 0;
   globe.dragLon = 0;
   globe.dragLat = 0;
-  setFocusRoute(null);
+  globe.zoom = 1;
+  globe.lastInteraction = -Infinity;
+  globe.dragging = false;
+  state = { hover: null, hoverSource: 'globe', selected: null };
+  notify();
 }

@@ -1,541 +1,265 @@
 /**
  * The landing globe (React Three Fiber). Lazy-loaded after first paint, so three.js never sits in
  * the eager bundle. Everything it draws is real: 110m Natural Earth coastlines (world-atlas),
- * airports at their airports.csv coordinates (via /api/meta), and route arcs from the delay-rate
- * ranking. Scroll, cursor and focus arrive through the render-free `globe` store, read in useFrame.
+ * airports at their airports.csv coordinates (via /api/meta) and route arcs from the delay-rate
+ * ranking. Scroll, cursor, drag and zoom arrive through the render-free `globe` store; hover and
+ * selection through its interaction state, which the DOM panels share.
+ *
+ * Layers live in Earth.tsx (planet, atmosphere, lines, stars), Airports.tsx and Routes.tsx; this
+ * file owns the camera rig, the controls and the canvas.
  */
-import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import type { Group } from 'three';
+import { Airports, type AirportPoint } from './Airports';
+import { Coastlines, Earth, Graticule, Stars } from './Earth';
 import {
-  AdditiveBlending,
-  BackSide,
-  BufferAttribute,
-  BufferGeometry,
-  CatmullRomCurve3,
-  Color,
-  type Group,
-  type ShaderMaterial,
-  TubeGeometry,
-  Vector3,
-} from 'three';
-import { mesh } from 'topojson-client';
-import type { GeometryObject, Topology } from 'topojson-specification';
-import land from 'world-atlas/land-110m.json';
-import { frame, latLonToVec3, poseAt, type Pose, type RouteArc } from './geo';
-import { getFocusRoute, getSteerRoute, globe, setFocusRoute, subscribeFocus } from './store';
+  frame,
+  introShot,
+  nearestTurn,
+  poseAt,
+  type ArcKind,
+  type Pose,
+  type RouteArc,
+} from './geo';
+import { Routes, useArcCurves } from './Routes';
+import { damp, LIVE, resetDrawClock } from './shaders';
+import { getInteraction, getSteerRoute, globe, setSelected, subscribe, zoomBy } from './store';
 
 const RAD = Math.PI / 180;
 /** Vertical field of view, degrees: long-lens and flat, like a photograph from orbit. */
 const FOV = 30;
-
-// Data colours from DESIGN.md (amber = delayed, blue = on time). Atmosphere tones are hero-only.
-const AMBER = new Color('#e8a54b');
-const BLUE = new Color('#7c9bd1');
-const INK = new Color('#f2f1ec');
-const LIMB = new Color('#a9b8cc');
+/** The establishing shot on load, seconds. */
+const INTRO_AT = 0.15;
+const INTRO_S = 2.8;
+/** Auto-rotation resumes this long after the last drag or zoom, ms. */
+const IDLE_MS = 2600;
+/** Full-speed auto-rotation, degrees per second (one turn a minute). */
+const SPIN_DEG_S = 6;
+/** Hold-still sway around the framed longitude, degrees and radians per second. */
+const SWAY_DEG = 16;
+const SWAY_RATE = 0.085;
+/** A selected route pulls the camera in: further for a short hop, less for a long haul. */
+function selectZoom(arc: RouteArc): number {
+  const [a, b] = [arc.points[0]!, arc.points[arc.points.length - 1]!];
+  const angle = Math.acos(Math.min(1, Math.max(-1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])));
+  return Math.min(1.8, Math.max(1.2, 0.5 / Math.max(angle, 1e-3)));
+}
 
 /**
  * Chapter poses: hero, volume, routes, predict, model, hand-off. Size and offsets are fractions
- * of the viewport (see geo.frame), so the framing holds at any aspect ratio.
+ * of the viewport (see geo.frame), so the framing holds at any aspect ratio. `spin` (0..1) blends
+ * the hold-still sway into continuous auto-rotation.
  */
-const DESKTOP_POSES: Pose[] = [
-  { lat: 34, lon: -97, size: 0.84, x: 0.5, y: -0.02, arcs: 1, airports: 1 },
-  { lat: 41, lon: -96, size: 0.62, x: 0.46, y: 0, arcs: 0.2, airports: 1.8 },
-  { lat: 38, lon: -96, size: 1.25, x: 0.46, y: -0.05, arcs: 1, airports: 0.9 },
-  { lat: 30, lon: -108, size: 0.82, x: 0.5, y: 0.02, arcs: 0.55, airports: 1 },
-  { lat: 24, lon: -86, size: 0.52, x: 0.5, y: 0, arcs: 0.35, airports: 0.8 },
-  { lat: 34, lon: -97, size: 0.4, x: 0, y: 0.3, arcs: 0.5, airports: 0.8 },
+type ChapterPose = Pose & { spin: number };
+const DESKTOP_POSES: ChapterPose[] = [
+  { lat: 34, lon: -97, size: 0.84, x: 0.5, y: -0.02, arcs: 1, airports: 1, spin: 0 },
+  { lat: 41, lon: -96, size: 0.62, x: 0.46, y: 0, arcs: 0.25, airports: 1.8, spin: 0 },
+  { lat: 38, lon: -96, size: 1.25, x: 0.46, y: -0.05, arcs: 1, airports: 0.9, spin: 0 },
+  { lat: 30, lon: -108, size: 0.82, x: 0.5, y: 0.02, arcs: 0.6, airports: 1, spin: 0 },
+  { lat: 24, lon: -86, size: 0.52, x: 0.5, y: 0, arcs: 0.45, airports: 0.8, spin: 0.6 },
+  { lat: 26, lon: -97, size: 0.4, x: 0, y: 0.3, arcs: 0.55, airports: 0.8, spin: 1 },
 ];
 /** Phones: the globe sits in the top half, behind and above the copy. */
-const MOBILE_POSES: Pose[] = DESKTOP_POSES.map((pose, index) => ({
+const MOBILE_POSES: ChapterPose[] = DESKTOP_POSES.map((pose, index) => ({
   ...pose,
   size: index === 2 ? 1.1 : 0.82,
   x: 0,
   y: 0.46,
 }));
 
-/**
- * Uniforms every arc and airport shares, written once per frame by the Rig (inside useFrame,
- * never during render). One globe is mounted at a time, so one set suffices.
- */
-const LIVE = {
-  uTime: { value: 0 },
-  uArcs: { value: 1 },
-  uBright: { value: 1 },
-};
-
-const damp = (current: number, target: number, rate: number, dt: number): number =>
-  current + (target - current) * (1 - Math.exp(-rate * dt));
-
-/** Deterministic PRNG for the star field (the same sky on every visit). */
-function mulberry32(seed: number): () => number {
-  let a = seed;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+function poseFor(poses: readonly ChapterPose[], chapter: number): ChapterPose {
+  const pose = poseAt(poses, chapter);
+  const index = Math.min(poses.length - 1, Math.max(0, chapter));
+  const low = poses[Math.floor(index)]!;
+  const high = poses[Math.ceil(index)]!;
+  const t = index - Math.floor(index);
+  return { ...pose, spin: low.spin + (high.spin - low.spin) * t * t * (3 - 2 * t) };
 }
 
-function positions(points: readonly (readonly number[])[]): BufferGeometry {
-  const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new BufferAttribute(new Float32Array(points.flat()), 3));
-  return geometry;
-}
-
-// ---------- Earth, limb and lines ----------
-
-const earthVertex = /* glsl */ `
-  varying vec3 vNormal;
-  varying vec3 vView;
-  void main() {
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    vNormal = normalize(normalMatrix * normal);
-    vView = normalize(-mv.xyz);
-    gl_Position = projectionMatrix * mv;
-  }
-`;
-const earthFragment = /* glsl */ `
-  uniform vec3 uLimb;
-  varying vec3 vNormal;
-  varying vec3 vView;
-  void main() {
-    float facing = clamp(dot(vNormal, vView), 0.0, 1.0);
-    float rim = pow(1.0 - facing, 3.0);
-    float key = max(dot(vNormal, normalize(vec3(-0.6, 0.5, 0.6))), 0.0);
-    vec3 color = vec3(0.012, 0.016, 0.022) + uLimb * (rim * 0.2 + key * 0.025);
-    gl_FragColor = vec4(color, 1.0);
-  }
-`;
-const limbFragment = /* glsl */ `
-  uniform vec3 uLimb;
-  varying vec3 vNormal;
-  varying vec3 vView;
-  void main() {
-    float glow = pow(clamp(0.72 - dot(vNormal, vView), 0.0, 1.0), 3.5);
-    gl_FragColor = vec4(uLimb, glow * 0.34);
-  }
-`;
-
-function Earth() {
-  const uniforms = useMemo(() => ({ uLimb: { value: LIMB } }), []);
-  return (
-    <>
-      <mesh renderOrder={0}>
-        <sphereGeometry args={[0.998, 96, 64]} />
-        <shaderMaterial
-          vertexShader={earthVertex}
-          fragmentShader={earthFragment}
-          uniforms={uniforms}
-        />
-      </mesh>
-      <mesh scale={1.07}>
-        <sphereGeometry args={[1, 64, 48]} />
-        <shaderMaterial
-          vertexShader={earthVertex}
-          fragmentShader={limbFragment}
-          uniforms={uniforms}
-          side={BackSide}
-          transparent
-          depthWrite={false}
-          blending={AdditiveBlending}
-        />
-      </mesh>
-    </>
-  );
-}
-
-/** Coastlines as line segments just above the surface. */
-function Coastlines() {
-  const geometry = useMemo(() => {
-    const topology = land as unknown as Topology;
-    const object = topology.objects.land as GeometryObject;
-    const lines = mesh(topology, object).coordinates;
-    const segments: number[][] = [];
-    for (const line of lines) {
-      for (let i = 0; i < line.length - 1; i += 1) {
-        const [lonA, latA] = line[i]!;
-        const [lonB, latB] = line[i + 1]!;
-        segments.push(
-          [...latLonToVec3(latA!, lonA!, 1.0015)],
-          [...latLonToVec3(latB!, lonB!, 1.0015)],
-        );
-      }
-    }
-    return positions(segments);
-  }, []);
-  return (
-    <lineSegments geometry={geometry}>
-      <lineBasicMaterial color={INK} transparent opacity={0.26} depthWrite={false} />
-    </lineSegments>
-  );
-}
-
-/** A 15-degree latitude/longitude net, barely there. */
-function Graticule() {
-  const geometry = useMemo(() => {
-    const segments: number[][] = [];
-    const push = (a: readonly number[], b: readonly number[]) => segments.push([...a], [...b]);
-    for (let lat = -75; lat <= 75; lat += 15) {
-      for (let lon = -180; lon < 180; lon += 3) {
-        push(latLonToVec3(lat, lon, 1.001), latLonToVec3(lat, lon + 3, 1.001));
-      }
-    }
-    for (let lon = -180; lon < 180; lon += 15) {
-      for (let lat = -84; lat < 84; lat += 3) {
-        push(latLonToVec3(lat, lon, 1.001), latLonToVec3(lat + 3, lon, 1.001));
-      }
-    }
-    return positions(segments);
-  }, []);
-  return (
-    <lineSegments geometry={geometry}>
-      <lineBasicMaterial color={INK} transparent opacity={0.045} depthWrite={false} />
-    </lineSegments>
-  );
-}
-
-// ---------- Airports ----------
-
-const pointVertex = /* glsl */ `
-  attribute float aSize;
-  attribute float aSeed;
-  uniform float uTime;
-  uniform float uBright;
-  uniform float uPixelRatio;
-  varying float vAlpha;
-  void main() {
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    float twinkle = 0.78 + 0.22 * sin(uTime * 1.1 + aSeed * 6.2831);
-    vAlpha = twinkle * uBright;
-    gl_PointSize = aSize * uPixelRatio * (3.2 / -mv.z);
-    gl_Position = projectionMatrix * mv;
-  }
-`;
-const pointFragment = /* glsl */ `
-  uniform vec3 uColor;
-  varying float vAlpha;
-  void main() {
-    float d = length(gl_PointCoord - 0.5);
-    float core = smoothstep(0.5, 0.0, d);
-    gl_FragColor = vec4(uColor, core * core * vAlpha);
-  }
-`;
-
-interface AirportPoint {
-  code: string;
-  latitude: number;
-  longitude: number;
-}
-
-function Airports({
-  airports,
-  endpoints,
-}: {
-  airports: readonly AirportPoint[];
-  endpoints: ReadonlySet<string>;
-}) {
-  const pixelRatio = useThree((state) => state.viewport.dpr);
-  const material = useRef<ShaderMaterial>(null);
-  const geometry = useMemo(() => {
-    const geo = positions(airports.map((a) => [...latLonToVec3(a.latitude, a.longitude, 1.003)]));
-    geo.setAttribute(
-      'aSize',
-      new BufferAttribute(
-        new Float32Array(airports.map((a) => (endpoints.has(a.code) ? 7 : 3.4))),
-        1,
-      ),
-    );
-    const random = mulberry32(7);
-    geo.setAttribute(
-      'aSeed',
-      new BufferAttribute(new Float32Array(airports.map(() => random())), 1),
-    );
-    return geo;
-  }, [airports, endpoints]);
-  const uniforms = useMemo(
-    () => ({
-      uTime: { value: 0 },
-      uBright: LIVE.uBright,
-      uPixelRatio: { value: pixelRatio },
-      uColor: { value: new Color('#ffe9c4') },
-    }),
-    [pixelRatio],
-  );
-  useFrame((state) => {
-    if (material.current) material.current.uniforms.uTime!.value = state.clock.elapsedTime;
-  });
-  return (
-    <points geometry={geometry}>
-      <shaderMaterial
-        ref={material}
-        vertexShader={pointVertex}
-        fragmentShader={pointFragment}
-        uniforms={uniforms}
-        transparent
-        depthWrite={false}
-        blending={AdditiveBlending}
-      />
-    </points>
-  );
-}
-
-function Stars() {
-  const geometry = useMemo(() => {
-    const random = mulberry32(2015);
-    const points: number[][] = [];
-    const sizes: number[] = [];
-    const seeds: number[] = [];
-    for (let i = 0; i < 900; i += 1) {
-      const lat = Math.asin(random() * 2 - 1) / RAD;
-      const lon = random() * 360 - 180;
-      points.push([...latLonToVec3(lat, lon, 40 + random() * 20)]);
-      sizes.push(random() < 0.06 ? 26 : 10 + random() * 8);
-      seeds.push(random());
-    }
-    const geo = positions(points);
-    geo.setAttribute('aSize', new BufferAttribute(new Float32Array(sizes), 1));
-    geo.setAttribute('aSeed', new BufferAttribute(new Float32Array(seeds), 1));
-    return geo;
-  }, []);
-  const uniforms = useMemo(
-    () => ({
-      uTime: { value: 0 },
-      uBright: { value: 0.32 },
-      uPixelRatio: { value: 1 },
-      uColor: { value: INK },
-    }),
-    [],
-  );
-  return (
-    <points geometry={geometry}>
-      <shaderMaterial
-        vertexShader={pointVertex}
-        fragmentShader={pointFragment}
-        uniforms={uniforms}
-        transparent
-        depthWrite={false}
-      />
-    </points>
-  );
-}
-
-// ---------- Route arcs ----------
-
-const arcVertex = /* glsl */ `
-  uniform float uWidth;
-  varying float vAlong;
-  void main() {
-    vAlong = uv.x;
-    vec3 p = position + normal * uWidth;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
-  }
-`;
-const arcFragment = /* glsl */ `
-  uniform vec3 uColor;
-  uniform float uTime;
-  uniform float uDraw;
-  uniform float uPhase;
-  uniform float uFocus;
-  uniform float uDim;
-  uniform float uArcs;
-  varying float vAlong;
-  void main() {
-    if (vAlong > uDraw) discard;
-    // A pulse runs origin to destination, then leaves the arc before it restarts.
-    float head = fract(uTime * 0.11 + uPhase) * 1.35;
-    float behind = head - vAlong;
-    float pulse = behind >= 0.0 ? exp(-behind * 12.0) : 0.0;
-    float alpha = (0.42 + pulse * 1.0) * (1.0 - uDim * 0.8) + uFocus * 0.75;
-    gl_FragColor = vec4(uColor * (1.0 + uFocus * 0.35), alpha * uArcs);
-  }
-`;
-
-/** Arcs draw in on load, staggered; seconds from mount. */
-const DRAW_AT = 0.9;
-const DRAW_S = 1.5;
-const DRAW_STAGGER = 0.07;
-
-function Arc({
-  arc,
-  index,
-  reduced,
-  interactive,
-}: {
-  arc: RouteArc;
-  index: number;
-  reduced: boolean;
-  interactive: boolean;
-}) {
-  const material = useRef<ShaderMaterial>(null);
-  const [tube, hit] = useMemo(() => {
-    const curve = new CatmullRomCurve3(arc.points.map(([x, y, z]) => new Vector3(x, y, z)));
-    return [new TubeGeometry(curve, 96, 0.004, 6, false), new TubeGeometry(curve, 32, 0.03, 5)];
-  }, [arc.points]);
-  const uniforms = useMemo(
-    () => ({
-      uTime: LIVE.uTime,
-      uArcs: LIVE.uArcs,
-      uColor: { value: arc.kind === 'late' ? AMBER : BLUE },
-      uDraw: { value: reduced ? 1 : 0 },
-      uPhase: { value: (index * 0.137) % 1 },
-      uFocus: { value: 0 },
-      uDim: { value: 0 },
-      uWidth: { value: 0 },
-    }),
-    [arc.kind, index, reduced],
-  );
-  useEffect(
-    () => () => {
-      tube.dispose();
-      hit.dispose();
-    },
-    [tube, hit],
-  );
-
-  useFrame((state, dt) => {
-    const u = material.current?.uniforms;
-    if (!u) return;
-    const t = state.clock.elapsedTime;
-    if (!reduced) {
-      const start = DRAW_AT + index * DRAW_STAGGER;
-      u.uDraw!.value = Math.min(1.001, Math.max(0, (t - start) / DRAW_S));
-    }
-    const focus = getFocusRoute();
-    const focused = focus === arc.id ? 1 : 0;
-    const dimmed = focus !== null && !focused ? 1 : 0;
-    u.uFocus!.value = damp(u.uFocus!.value as number, focused, 8, dt);
-    u.uDim!.value = damp(u.uDim!.value as number, dimmed, 8, dt);
-    u.uWidth!.value = (u.uFocus!.value as number) * 0.0032;
-  });
-
-  const over = (event: ThreeEvent<PointerEvent>) => {
-    event.stopPropagation();
-    setFocusRoute(arc.id);
-    document.body.style.cursor = 'pointer';
-  };
-  const out = () => {
-    if (getFocusRoute() === arc.id) setFocusRoute(null);
-    document.body.style.cursor = '';
-  };
-
-  return (
-    <group>
-      <mesh geometry={tube} renderOrder={2}>
-        <shaderMaterial
-          ref={material}
-          vertexShader={arcVertex}
-          fragmentShader={arcFragment}
-          uniforms={uniforms}
-          transparent
-          depthWrite={false}
-          blending={AdditiveBlending}
-        />
-      </mesh>
-      {interactive ? (
-        <mesh geometry={hit} onPointerOver={over} onPointerOut={out}>
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
-        </mesh>
-      ) : null}
-    </group>
-  );
-}
-
-// ---------- Rig: scroll pose, drift, parallax, drag ----------
+// ---------- Rig: chapter pose, intro shot, auto-rotation, drag, zoom, steering ----------
 
 function Rig({
   children,
   arcs,
   reduced,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   arcs: readonly RouteArc[];
   reduced: boolean;
 }) {
+  const outer = useRef<Group>(null);
   const group = useRef<Group>(null);
   const mobile = useThree((state) => state.size.width < 768);
   const poses = mobile ? MOBILE_POSES : DESKTOP_POSES;
-  const first = useRef(true);
+  const motion = useRef({ first: true, spin: 0, chapter: 0, roll: 0, aim: 0 });
 
   useFrame((state, delta) => {
     const node = group.current;
-    if (!node) return;
+    const frameNode = outer.current;
+    if (!node || !frameNode) return;
+    const m = motion.current;
     const dt = Math.min(delta, 0.05);
     const t = state.clock.elapsedTime;
     LIVE.uTime.value = t;
-    const pose = poseAt(poses, globe.chapter);
-    const target = frame(pose, state.size.width / state.size.height, FOV);
-    // A route picked on a board turns to face the camera; otherwise the chapter frames the view.
+
+    // A new chapter starts from its own framing: drop the selection and any visitor zoom.
+    const chapter = Math.round(globe.chapter);
+    if (chapter !== m.chapter) {
+      m.chapter = chapter;
+      globe.zoom = 1;
+      if (getInteraction().selected) setSelected(null);
+    }
+
+    const pose = poseFor(poses, globe.chapter);
     const steer = getSteerRoute();
     const facing = steer ? arcs.find((arc) => arc.id === steer)?.mid : undefined;
-    const drift = reduced || facing ? 0 : Math.sin(t * 0.07) * 6;
-    const lon = (facing?.lon ?? pose.lon) + drift + globe.dragLon + globe.pointerX * 5;
-    const lat = (facing?.lat ?? pose.lat) + globe.dragLat + globe.pointerY * 3;
-    if (!reduced) {
-      globe.dragLon *= Math.exp(-dt * 0.6);
-      globe.dragLat *= Math.exp(-dt * 0.6);
+    const idle = !globe.dragging && performance.now() - globe.lastInteraction > IDLE_MS && !facing;
+
+    // Auto-rotation accumulates only while idle; otherwise it settles on a whole turn, so the
+    // framing returns without an unwinding spin.
+    if (!reduced && idle && pose.spin > 0.02) m.spin += dt * SPIN_DEG_S * pose.spin;
+    else if (pose.spin <= 0.02 || facing) m.spin = damp(m.spin, nearestTurn(m.spin), 1.2, dt);
+    if (!reduced && idle) {
+      globe.dragLon *= Math.exp(-dt * 0.5);
+      globe.dragLat *= Math.exp(-dt * 0.5);
     }
-    // Snap on the first frame (no swing in from 0,0), damp afterwards.
-    const rate = first.current || reduced ? Infinity : 2.6;
-    first.current = false;
+
+    const intro = reduced ? introShot(1) : introShot((t - INTRO_AT) / INTRO_S);
+    const sway = reduced || facing ? 0 : Math.sin(t * SWAY_RATE) * SWAY_DEG * (1 - pose.spin);
+    const lon =
+      (facing?.lon ?? pose.lon) + intro.lon + sway + m.spin + globe.dragLon + globe.pointerX * 5;
+    const lat = (facing?.lat ?? pose.lat) + intro.lat + globe.dragLat + globe.pointerY * 3;
+
+    const selected = getInteraction().selected;
+    const selectedArc = selected ? arcs.find((arc) => arc.id === selected) : undefined;
+    const size = pose.size * intro.size * globe.zoom * (selectedArc ? selectZoom(selectedArc) : 1);
+    const target = frame({ ...pose, size }, state.size.width / state.size.height, FOV);
+
+    // Snap on the first frame (no swing in from 0,0) and under reduced motion; damp otherwise.
+    const rate = m.first || reduced ? Infinity : 2.4;
+    m.first = false;
     node.rotation.y = damp(node.rotation.y, -lon * RAD, rate, dt);
     node.rotation.x = damp(node.rotation.x, lat * RAD, rate, dt);
-    node.position.x = damp(node.position.x, target.x - globe.pointerX * 0.05, rate, dt);
-    node.position.y = damp(node.position.y, target.y + globe.pointerY * 0.04, rate, dt);
+    frameNode.position.x = damp(frameNode.position.x, target.x - globe.pointerX * 0.05, rate, dt);
+    frameNode.position.y = damp(frameNode.position.y, target.y + globe.pointerY * 0.04, rate, dt);
     state.camera.position.z = damp(state.camera.position.z, target.distance, rate, dt);
+    // The globe sits off-centre and the camera is close, so the point facing +z is not the middle
+    // of the visible disc. While steering to a route, aim the faced point at the camera instead.
+    m.aim = damp(m.aim, facing ? 1 : 0, rate, dt);
+    const { x: gx, y: gy } = frameNode.position;
+    const toCamera = Math.hypot(gx, gy, state.camera.position.z);
+    frameNode.rotation.y = m.aim * Math.atan2(-gx, state.camera.position.z);
+    frameNode.rotation.x = m.aim * Math.asin(gy / toCamera);
+    // A faint camera roll with the cursor: the view banks a little, like a window seat.
+    m.roll = damp(m.roll, reduced ? 0 : -globe.pointerX * 0.035, 3, dt);
+    state.camera.rotation.z = m.roll;
     LIVE.uArcs.value = damp(LIVE.uArcs.value, pose.arcs, rate, dt);
     LIVE.uBright.value = damp(LIVE.uBright.value, pose.airports, rate, dt);
   });
 
   return (
-    // Default XYZ order: the matrix is Rx * Ry, so a point turns by longitude first, then latitude.
-    <group ref={group}>
-      {children}
+    // Outer: position and camera aim (YXZ: tilt, then turn). Inner, default XYZ (Rx * Ry): a point
+    // turns by longitude first, then latitude.
+    <group ref={outer} rotation-order="YXZ">
+      <group ref={group}>{children}</group>
     </group>
   );
 }
 
-/** Mouse drag spins the globe; it eases back to the chapter's framing. */
-function DragControls() {
+/** The canvas cursor: grab over open globe, grabbing mid-drag, pointer over anything pickable. */
+function setCursor(element: HTMLElement, cursor: string): void {
+  element.style.cursor = cursor;
+}
+
+/** Mouse drag rotates; Ctrl/Cmd + wheel and double-click zoom (plain wheel keeps scrolling the page). */
+function Controls({ reduced }: { reduced: boolean }) {
   const element = useThree((state) => state.gl.domElement);
+  const invalidate = useThree((state) => state.invalidate);
   useEffect(() => {
     let last: { x: number; y: number } | null = null;
+    setCursor(element, 'grab');
+    const touch = () => {
+      globe.lastInteraction = performance.now();
+      if (reduced) invalidate();
+    };
     const down = (event: PointerEvent) => {
       if (event.pointerType !== 'mouse' || event.button !== 0) return;
       last = { x: event.clientX, y: event.clientY };
+      globe.dragging = true;
+      setCursor(element, 'grabbing');
       element.setPointerCapture(event.pointerId);
+      touch();
     };
     const move = (event: PointerEvent) => {
       if (!last) return;
-      globe.dragLon -= (event.clientX - last.x) * 0.22;
-      globe.dragLat = Math.max(-30, Math.min(30, globe.dragLat + (event.clientY - last.y) * 0.15));
+      const scale = 0.24 / globe.zoom;
+      globe.dragLon -= (event.clientX - last.x) * scale;
+      globe.dragLat = Math.max(
+        -35,
+        Math.min(35, globe.dragLat + (event.clientY - last.y) * scale * 0.7),
+      );
       last = { x: event.clientX, y: event.clientY };
+      touch();
     };
     const up = () => {
+      if (!last) return;
       last = null;
+      globe.dragging = false;
+      setCursor(element, 'grab');
+      touch();
+    };
+    const wheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      zoomBy(Math.exp(-event.deltaY * 0.0018));
+      touch();
+    };
+    const doubleClick = () => {
+      zoomBy(globe.zoom > 1.6 ? 1 / globe.zoom : 1.5);
+      touch();
     };
     element.addEventListener('pointerdown', down);
     element.addEventListener('pointermove', move);
     element.addEventListener('pointerup', up);
     element.addEventListener('pointercancel', up);
+    element.addEventListener('wheel', wheel, { passive: false });
+    element.addEventListener('dblclick', doubleClick);
     return () => {
+      setCursor(element, '');
       element.removeEventListener('pointerdown', down);
       element.removeEventListener('pointermove', move);
       element.removeEventListener('pointerup', up);
       element.removeEventListener('pointercancel', up);
+      element.removeEventListener('wheel', wheel);
+      element.removeEventListener('dblclick', doubleClick);
     };
-  }, [element]);
+  }, [element, invalidate, reduced]);
+  return null;
+}
+
+/** Shows a pointer over anything pickable, and the grab hand elsewhere. */
+function HoverCursor({ interactive }: { interactive: boolean }) {
+  const element = useThree((state) => state.gl.domElement);
+  useEffect(
+    () =>
+      subscribe(() => {
+        if (globe.dragging) return;
+        const hovering = getInteraction().hover !== null;
+        setCursor(element, hovering ? 'pointer' : interactive ? 'grab' : '');
+      }),
+    [element, interactive],
+  );
   return null;
 }
 
 /**
- * Under reduced motion the canvas renders on demand; a focus change (a board row or an arc) asks
- * for a frame so the highlight still shows, instantly.
+ * Under reduced motion the canvas renders on demand; any hover, selection or zoom change asks for
+ * a frame so the result still shows, instantly.
  */
-function FocusInvalidator() {
+function Invalidator() {
   const invalidate = useThree((state) => state.invalidate);
-  useEffect(() => subscribeFocus(() => invalidate()), [invalidate]);
+  useEffect(() => subscribe(() => invalidate()), [invalidate]);
   return null;
 }
 
@@ -543,7 +267,7 @@ export interface GlobeSceneProps {
   arcs: readonly RouteArc[];
   airports: readonly AirportPoint[];
   reduced: boolean;
-  /** Fine pointer and wide enough for hover and drag. */
+  /** Fine pointer and wide enough for hover, drag and zoom. Taps select on every device. */
   interactive: boolean;
   onReady: () => void;
 }
@@ -555,11 +279,24 @@ export default function GlobeScene({
   interactive,
   onReady,
 }: GlobeSceneProps) {
-  const endpoints = useMemo(() => new Set(arcs.flatMap((arc) => [arc.origin, arc.dest])), [arcs]);
+  const curves = useArcCurves(arcs);
+  const anchors = useMemo(() => {
+    const map = new Map<string, Set<ArcKind>>();
+    for (const arc of arcs) {
+      for (const code of [arc.origin, arc.dest]) {
+        const kinds = map.get(code) ?? new Set<ArcKind>();
+        kinds.add(arc.kind);
+        map.set(code, kinds);
+      }
+    }
+    return map;
+  }, [arcs]);
 
   useEffect(
     () => () => {
-      document.body.style.cursor = '';
+      resetDrawClock();
+      LIVE.uArcs.value = 1;
+      LIVE.uBright.value = 1;
     },
     [],
   );
@@ -569,6 +306,7 @@ export default function GlobeScene({
       dpr={[1, 1.75]}
       camera={{ fov: FOV, near: 0.1, far: 200, position: [0, 0, 5] }}
       gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+      raycaster={{ params: { Mesh: {}, Line: { threshold: 1 }, LOD: {}, Points: { threshold: 0.014 }, Sprite: {} } }}
       frameloop={reduced ? 'demand' : 'always'}
       onCreated={({ gl }) => {
         gl.setClearColor(0x000000, 0);
@@ -577,22 +315,15 @@ export default function GlobeScene({
     >
       <Stars />
       <Rig arcs={arcs} reduced={reduced}>
-        <Earth />
+        <Earth onEmptyClick />
         <Graticule />
         <Coastlines />
-        <Airports airports={airports} endpoints={endpoints} />
-        {arcs.map((arc, index) => (
-          <Arc
-            key={arc.id}
-            arc={arc}
-            index={index}
-            reduced={reduced}
-            interactive={interactive}
-          />
-        ))}
+        <Airports airports={airports} anchors={anchors} reduced={reduced} hoverable={interactive} />
+        <Routes curves={curves} reduced={reduced} hoverable={interactive} />
       </Rig>
-      {interactive && !reduced ? <DragControls /> : null}
-      {reduced ? <FocusInvalidator /> : null}
+      {interactive ? <Controls reduced={reduced} /> : null}
+      <HoverCursor interactive={interactive} />
+      {reduced ? <Invalidator /> : null}
     </Canvas>
   );
 }

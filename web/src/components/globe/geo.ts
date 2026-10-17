@@ -67,6 +67,8 @@ export interface RouteArc {
   delayRate: number | null;
   flights: number;
   completed: number;
+  /** Mean arrival delay of completed flights, minutes (negative = early). */
+  avgArrDelay: number | null;
   points: Vec3[];
   /** The great-circle midpoint, so the globe can turn to face the route. */
   mid: { lat: number; lon: number };
@@ -90,6 +92,7 @@ export function buildRouteArcs(
     delayRate: number | null;
     flights: number;
     completed: number;
+    avgArrDelay: number | null;
   }[],
   airports: ReadonlyMap<string, Coordinates>,
   kind: ArcKind,
@@ -113,6 +116,7 @@ export function buildRouteArcs(
       delayRate: row.delayRate,
       flights: row.flights,
       completed: row.completed,
+      avgArrDelay: row.avgArrDelay,
       points,
       mid: vec3ToLatLon(points[Math.floor(segments / 2)]!),
     });
@@ -188,4 +192,35 @@ export function poseAt(poses: readonly Pose[], chapter: number): Pose {
     arcs: mix('arcs'),
     airports: mix('airports'),
   };
+}
+
+const EARTH_RADIUS_MILES = 3958.8;
+
+/** Haversine distance between two airports, in statute miles. */
+export function greatCircleMiles(
+  a: { latitude: number; longitude: number },
+  b: { latitude: number; longitude: number },
+): number {
+  const dLat = (b.latitude - a.latitude) * RAD;
+  const dLon = (b.longitude - a.longitude) * RAD;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(a.latitude * RAD) * Math.cos(b.latitude * RAD) * Math.sin(dLon / 2) ** 2;
+  return 2 * EARTH_RADIUS_MILES * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** The whole revolution (a multiple of 360 degrees) closest to an accumulated spin. */
+export function nearestTurn(degrees: number): number {
+  return Math.round(degrees / 360) * 360 + 0;
+}
+
+/**
+ * The opening camera move, as offsets on the hero pose: it starts wide and turned toward the
+ * Pacific, then settles with an exponential ease. `t` is 0..1 of the shot; past 1 it holds.
+ */
+export function introShot(t: number): { size: number; lon: number; lat: number } {
+  const clamped = Math.min(1, Math.max(0, t));
+  const e = clamped >= 1 ? 1 : 1 - Math.pow(2, -10 * clamped);
+  if (e === 1) return { size: 1, lon: 0, lat: 0 };
+  return { size: 0.55 + 0.45 * e, lon: -48 * (1 - e), lat: 14 * (1 - e) };
 }

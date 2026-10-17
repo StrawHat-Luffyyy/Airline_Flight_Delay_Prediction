@@ -7,6 +7,7 @@ import {
   type TopFactor,
 } from '@flight-delay/shared';
 import { useMemo, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router';
 import { z } from 'zod';
 import { ApiError } from '../api/client';
 import { useMeta, usePredict, useRoutes } from '../api/hooks';
@@ -21,6 +22,7 @@ import {
   hourRangeLabel,
 } from '../lib/format';
 import { FACTOR_LABELS } from '../lib/labels';
+import { seedForm, type FormState } from '../lib/predictForm';
 
 const MIN_DATE = '2015-01-01';
 const MAX_DATE = '2015-12-31';
@@ -28,40 +30,6 @@ const HOURS = Array.from({ length: 24 }, (_unused, hour) => hour);
 
 type FieldName = 'date' | 'airline' | 'origin' | 'dest' | 'schedDepHour';
 type FieldErrors = Partial<Record<FieldName, string>>;
-
-interface FormState {
-  date: string;
-  airline: string;
-  origin: string;
-  dest: string;
-  hour: string;
-}
-
-const DEFAULTS = {
-  date: '2015-12-21',
-  airline: 'AA',
-  origin: 'ORD',
-  dest: 'LAX',
-  hour: '17',
-} as const;
-
-/** The preferred defaults when the dataset has them, else the first available option. */
-function seedForm(meta: MetaResponse): FormState {
-  const airlines = meta.airlines.map((airline) => airline.code);
-  const airports = [...meta.airports.map((airport) => airport.code)].sort();
-  const pick = (preferred: string, options: string[], skip?: string) =>
-    options.includes(preferred) && preferred !== skip
-      ? preferred
-      : (options.find((code) => code !== skip) ?? '');
-  const origin = pick(DEFAULTS.origin, airports);
-  return {
-    date: DEFAULTS.date,
-    airline: pick(DEFAULTS.airline, airlines),
-    origin,
-    dest: pick(DEFAULTS.dest, airports, origin),
-    hour: DEFAULTS.hour,
-  };
-}
 
 function validate(form: FormState): { errors: FieldErrors; ok: boolean } {
   const parsed = PredictRequestSchema.safeParse({
@@ -331,7 +299,11 @@ function PredictForm({
   serverErrors: FieldErrors;
   onSubmit: (body: PredictRequest) => void;
 }) {
-  const [form, setForm] = useState<FormState>(() => seedForm(meta));
+  // A route picked on the landing globe arrives as ?origin=LGA&dest=CMH.
+  const [params] = useSearchParams();
+  const [form, setForm] = useState<FormState>(() =>
+    seedForm(meta, { origin: params.get('origin'), dest: params.get('dest') }),
+  );
   const [localErrors, setErrors] = useState<FieldErrors>({});
   const errors: FieldErrors = { ...serverErrors, ...localErrors };
   const airports = useMemo(

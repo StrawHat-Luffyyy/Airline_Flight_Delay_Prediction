@@ -5,8 +5,8 @@ import { Link } from 'react-router';
 import { useMeta, useModelMetrics } from '../../api/hooks';
 import { formatDate, formatInteger, formatPercent } from '../../lib/format';
 import { QueryState } from '../QueryState';
-import { parseRouteKey, type RouteArc } from '../globe/geo';
-import { setFocusRoute, useFocusRoute } from '../globe/store';
+import { clearHover, setHover, setSelected, useInteraction } from '../globe/store';
+import { RouteLabel } from './GlobeHud';
 import { ROUTE_MIN_FLIGHTS, type RouteRankings } from './useRouteRankings';
 
 /** Rows per board in the routes chapter; the globe draws more. */
@@ -108,31 +108,18 @@ export function VolumeChapter({ sectionRef }: { sectionRef: Ref<HTMLElement> }) 
 
 // ---------- Routes ----------
 
-function RouteLabel({ id }: { id: string }) {
-  const route = parseRouteKey(id);
-  if (!route) return <>{id}</>;
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      {route.origin}
-      <ArrowRight aria-hidden="true" size={11} strokeWidth={1.5} className="text-ink-3" />
-      <span className="sr-only">to</span>
-      {route.dest}
-    </span>
-  );
-}
-
 /** A five-row departure board; pointing at a row lights its arc on the globe. */
 function RouteBoard({
   caption,
   rows,
   tone,
-  focus,
 }: {
   caption: string;
   rows: readonly DelayRateRow[];
   tone: 'late' | 'punctual';
-  focus: string | null;
 }) {
+  const { hover, selected } = useInteraction();
+  const lit = hover?.kind === 'route' ? hover.id : null;
   return (
     <table className="w-full border-collapse font-mono text-[13px]">
       <caption className="pb-2 text-left font-sans text-xs text-ink-2">
@@ -158,7 +145,9 @@ function RouteBoard({
       <tbody>
         {rows.map((row) => {
           const id = String(row.key);
-          const active = focus === id;
+          const route = { kind: 'route', id } as const;
+          const isSelected = selected === id;
+          const active = isSelected || lit === id;
           return (
             <tr
               key={id}
@@ -167,12 +156,12 @@ function RouteBoard({
               <th scope="row" className="p-0 text-left font-normal text-ink">
                 <button
                   type="button"
-                  onMouseEnter={() => setFocusRoute(id, 'board')}
-                  onMouseLeave={() => setFocusRoute(null)}
-                  onFocus={() => setFocusRoute(id, 'board')}
-                  onBlur={() => setFocusRoute(null)}
-                  onClick={() => setFocusRoute(active ? null : id, 'board')}
-                  aria-pressed={active}
+                  onMouseEnter={() => setHover(route, 'board')}
+                  onMouseLeave={() => clearHover(route)}
+                  onFocus={() => setHover(route, 'board')}
+                  onBlur={() => clearHover(route)}
+                  onClick={() => setSelected(isSelected ? null : id)}
+                  aria-pressed={isSelected}
                   className="flex h-9 w-full items-center text-left"
                 >
                   <RouteLabel id={id} />
@@ -199,7 +188,6 @@ export function RoutesChapter({
   sectionRef: Ref<HTMLElement>;
   rankings: RouteRankings;
 }) {
-  const focus = useFocusRoute();
   return (
     <Chapter
       id="chapter-routes"
@@ -209,7 +197,7 @@ export function RoutesChapter({
       <p data-reveal className={BODY}>
         Share of completed flights arriving 15+ minutes late, among routes with at least{' '}
         {formatInteger(ROUTE_MIN_FLIGHTS)} flights in 2015. Point at a route to find it on the
-        globe.
+        globe, and select it for the details.
       </p>
       <div data-reveal className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
         <QueryState query={rankings.late} label="the most delay-prone routes" skeletonClass="h-52">
@@ -218,7 +206,6 @@ export function RoutesChapter({
               caption="Most often late"
               rows={data.rows.slice(0, BOARD_ROWS)}
               tone="late"
-              focus={focus}
             />
           )}
         </QueryState>
@@ -228,7 +215,6 @@ export function RoutesChapter({
               caption="Most punctual"
               rows={data.rows.slice(0, BOARD_ROWS)}
               tone="punctual"
-              focus={focus}
             />
           )}
         </QueryState>
@@ -239,37 +225,6 @@ export function RoutesChapter({
         </p>
       ) : null}
     </Chapter>
-  );
-}
-
-/** The focused route's real figures, pinned beside the globe (desktop). */
-export function RouteReadout({ arcs }: { arcs: readonly RouteArc[] }) {
-  const focus = useFocusRoute();
-  const arc = arcs.find((candidate) => candidate.id === focus);
-  return (
-    <div
-      aria-hidden="true"
-      className={`pointer-events-none fixed bottom-8 right-10 z-20 hidden w-64 border-t border-rule-strong pt-3 transition-[opacity,translate] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:block ${arc ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'}`}
-    >
-      {arc ? (
-        <>
-          <p className="font-mono text-sm text-ink">
-            <RouteLabel id={arc.id} />
-          </p>
-          <p
-            className={`display-num mt-1 text-[clamp(1.75rem,3vw,2.5rem)] leading-none ${arc.kind === 'late' ? 'text-delayed' : 'text-ontime'}`}
-          >
-            {formatPercent(arc.delayRate)}
-          </p>
-          <p className="mt-1.5 text-xs text-ink-2">
-            of {formatInteger(arc.completed)} completed flights arrived 15+ min late
-          </p>
-          <p className="mt-1 font-mono text-[11px] text-ink-3">
-            {formatInteger(arc.flights)} scheduled in 2015
-          </p>
-        </>
-      ) : null}
-    </div>
   );
 }
 

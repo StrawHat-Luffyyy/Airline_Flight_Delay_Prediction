@@ -307,17 +307,37 @@ Recharts on the ground: horizontal grid lines only (rule), axis ticks 11px ink-3
 
 The globe re-frames per chapter (pose table in `GlobeScene.tsx`: facing lat/lon, size and offset as fractions of the viewport, arc and airport brightness), eased with smoothstep between chapters and damped per frame.
 
-**Signature interaction.** Pointing at a board row (hover, focus or tap) lights that arc, dims the rest, and turns the globe to face the route's midpoint. A fixed readout bottom-right (desktop) gives the route, its delay rate as a Figure, the completed-flight count it is a share of, and the scheduled count. Hovering an arc on the globe lights it and shows the readout without turning the globe. Mouse drag spins the globe, which eases back to the chapter's framing.
+**Globe material.**
+- **Lighting:** a sun fixed in view space (high right) lights a night-side earth: a soft terminator, a faint sun glint, and a rim that warms where the sun meets the limb.
+- **Atmosphere:** an inner haze at grazing angles and an outer halo, both brighter on the sun side.
+- **Line work:** coastlines and the graticule brighten on the lit hemisphere.
+- **Airports:** city lights brighten on the night side.
+- **Route endpoints:** pulsing rings in their routes' colour, which blends amber and blue when an airport anchors both kinds.
+- **Arcs:** each is a thin core with a comet trail and a white-hot head, inside a soft halo tube, so it glows with no post-processing pass.
+- **Aircraft:** one per arc, an instanced swept-wing silhouette, rides the pulse head along the great circle. The shader and the CPU share one pulse formula (`shaders.pulseHead`).
 
-**Atmosphere colours** (landing only, never data or UI): limb `#a9b8cc` (rim and a 1.07 back-side halo, additive), city-light `#ffe9c4`, and the pre-load hint `rgba(169, 184, 204, 0.08)`. Scrims are functional: on desktop, left to right from ground at 94% to clear at 62%; on phones, each copy block gets its own fade.
+**Interaction.**
+- **Hover:** hovering an arc or an airport on the globe (fine pointers) shows a tooltip at the cursor: the route and its delay rate, or the airport code, name and city.
+- **Board hover:** pointing at a board row lights its arc, dims the rest and turns the globe to face the route.
+- **Selection:** clicking an arc or a board row selects the route. The globe flies to it, zooming further for short hops (1.2 to 1.8x), and the "Selected route" panel opens. The panel shows:
+  - the route's rank;
+  - origin and destination cities;
+  - the delay rate as a Figure, with its completed-flight base;
+  - average arrival delay, scheduled flights and great-circle miles (computed from airports.csv coordinates);
+  - "Score a flight", which opens Predict prefilled through `?origin=&dest=`.
 
-**Motion.**
-- **Entrance:** unchanged from the previous hero (headline mask, count-ups, hairlines, stats, actions, all by 1.7 s).
-- **Arcs:** draw in from 0.9 s, staggered by 70 ms.
-- **Hero exit:** the copy fades, lifts 48px and blurs 4px over the first 60% of a viewport.
-- **Chapter reveals:** each block rises 28px out of an 8px blur, staggered by 90 ms, once.
-- **Parallax:** cursor parallax tilts the globe up to 5 degrees.
-- **Magnet:** the primary action leans up to 6px toward the cursor.
+  Escape, the close button or a click on open ground clears it, and so does a new chapter.
+- **Controls:**
+  - **Drag:** rotates the globe.
+  - **Ctrl/Cmd + wheel:** zooms (0.7 to 2.6x). A plain wheel always scrolls the page.
+  - **Double-click:** zooms in, or resets once zoomed far.
+  - **Controls cluster** (top right, desktop): zoom in, zoom out and reset, each a labelled button.
+- **Idle:** after 2.6 s without input, a drag eases back to the chapter framing. The hero to Predict chapters sway around the US (16 degrees, about 74 s per cycle); the model and hand-off chapters auto-rotate (one turn a minute), settling on a whole turn when they leave.
+
+**Camera.**
+- **Establishing shot:** on load, the camera starts wide and turned toward the Pacific, then settles over 2.8 s.
+- **Cursor bank:** the view banks up to 2 degrees with the cursor.
+- **Perspective aim:** while steering to a route, an outer group aims the faced point at the camera. With the globe off-centre and the camera close, the camera-facing point is not the middle of the visible disc.
 
 **Constraints.**
 - **Eager path:** no three.js and no Motion. The copy, figures and entrance render first.
@@ -325,8 +345,9 @@ The globe re-frames per chapter (pose table in `GlobeScene.tsx`: facing lat/lon,
 - **Shared state:** scroll and pointer reach the globe through a render-free store (`globe/store.ts`), never React state.
 - **No WebGL:** an error boundary leaves the copy on the night ground.
 - **Under `prefers-reduced-motion`:**
-  - the globe is one still frame (`frameloop="demand"`), re-rendered only when the focused route changes;
-  - there is no drift, drag, parallax, arc draw-in, pulse, scroll re-framing or reveal;
+  - the globe is one still frame (`frameloop="demand"`), redrawn instantly on any hover, selection, drag or zoom;
+  - there is no establishing shot, sway, auto-rotation, pulse, aircraft, ring pulse, arc draw-in, camera bank, scroll re-framing or reveal;
+  - visitor-driven drag and zoom still work, but they snap instead of easing;
   - the Motion chunk is never requested.
 
 ## Do's and Don'ts
@@ -338,7 +359,7 @@ The globe re-frames per chapter (pose table in `GlobeScene.tsx`: facing lat/lon,
 - **Do** set page titles, section titles and headline figures in Instrument Serif at weight 400.
 - **Do** keep Geist Mono for figures, dates, codes and IDs, and switch names back to Geist.
 - **Do** wrap every API-backed block in QueryState so it has loading, error-with-Retry and empty states.
-- **Do** honour `prefers-reduced-motion`: no glide, no lamp, no rise, near-zero transitions, poster image instead of video.
+- **Do** honour `prefers-reduced-motion`: no glide, no lamp, no rise, near-zero transitions, and a still globe.
 - **Do** use the 2px amber focus ring (3px offset) for every interactive element.
 
 ### Don't:

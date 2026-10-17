@@ -680,3 +680,34 @@ The earlier entry for this upgrade quoted 85.0 KB → 174.7 KB. That compared th
 - **Readout wording.** The delay rate is stated as a share of completed flights, matching the API formula, with the scheduled count beside it.
 
 **Dev note.** `optimizeDeps.include` in `web/vite.config.ts` pre-bundles three, R3F, topojson-client and motion. Without it, Vite discovered them when the lazy chunk first loaded and re-bundled React mid-session, which put two React copies on the page and gave an "Invalid hook call" in the canvas.
+
+### Landing globe: interaction, motion and material pass (2026-10-17)
+
+**Asked for:** a more immersive and interactive globe. The request listed:
+- auto-rotation, mouse rotation and zoom;
+- glowing animated paths and moving aircraft, pulsing airports;
+- hover tooltips, atmosphere and realistic lighting;
+- a cinematic camera, scroll-linked motion, and route details on selection;
+- all without breaking reduced motion or performance.
+
+**Built** (`web/src/components/globe/`, split into `Earth`, `Airports`, `Routes`, `shaders`, `store` and the `GlobeScene` rig):
+- **Lighting and atmosphere:** a view-space sun with a terminator, a glint and a warm sunrise rim, plus an inner haze and an outer halo.
+- **Arcs:** a comet trail with a halo tube; glow without post-processing, so no extra dependency.
+- **Aircraft and airports:** instanced aircraft synced to the pulse; endpoint rings; tooltips on airport and route hover.
+- **Selection:** a selected-route panel, and a fly-to that zooms by route length.
+- **Controls:** drag, Ctrl/Cmd + wheel and double-click zoom, plus an accessible zoom/reset button group.
+- **Motion:** the establishing shot, idle auto-rotation in the later chapters, sway in the story chapters, and a cursor bank.
+
+**Decisions:**
+- **Zoom needs a modifier.** Plain wheel zoom would trap page scroll on a full-viewport globe. Ctrl/Cmd + wheel, double-click and the buttons cover zoom; the plain wheel still scrolls the page (verified).
+- **Auto-rotation is chapter-dependent.** Continuous spin in the hero would turn the only data (US routes) away half the time. The hero to Predict chapters sway around the US; the model and hand-off chapters spin, settling on a whole turn when they leave.
+- **Selection-only figures.** The panel shows only values the ranking row already carries (rate, completed, scheduled, average arrival delay) and a great-circle distance computed from airports.csv coordinates. That distance is labelled as such, not presented as flown distance.
+- **Predict accepts `?origin=&dest=`.** `seedForm` moved to `web/src/lib/predictForm.ts` with tests. Unknown airports or a same-airport route fall back to the defaults. Existing behaviour without params is unchanged.
+
+**Bugs found while verifying:**
+- **`<main>` swallowed pointer events.** It was hit-testable although its sections were `pointer-events-none`, so the canvas never received a pointer event; hover had silently never worked. `<main>` is now `pointer-events-none` too, with interactive copy opted back in.
+- **Steered routes landed off-centre.** With the globe off-centre and the camera close, the camera-facing point projects well outside the middle of the visible disc. An outer group now aims the faced point at the camera while steering.
+
+**Verified** in Playwright at 1440×900 with the tab in front: hover on arcs and airports, click to select, Escape, Ctrl + wheel zoom, drag, and plain-wheel page scroll all work, at 61 fps. At 390 px there is no overflow and the controls are hidden. Under reduced motion the still frame updates on selection, no Motion chunk loads, and the console is clean.
+
+**Bundle (gzip):** the globe chunk is 261.1 KB (was 258 KB); eager JS is 133.7 KB (was 131.7 KB; the HUD and store are eager).

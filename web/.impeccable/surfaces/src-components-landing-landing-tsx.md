@@ -21,6 +21,6 @@ STORY: The hero's live count leads into the volume chapter (5.8M flights, airpor
 
 FIRST VIEWPORT: Left: the two-line serif title, the live subline, the KPI rule row and the two actions. Right: the globe facing North America, its arcs drawing in.
 
-FORM: A fixed WebGL stage behind six full-viewport chapters. Signature move: pointing at a board row turns the globe to that route and lights its arc.
+FORM: A fixed WebGL stage behind six full-viewport chapters. Signature move: pointing at a board row turns the globe to that route and lights it, and hovering an arc lights it in place. Selecting either flies the camera in and opens its real figures, one click from Predict prefilled.
 
 FINISH: Verified in the browser at 1024 and 1440 px and on mobile at 375 px, and under reduced motion in Playwright. DESIGN.md "Landing" holds the durable rules.
