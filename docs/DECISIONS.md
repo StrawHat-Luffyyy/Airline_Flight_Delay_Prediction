@@ -711,3 +711,51 @@ The earlier entry for this upgrade quoted 85.0 KB → 174.7 KB. That compared th
 **Verified** in Playwright at 1440×900 with the tab in front: hover on arcs and airports, click to select, Escape, Ctrl + wheel zoom, drag, and plain-wheel page scroll all work, at 61 fps. At 390 px there is no overflow and the controls are hidden. Under reduced motion the still frame updates on selection, no Motion chunk loads, and the console is clean.
 
 **Bundle (gzip):** the globe chunk is 261.1 KB (was 258 KB); eager JS is 133.7 KB (was 131.7 KB; the HUD and store are eager).
+
+### Landing globe: US-focused composition (2026-10-18)
+
+**Asked for:** a globe framed on the United States (the dataset is US domestic only), with:
+- richer interactive airport markers;
+- animated routes and glowing aircraft particles driven by real values;
+- route selection, smooth camera moves and cinematic lighting;
+- other continents dimmed, Alaska and Hawaii shown only where useful;
+- no fabricated data, and good on desktop and mobile.
+
+**Built:**
+- **Camera:**
+  - a 16-degree lens;
+  - chapter poses over the lower 48, with Alaska and Hawaii only in the volume chapter;
+  - a lean (tilt about the framed point) so data columns stand up;
+  - an establishing shot that descends from the whole planet;
+  - fly-to framing for a selected route (by length) and a selected airport (its network's extent).
+- **Geography:** US coast, borders and state lines from `us-atlas` (1:10M Census). There is a land fill texture with the US lifted. Other coasts, land and the graticule fade with distance from the US.
+- **Airport columns:** height is 2015 departures (linear); colour is the delay rate against the national rate. Hover shows departures and rate; click selects.
+- **Airport selection:** the 12 busiest destinations from `/api/routes` as arcs; a details panel with a destination board linking to Predict prefilled.
+- **Moving lights** on every arc, one per 1,000 scheduled flights.
+- **Map key** with the real thresholds.
+
+**Decisions:**
+- **Airport figures from two existing calls, not a new endpoint.** `/api/analytics/delay-rate?by=origin` caps at 100 rows, so the worst and best ends are fetched at `minFlights=2000`. At 2,000 the two ends overlap (193 airports; measured: 7 in both), which proves the merged list is complete. At 1,000 they would not overlap (exactly 200, no proof). `mergeAirportRankings` reports `complete`, and the key says "partial list" if it ever is not. 192 of the 193 have coordinates and get a column; the key counts those.
+- **Colour encodes the gap to the national rate**, with full amber or blue at ±8 points, so the Paired Encoding Rule holds (amber = more delay). Near the national rate a column is warm ink, not a data colour.
+- **Linear column height.** A square-root scale would flatter small airports; the column is a bar chart on the map, so it stays linear.
+- **Network arcs are warm ink.** `/api/routes` gives flights per destination but no delay rate, so these arcs carry no delay colour. Their ids are prefixed `net:` so they never collide with a ranked route.
+- **Moving-light density is stated in the key** (one per 1,000 flights, 1 to 14 per route) so it is an encoding, not decoration.
+- **New dependency `us-atlas` 3.0.1** (ISC, Census data), loaded only in the lazy globe chunk. The `world-atlas` source moved from `land-110m` to `countries-110m`, so US coasts can be left to the finer outline.
+- **Eager bundle stays three-free.** The map key's colours come from `globe/palette.ts` (plain hex), not from the three.js colour objects.
+
+**Bug found while verifying (pre-existing):** React Three Fiber 9 copies every uniform object passed in `uniforms` (`events-*.esm.js`, "ShaderMaterial uniforms must keep a stable target reference"). The shared `LIVE` uniforms were therefore frozen at their first value in every material:
+- the arc comet pulses never moved (the CPU-driven aircraft did);
+- airport twinkle and ring pulses were still;
+- per-chapter arc and airport dimming never applied.
+
+It showed up because the new columns read `uTime` for their grow-in and stayed flat. `shaders.linkLive` now re-links the shared uniforms onto each material in its ref callback.
+
+**Verified** in Playwright with the dev server and live API:
+- **Desktop (1440×900):** all six chapters; hover and click on an ATL column (379,424 departures, 15.8% late, 169 destinations, 12 drawn); DCA→JFK selection from the board; Escape.
+- **Mobile (390×844):** hero, volume and routes chapters, no horizontal overflow.
+- **Reduced motion:** a still frame with full-height columns and no moving lights.
+- **Console:** clean.
+
+Screenshots: `docs/screenshots/landing-us-focus-desktop.png`, `landing-us-focus-mobile.png`, `landing-airport-network.png`.
+
+**Bundle (gzip):** the globe chunk is 320.6 KB (was 261.1 KB; us-atlas states and the countries topology account for most of it); eager JS is 135.7 KB (was 133.7 KB), still with no three.js.

@@ -19,7 +19,7 @@ OWN-WORLD: This is the dashboard's world, unchanged: the #010101 ground, warm in
 
 STORY: The hero's live count leads into the volume chapter (5.8M flights, airports, airlines). The routes chapter shows departure boards linked to the arcs. Predict states the inputs and the tuned threshold. Model gives the test ROC-AUC against baseline and logistic regression. The hand-off links to the dashboard.
 
-FIRST VIEWPORT: Left: the two-line serif title, the live subline, the KPI rule row and the two actions. Right: the globe facing North America, its arcs drawing in.
+FIRST VIEWPORT: Left: the two-line serif title, the live subline, the KPI rule row and the two actions. Right: the lower 48 filling the frame and leaning back under a curved horizon, airport columns growing in by departures, the arcs drawing in.
 
 FORM: A fixed WebGL stage behind six full-viewport chapters. Signature move: pointing at a board row turns the globe to that route and lights it, and hovering an arc lights it in place. Selecting either flies the camera in and opens its real figures, one click from Predict prefilled.
 

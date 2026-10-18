@@ -16,6 +16,8 @@ export const globe = {
   /** Extra rotation from dragging, in degrees; eases back once the visitor lets go. */
   dragLon: 0,
   dragLat: 0,
+  /** The globe size the camera is framing now (written by the rig; drag speed follows it). */
+  size: 1,
   /** Visitor zoom multiplier on the chapter's framing (1 = as framed). */
   zoom: 1,
   /** performance.now() of the last drag or zoom; auto-rotation waits for a quiet spell. */
@@ -25,7 +27,7 @@ export const globe = {
 };
 
 export const ZOOM_MIN = 0.7;
-export const ZOOM_MAX = 2.6;
+export const ZOOM_MAX = 2.2;
 
 export function zoomBy(factor: number): void {
   globe.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, globe.zoom * factor));
@@ -43,16 +45,22 @@ export function resetView(): void {
 // ---------- Interaction state ----------
 
 export type Hover = { kind: 'route'; id: string } | { kind: 'airport'; code: string } | null;
-/** Where a hover came from: a board row steers the globe to its route, the globe itself does not. */
-export type HoverSource = 'board' | 'globe';
+/**
+ * Where a hover came from: a board row steers the globe to its route; the globe itself shows the
+ * cursor tooltip; a panel row (an airport's destinations) only lights its arc.
+ */
+export type HoverSource = 'board' | 'globe' | 'panel';
 
 interface Interaction {
   hover: Hover;
   hoverSource: HoverSource;
+  /** The selected route id. A route and an airport are never selected together. */
   selected: string | null;
+  /** The selected airport code: the globe fans out its busiest destinations. */
+  selectedAirport: string | null;
 }
 
-let state: Interaction = { hover: null, hoverSource: 'globe', selected: null };
+let state: Interaction = { hover: null, hoverSource: 'globe', selected: null, selectedAirport: null };
 const listeners = new Set<() => void>();
 
 function notify(): void {
@@ -70,6 +78,7 @@ function update(next: Partial<Interaction>): void {
   const merged = { ...state, ...next };
   if (
     merged.selected === state.selected &&
+    merged.selectedAirport === state.selectedAirport &&
     merged.hoverSource === state.hoverSource &&
     sameHover(merged.hover, state.hover)
   ) {
@@ -89,7 +98,16 @@ export function clearHover(hover: Hover): void {
 }
 
 export function setSelected(id: string | null): void {
-  update({ selected: id });
+  update({ selected: id, selectedAirport: id === null ? state.selectedAirport : null });
+}
+
+export function setSelectedAirport(code: string | null): void {
+  update({ selectedAirport: code, selected: code === null ? state.selected : null });
+}
+
+/** Clears whichever route or airport is selected. */
+export function clearSelection(): void {
+  update({ selected: null, selectedAirport: null });
 }
 
 export function getInteraction(): Interaction {
@@ -128,6 +146,6 @@ export function resetGlobe(): void {
   globe.zoom = 1;
   globe.lastInteraction = -Infinity;
   globe.dragging = false;
-  state = { hover: null, hoverSource: 'globe', selected: null };
+  state = { hover: null, hoverSource: 'globe', selected: null, selectedAirport: null };
   notify();
 }

@@ -13,7 +13,7 @@ import { useMeta } from '../../api/hooks';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 import { resetHeroClock } from '../../lib/motion';
 import { buildRouteArcs } from '../globe/geo';
-import { resetGlobe } from '../globe/store';
+import { resetGlobe, useInteraction } from '../globe/store';
 import {
   HandoffChapter,
   ModelChapter,
@@ -21,8 +21,15 @@ import {
   RoutesChapter,
   VolumeChapter,
 } from './Chapters';
-import { GlobeControls, GlobeTooltip, RouteDetails } from './GlobeHud';
+import {
+  AirportDetails,
+  GlobeControls,
+  GlobeLegend,
+  GlobeTooltip,
+  RouteDetails,
+} from './GlobeHud';
 import { Hero } from './Hero';
+import { useAirportNetwork, useAirportStats } from './useAirportStats';
 import { useRouteRankings } from './useRouteRankings';
 
 const GlobeScene = lazy(() => import('../globe/GlobeScene'));
@@ -92,6 +99,8 @@ export function Landing() {
 
   const meta = useMeta();
   const rankings = useRouteRankings();
+  const airportStats = useAirportStats();
+  const { selectedAirport } = useInteraction();
 
   const airportCoordinates = useMemo(
     () => new Map((meta.data?.airports ?? []).map((airport) => [airport.code, airport])),
@@ -110,13 +119,15 @@ export function Landing() {
     () => new Map(airports.map((airport) => [airport.code, airport])),
     [airports],
   );
-  const arcs = useMemo(
+  const network = useAirportNetwork(selectedAirport, airportCoordinates);
+  const rankedArcs = useMemo(
     () => [
       ...buildRouteArcs(rankings.late.data?.rows ?? [], airportCoordinates, 'late'),
       ...buildRouteArcs(rankings.punctual.data?.rows ?? [], airportCoordinates, 'punctual'),
     ],
     [rankings.late.data, rankings.punctual.data, airportCoordinates],
   );
+  const arcs = useMemo(() => [...rankedArcs, ...network.arcs], [rankedArcs, network.arcs]);
 
   useEffect(
     () => () => {
@@ -151,7 +162,7 @@ export function Landing() {
       {/* The orbit: fixed behind every chapter. */}
       <div
         role="img"
-        aria-label="A globe of the United States at night. Airports glow where they are; amber arcs are the routes most often late in 2015 and blue arcs the most punctual. The same routes are listed in the routes section."
+        aria-label="A globe framed on the United States at night. Each airport with 2,000 or more departures in 2015 rises as a column as tall as its departures, coloured by its delay rate against the national rate: amber above, blue below. Amber arcs are the routes most often late and blue arcs the most punctual; lights move along them in proportion to their flights. The same routes are listed in the routes section."
         className="fixed inset-0 z-0"
       >
         <div aria-hidden="true" className="landing-orbit-hint absolute inset-0" />
@@ -164,6 +175,8 @@ export function Landing() {
                 <GlobeScene
                   arcs={arcs}
                   airports={airports}
+                  stats={airportStats.stats}
+                  national={airportStats.national}
                   reduced={reduced}
                   interactive={interactive}
                   onReady={() => setGlobeReady(true)}
@@ -193,8 +206,25 @@ export function Landing() {
       {globeReady ? (
         <>
           {interactive ? <GlobeControls /> : null}
-          {interactive ? <GlobeTooltip arcs={arcs} airports={airportsByCode} /> : null}
-          <RouteDetails arcs={arcs} airports={airportsByCode} />
+          <GlobeLegend
+            airportStats={airportStats}
+            airports={airportsByCode}
+            interactive={interactive}
+            reduced={reduced}
+          />
+          {interactive ? (
+            <GlobeTooltip
+              arcs={arcs}
+              airports={airportsByCode}
+              airportStats={airportStats}
+            />
+          ) : null}
+          <RouteDetails arcs={rankedArcs} airports={airportsByCode} />
+          <AirportDetails
+            airports={airportsByCode}
+            airportStats={airportStats}
+            network={network.routes}
+          />
         </>
       ) : null}
     </div>

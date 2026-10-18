@@ -1,12 +1,16 @@
 /**
  * Route arcs: a thin core with a comet trail, a soft halo tube that makes it glow without a
- * post-processing pass, an invisible fat tube for picking, and one aircraft per arc riding the
- * pulse head. Amber = most often late, blue = most punctual (DESIGN.md Paired Encoding Rule).
+ * post-processing pass, an invisible fat tube for picking, one aircraft per arc riding the pulse
+ * head, and a stream of moving lights whose density follows the route's real 2015 flight count.
+ * Amber = most often late, blue = most punctual (DESIGN.md Paired Encoding Rule); a selected
+ * airport's network has no delay figure per route, so it is drawn in warm ink.
  */
-import { useFrame, type ThreeEvent } from '@react-three/fiber';
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import {
   AdditiveBlending,
+  BufferAttribute,
+  BufferGeometry,
   CatmullRomCurve3,
   Color,
   DoubleSide,
@@ -18,12 +22,41 @@ import {
   TubeGeometry,
   Vector3,
 } from 'three';
-import type { RouteArc } from './geo';
-import { arcPhase, damp, drawProgress, LIVE, PULSE_SPAN, PULSE_SPEED, pulseHead } from './shaders';
-import { clearHover, getHighlightRoute, setHover, setSelected } from './store';
+import { flowCount, type ArcKind, type RouteArc } from './geo';
+import { AMBER_HEX, BLUE_HEX, NETWORK_HEX } from './palette';
+import {
+  arcPhase,
+  damp,
+  drawProgress,
+  forgetDraw,
+  linkLive,
+  LIVE,
+  PULSE_SPAN,
+  PULSE_SPEED,
+  pulseHead,
+} from './shaders';
+import { clearHover, getHighlightRoute, getInteraction, setHover, setSelected } from './store';
 
-export const AMBER = new Color('#e8a54b');
-export const BLUE = new Color('#7c9bd1');
+export const AMBER = new Color(AMBER_HEX);
+export const BLUE = new Color(BLUE_HEX);
+/** A selected airport's destinations: no delay figure per route, so not a data colour. */
+export const NETWORK = new Color(NETWORK_HEX);
+
+export function arcColor(kind: ArcKind): Color {
+  if (kind === 'late') return AMBER;
+  if (kind === 'punctual') return BLUE;
+  return NETWORK;
+}
+
+/**
+ * Whether an arc steps back: another route is lit, or an airport is selected and this ranked
+ * route does not touch it (its own network arcs stay lit).
+ */
+function isDimmed(arc: RouteArc, lit: string | null, airport: string | null): boolean {
+  if (lit !== null) return lit !== arc.id;
+  if (airport === null || arc.kind === 'network') return false;
+  return arc.origin !== airport && arc.dest !== airport;
+}
 
 const arcVertex = /* glsl */ `
   uniform float uWidth;
@@ -91,17 +124,23 @@ const haloFragment = /* glsl */ `
 export interface ArcCurve {
   arc: RouteArc;
   curve: CatmullRomCurve3;
+  /**
+   * Position within its group (the ranking, or a selected airport's network): drives the draw-in
+   * stagger and pulse phase, so a network draws in at once instead of after the ranked arcs.
+   */
+  order: number;
 }
 
 export function useArcCurves(arcs: readonly RouteArc[]): ArcCurve[] {
-  return useMemo(
-    () =>
-      arcs.map((arc) => ({
-        arc,
-        curve: new CatmullRomCurve3(arc.points.map(([x, y, z]) => new Vector3(x, y, z))),
-      })),
-    [arcs],
-  );
+  return useMemo(() => {
+    let ranked = 0;
+    let network = 0;
+    return arcs.map((arc) => ({
+      arc,
+      curve: new CatmullRomCurve3(arc.points.map(([x, y, z]) => new Vector3(x, y, z))),
+      order: arc.kind === 'network' ? network++ : ranked++,
+    }));
+  }, [arcs]);
 }
 
 function Arc({
@@ -120,8 +159,8 @@ function Arc({
   const halo = useRef<ShaderMaterial>(null);
   const [coreGeometry, haloGeometry, hitGeometry] = useMemo(
     () => [
-      new TubeGeometry(curve, 128, 0.0038, 6, false),
-      new TubeGeometry(curve, 96, 0.016, 8, false),
+      new TubeGeometry(curve, 128, 0.003, 6, false),
+      new TubeGeometry(curve, 96, 0.011, 8, false),
       new TubeGeometry(curve, 32, 0.02, 5, false),
     ],
     [curve],
@@ -138,7 +177,7 @@ function Arc({
     () => ({
       uTime: LIVE.uTime,
       uArcs: LIVE.uArcs,
-      uColor: { value: arc.kind === 'late' ? AMBER : BLUE },
+      uColor: { value: arcColor(arc.kind) },
       uDraw: { value: reduced ? 1 : 0 },
       uPhase: { value: arcPhase(index) },
       uFocus: { value: 0 },
@@ -150,6 +189,13 @@ function Arc({
   );
   // The halo shares every value but widens on focus independently.
   const haloUniforms = useMemo(() => ({ ...uniforms, uWidth: { value: 0 } }), [uniforms]);
+  // A network arc draws in again each time its airport is selected.
+  useEffect(
+    () => () => {
+      if (arc.kind === 'network') forgetDraw(arc.id);
+    },
+    [arc.id, arc.kind],
+  );
 
   useFrame((state, dt) => {
     const c = core.current?.uniforms;
@@ -157,7 +203,7 @@ function Arc({
     if (!c || !h) return;
     const lit = getHighlightRoute();
     const focused = lit === arc.id ? 1 : 0;
-    const dimmed = lit !== null && !focused ? 1 : 0;
+    const dimmed = isDimmed(arc, lit, getInteraction().selectedAirport) ? 1 : 0;
     const rate = reduced ? Infinity : 8;
     const focus = damp(c.uFocus!.value as number, focused, rate, dt);
     c.uDraw!.value = drawProgress(arc.id, index, state.clock.elapsedTime, reduced) * 1.001;
@@ -175,14 +221,18 @@ function Arc({
   const out = () => clearHover(hover);
   const click = (event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation();
-    if (event.delta < 4) setSelected(arc.id);
+    // Network arcs have no ranking details to open; a click on one keeps its airport selected.
+    if (event.delta < 4 && arc.kind !== 'network') setSelected(arc.id);
   };
 
   return (
     <group>
       <mesh geometry={haloGeometry} renderOrder={1}>
         <shaderMaterial
-          ref={halo}
+          ref={(material) => {
+            halo.current = material;
+            linkLive(material);
+          }}
           vertexShader={arcVertex}
           fragmentShader={haloFragment}
           uniforms={haloUniforms}
@@ -193,7 +243,10 @@ function Arc({
       </mesh>
       <mesh geometry={coreGeometry} renderOrder={2}>
         <shaderMaterial
-          ref={core}
+          ref={(material) => {
+            core.current = material;
+            linkLive(material);
+          }}
           vertexShader={arcVertex}
           fragmentShader={coreFragment}
           uniforms={uniforms}
@@ -232,7 +285,7 @@ function aircraftGeometry(): ShapeGeometry {
   return new ShapeGeometry(shape);
 }
 
-const AIRCRAFT_SCALE = 0.012;
+const AIRCRAFT_SCALE = 0.0085;
 const WHITE = new Color('#fff6e6');
 
 /** One aircraft per arc, at the pulse head, flying along the great circle. */
@@ -258,11 +311,12 @@ function Aircraft({ curves }: { curves: readonly ArcCurve[] }) {
     if (!instanced) return;
     const t = state.clock.elapsedTime;
     const lit = getHighlightRoute();
+    const airport = getInteraction().selectedAirport;
     const { point, tangent, up, right, matrix, scale, color } = scratch;
-    curves.forEach(({ arc, curve }, index) => {
-      const head = pulseHead(t, arcPhase(index));
-      const drawn = drawProgress(arc.id, index, t, false);
-      const visible = head <= Math.min(1, drawn) && (lit === null || lit === arc.id);
+    curves.forEach(({ arc, curve, order }, index) => {
+      const head = pulseHead(t, arcPhase(order));
+      const drawn = drawProgress(arc.id, order, t, false);
+      const visible = head <= Math.min(1, drawn) && !isDimmed(arc, lit, airport);
       const s = visible ? AIRCRAFT_SCALE * (lit === arc.id ? 1.35 : 1) : 0;
       const u = Math.min(1, head);
       curve.getPointAt(u, point);
@@ -273,7 +327,7 @@ function Aircraft({ curves }: { curves: readonly ArcCurve[] }) {
       scale.makeScale(s, s, s);
       matrix.multiply(scale);
       instanced.setMatrixAt(index, matrix);
-      color.copy(arc.kind === 'late' ? AMBER : BLUE).lerp(WHITE, 0.3);
+      color.copy(arcColor(arc.kind)).lerp(WHITE, 0.3);
       instanced.setColorAt(index, color);
     });
     instanced.count = curves.length;
@@ -299,6 +353,114 @@ function Aircraft({ curves }: { curves: readonly ArcCurve[] }) {
   );
 }
 
+const flowVertex = /* glsl */ `
+  attribute float aAlpha;
+  attribute vec3 aColor;
+  uniform float uPixelRatio;
+  uniform float uArcs;
+  varying float vAlpha;
+  varying vec3 vColor;
+  void main() {
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vAlpha = aAlpha * uArcs;
+    vColor = aColor;
+    gl_PointSize = min(18.0, 7.0 * uPixelRatio * (3.2 / -mv.z));
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+const flowFragment = /* glsl */ `
+  varying float vAlpha;
+  varying vec3 vColor;
+  void main() {
+    float d = length(gl_PointCoord - 0.5) * 2.0;
+    float glow = exp(-d * d * 5.0);
+    float core = smoothstep(0.35, 0.0, d);
+    gl_FragColor = vec4(mix(vColor, vec3(1.0, 0.97, 0.92), core * 0.6), (glow * 0.7 + core * 0.5) * vAlpha);
+  }
+`;
+
+/** Ground speed of the moving lights, radians of arc per second (same for every route). */
+const FLOW_SPEED = 0.028;
+
+/**
+ * Moving lights along every arc, evenly spaced, at one shared ground speed. Each route carries
+ * flowCount(flights) of them, so a busier route visibly carries more traffic.
+ */
+function Flow({ curves }: { curves: readonly ArcCurve[] }) {
+  const pixelRatio = useThree((state) => state.viewport.dpr);
+  const slots = useMemo(
+    () =>
+      curves.flatMap(({ arc, curve, order: index }) => {
+        const count = flowCount(arc.flights);
+        const [a, b] = [arc.points[0]!, arc.points[arc.points.length - 1]!];
+        const angle = Math.acos(Math.min(1, Math.max(-1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])));
+        const rate = FLOW_SPEED / Math.max(angle, 0.04);
+        return Array.from({ length: count }, (_, k) => ({
+          arc,
+          curve,
+          index,
+          rate,
+          offset: (k + arcPhase(index)) / count,
+        }));
+      }),
+    [curves],
+  );
+  const geometry = useMemo(() => {
+    const geo = new BufferGeometry();
+    geo.setAttribute('position', new BufferAttribute(new Float32Array(slots.length * 3), 3));
+    geo.setAttribute('aAlpha', new BufferAttribute(new Float32Array(slots.length), 1));
+    geo.setAttribute(
+      'aColor',
+      new BufferAttribute(
+        new Float32Array(slots.flatMap((slot) => arcColor(slot.arc.kind).toArray())),
+        3,
+      ),
+    );
+    return geo;
+  }, [slots]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  const uniforms = useMemo(
+    () => ({ uArcs: LIVE.uArcs, uPixelRatio: { value: pixelRatio } }),
+    [pixelRatio],
+  );
+  const point = useMemo(() => new Vector3(), []);
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    const lit = getHighlightRoute();
+    const airport = getInteraction().selectedAirport;
+    const position = geometry.getAttribute('position') as BufferAttribute;
+    const alpha = geometry.getAttribute('aAlpha') as BufferAttribute;
+    slots.forEach((slot, i) => {
+      const u = (((t * slot.rate + slot.offset) % 1) + 1) % 1;
+      const drawn = drawProgress(slot.arc.id, slot.index, t, false);
+      slot.curve.getPointAt(u, point);
+      position.setXYZ(i, point.x, point.y, point.z);
+      // Fade in and out at the airports, hide past the draw-in, and step back when dimmed.
+      const ends = Math.min(1, u / 0.06, (1 - u) / 0.06);
+      const dim = isDimmed(slot.arc, lit, airport) ? 0.12 : lit === slot.arc.id ? 1.4 : 1;
+      alpha.setX(i, u <= drawn ? ends * dim : 0);
+    });
+    position.needsUpdate = true;
+    alpha.needsUpdate = true;
+  });
+
+  if (slots.length === 0) return null;
+  return (
+    <points geometry={geometry} renderOrder={4} frustumCulled={false}>
+      <shaderMaterial
+        ref={linkLive}
+        vertexShader={flowVertex}
+        fragmentShader={flowFragment}
+        uniforms={uniforms}
+        transparent
+        depthWrite={false}
+        blending={AdditiveBlending}
+      />
+    </points>
+  );
+}
+
 export function Routes({
   curves,
   reduced,
@@ -310,16 +472,17 @@ export function Routes({
 }) {
   return (
     <>
-      {curves.map((entry, index) => (
+      {curves.map((entry) => (
         <Arc
           key={entry.arc.id}
           entry={entry}
-          index={index}
+          index={entry.order}
           reduced={reduced}
           hoverable={hoverable}
         />
       ))}
       {reduced || curves.length === 0 ? null : <Aircraft key={curves.length} curves={curves} />}
+      {reduced ? null : <Flow curves={curves} />}
     </>
   );
 }
