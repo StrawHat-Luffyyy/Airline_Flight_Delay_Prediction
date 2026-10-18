@@ -759,3 +759,47 @@ It showed up because the new columns read `uTime` for their grow-in and stayed f
 Screenshots: `docs/screenshots/landing-us-focus-desktop.png`, `landing-us-focus-mobile.png`, `landing-airport-network.png`.
 
 **Bundle (gzip):** the globe chunk is 320.6 KB (was 261.1 KB; us-atlas states and the countries topology account for most of it); eager JS is 135.7 KB (was 133.7 KB), still with no three.js.
+
+### Predict form, landing hand-off and globe lighting (2026-10-18)
+
+**Asked for:**
+- a premium redesign of the Score a flight card and the landing's last section;
+- a fix for the globe going almost black as it rotated (the hand-off chapter showed the Indian Ocean with barely visible coasts);
+- the US kept in view during auto-rotation.
+
+**Globe:**
+- **Rotation:** the model and hand-off chapters no longer spin freely. Every chapter now sways around the US (`sway` in the pose table: 3 to 5 degrees close up, 14 in the model chapter, 22 in the hand-off), so North America never leaves the visible face. `geo.nearestTurn` and its test went with the spin.
+- **Lighting:**
+  - a hemisphere ambient floor;
+  - an emissive coast glow baked into the land texture's blue channel (cut edges along the antimeridian and the pole are skipped, so they never glow);
+  - fine grain on land;
+  - a rim, halo and haze that keep a floor on the night side;
+  - line work that keeps at least 72% of its alpha on the night side and 60% away from the US.
+
+  Values stay low: verified not overexposed in the hero.
+
+**Predict form:**
+- **Rich fields over real selects, not a custom listbox.** A custom dropdown would have to re-implement keyboard handling, type-to-jump, screen-reader semantics and phone pickers. The native select sits invisibly over a drawn face instead, which fixes the truncated "LAX Los Angeles International Airport · 8,7..." by moving the flight count to its own line.
+- **Layout and labels:**
+  - The order is now route, airline, then date and hour. All five fields, validation, the `?origin=&dest=` seeding and the destination-follows-origin logic are unchanged.
+  - The submit button names the route.
+  - The weekday beside the date comes from `weekdayOf` in `lib/format.ts`, which is tested and computed in UTC.
+- **Design rules:**
+  - Amber is used only for interaction (focus halo, hover edge on submit) and the panel's faint evening light, which keeps the Colour Is Data rule for content.
+  - The panel stays the one glass surface. It has no drop shadow, so the flat system holds; the only new glow is the submit's hover.
+
+**Hand-off:** each page link shows one live figure:
+- the delay rate (`/api/analytics/summary`);
+- the largest cause share of delay minutes (`/api/analytics/causes`);
+- the flight count (`/api/meta`);
+- the tuned threshold and the served model's test ROC-AUC (`/api/model/metrics`).
+
+A loading figure shows a skeleton; a failed one is omitted, so the link still works. Below lg it is a two-column board, which keeps the stack short enough on phones that it no longer runs under the map key.
+
+**Verified** in Playwright against the running dev servers:
+- **Predict:** 1440 and 390 px. The amber focus halo appears on keyboard focus, and ORD→LAX scored end to end ("Likely delayed, 31.4%").
+- **Under reduced motion:** the card shows at full opacity.
+- **Hand-off:** 1440, 1024 and 390 px, with no horizontal overflow.
+- **Globe:** model and hand-off chapters after 3 s and 18 s of idle, with the US in view both times.
+
+Screenshots: `docs/screenshots/predict-form.png`, `predict-form-mobile.png`, `landing-handoff.png`, `landing-lighting-hero.png`.

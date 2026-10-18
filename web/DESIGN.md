@@ -40,6 +40,16 @@ typography:
     fontWeight: 400
     lineHeight: 1.1
     fontFeature: "tnum"
+  route-code:
+    fontFamily: "Geist Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
+    fontSize: "19px"
+    fontWeight: 400
+    letterSpacing: "0.04em"
+  link-title:
+    fontFamily: "Instrument Serif, Times New Roman, serif"
+    fontSize: "1.6rem"
+    fontWeight: 400
+    lineHeight: 1
   wordmark:
     fontFamily: "Instrument Serif, Times New Roman, serif"
     fontSize: "22px"
@@ -73,6 +83,7 @@ rounded:
   skeleton: "3px"
   cell: "6px"
   field: "8px"
+  flight-field: "12px"
   panel: "24px"
   pill: "9999px"
 spacing:
@@ -248,7 +259,7 @@ Quiet, pill-shaped, ink on ground; never filled with a data colour.
 - **Shape:** fully round pill (9999px).
 - **Outline (default action, Retry, Load more, Open dashboard):** strong-hairline border, ink text, 13-14px, padding 6px 16px to 12px 28px; hover fills with wash.
 - **Text link (secondary):** ink-2 text, hover to ink with a 4px-offset underline.
-- **Glass (Predict submit only):** the glass treatment, full width, 12px 24px; hover brightens to 7% white; disabled at 60% opacity with "Scoring…" text.
+- **Glass (Predict submit only):** the glass treatment, full width, 14px 24px. Its label names the route ("Score ORD → LAX", codes in mono) with an arrow that slides on hover. Hover brightens to 7% white and warms the edge with an amber hairline and a soft amber underglow; press scales to 98.5%; while scoring, a small ink spinner and "Scoring…"; disabled at 60% opacity.
 
 ### Chips
 - **Style:** pill with a strong-hairline border, 12px Geist, ink text, padding 4px 12px (used to pick a route in Explorer).
@@ -267,6 +278,12 @@ Quiet, pill-shaped, ink on ground; never filled with a data colour.
 ### Inputs / Fields
 - **Style:** native select and date inputs at 14px, strong-hairline border, 8px radius, ground at 60% fill, 10px 36px 10px 12px padding, a drawn 12px chevron in ink-2. Labels sit above at 12px ink-2.
 - **Focus:** the border turns amber and the global 2px amber focus ring (3px offset) appears.
+- **Flight fields (Predict only, `components/predict/FlightFields.tsx`):** a drawn face over a real native control, so the keyboard, type-to-jump, screen readers and phone pickers behave natively.
+  - **Face:** the code in mono (19px on the route fields, 14px elsewhere), the name beside it in Geist, and a quieter 11px detail line (city, or flights in 2015) so nothing truncates mid-number.
+  - **Shell:** 12px radius, strong-hairline border over a faint top-lit gradient; hover lifts the hairline.
+  - **Focus (`:focus-within`):** the border turns amber with a 3px amber halo at 14% and the chevron warms; the control inside draws no second ring.
+  - **Error and disabled:** a Signal Red border (message below as before); disabled at 55%.
+  - **Date:** a visible native date input in mono with the browser's calendar icon replaced by a drawn one; a click anywhere opens the platform picker, and the weekday shows beside the label.
 - **Error:** `aria-invalid` with a 12px Signal Red message linked by `aria-describedby`.
 
 ### Navigation
@@ -289,7 +306,11 @@ Every API-backed block goes through one wrapper. Loading is a skeleton with a sl
 A definition list framed top and bottom by strong hairlines, cells divided by hairlines: a 12px ink-2 label, a serif figure (amber only for the delay rate), and an 11px mono sub-figure in ink-3.
 
 ### Predict panel and gauge
-The glass panel holds the form; the result sits beside it on the ground. The gauge is a 180-degree arc (12px stroke, rounded caps) filling amber or blue by label, with a white tick and mono label at the decision threshold and the probability set in the serif at 44px; the arc fill transitions over 900ms. Factor bars diverge from a centre hairline: amber raises, blue lowers, values in mono percentage points.
+The glass panel holds the form; the result sits beside it on the ground. The panel's glass carries a faint amber light at its upper right and a fainter blue one at its lower left (the evening light of the landing globe), and it rises in on load with each field group following at 70ms steps (CSS only; none under reduced motion). The form reads in flight order:
+- **Route:** origin over destination, joined by a flight path (an ink ring, a dashed rail, a filled dot) in the gutter. The destination label carries the route count from the origin.
+- **Airline**, below a hairline.
+- **Date and departure hour** side by side from sm.
+- **Submit**, with a one-line reminder that only pre-departure inputs are used. The gauge is a 180-degree arc (12px stroke, rounded caps) filling amber or blue by label, with a white tick and mono label at the decision threshold and the probability set in the serif at 44px; the arc fill transitions over 900ms. Factor bars diverge from a centre hairline: amber raises, blue lowers, values in mono percentage points.
 
 ### Charts
 Recharts on the ground: horizontal grid lines only (rule), axis ticks 11px ink-3, tooltips on Tooltip Black with a strong-hairline border and 8px radius, no entry animation. Every chart has a `role="img"` label and its numbers also appear in an adjacent table or list.
@@ -308,14 +329,22 @@ Recharts on the ground: horizontal grid lines only (rule), axis ticks 11px ink-3
 3. Routes: two five-row departure boards (most often late, most punctual) beside the arcs.
 4. Predict: the five inputs as pills, and the tuned threshold from `/api/model/metrics`.
 5. Model: test ROC-AUC for baseline, logistic regression and LightGBM. The served model is in ink, the others in ink-3.
-6. Hand-off: "Continue to the dashboard" at display size over a hairline-ruled row of the five pages.
+6. Hand-off: "Continue to the dashboard" at display size over a hairline-ruled board of the five pages (two columns below lg, the last spanning both; five from lg). Each link carries:
+   - the page name in the serif (link-title) and a blurb (from sm);
+   - an arrow chip that turns upright and fills with ink on hover or focus;
+   - one live figure with a caption: the delay rate (amber), the largest cause's share of delay minutes (in its cause colour), the flight count, the tuned threshold, and the served model's test ROC-AUC.
+
+   A hairline draws across the top of the hovered link. A loading figure is a skeleton; a failed one is simply left out.
 
 The globe re-frames per chapter (pose table in `GlobeScene.tsx`: facing lat/lon, size and offset as fractions of the viewport, tilt, and arc, airport and column brightness), eased with smoothstep between chapters and damped per frame. The volume and predict chapters bring the columns up; the routes chapter steps them back so the arcs read.
 
 **Globe material.**
 - **Lighting:** a sun fixed in view space (low right, slightly behind) puts the country in early evening: a soft terminator past the east coast, a faint glint on the water, and a rim that warms where the sun meets the limb.
-- **Atmosphere:** an inner haze at grazing angles and an outer halo, both brighter on the sun side.
-- **Line work:** coastlines, state lines and the graticule brighten on the lit hemisphere.
+- **Ambient floor:** a hemisphere term in view space (cool from above, faintly warm from below) lifts sea and land on the night side, so the globe never goes black at any angle.
+- **Emissive coasts:** the land texture's blue channel holds a soft glow along every shoreline, so continents read even unlit. Antimeridian and polar cut edges are skipped.
+- **Surface:** land carries a whisper of grain so large fills read as surface, not flat paint.
+- **Atmosphere:** an inner haze at grazing angles and an outer halo. Both keep a floor on the night side and brighten toward the sun, so the rim glow is continuous all round.
+- **Line work:** coastlines, state lines and the graticule are brighter on the lit hemisphere but never drop below 72% of their alpha. Away from the US they keep at least 60%.
 - **Airports:** city lights brighten on the night side.
 - **Route endpoints:** pulsing rings in their routes' colour, which blends amber and blue when an airport anchors both kinds (warm ink for a selected airport's network).
 - **Arcs:** each is a thin core with a comet trail and a white-hot head, inside a soft halo tube, so it glows with no post-processing pass.
@@ -342,7 +371,10 @@ The globe re-frames per chapter (pose table in `GlobeScene.tsx`: facing lat/lon,
   - **Ctrl/Cmd + wheel:** zooms (0.7 to 2.2x). A plain wheel always scrolls the page.
   - **Double-click:** zooms in, or resets once zoomed far.
   - **Controls cluster** (top right, desktop): zoom in, zoom out and reset, each a labelled button.
-- **Idle:** after 2.6 s without input, a drag eases back to the chapter framing. The hero to Predict chapters sway gently around the US (3.5 degrees, about 57 s per cycle); the model and hand-off chapters auto-rotate (one turn a minute), settling on a whole turn when they leave.
+- **Idle:** after 2.6 s without input, a drag eases back to the chapter framing. There is no free rotation. Every chapter sways around the US, with a slower, smaller latitude drift, so the swing reads as natural and the data never turns out of view. One swing takes about 70 s. Amplitudes:
+  - 3 to 5 degrees in the close US chapters;
+  - 14 degrees in the model chapter;
+  - 22 degrees in the hand-off, where the whole planet shows.
 
 **Camera.**
 - **Lens:** a 16-degree field of view, so the camera stands back and the country stays true to shape when it fills the frame. Selections are framed no closer than size 2.9.

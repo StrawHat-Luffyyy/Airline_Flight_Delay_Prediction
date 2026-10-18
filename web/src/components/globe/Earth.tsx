@@ -70,32 +70,40 @@ type Ring = readonly (readonly number[])[];
  * Chukotka) are unwrapped to stay continuous and drawn again one world-width over, so they never
  * smear a band across the map.
  */
-function fillRings(
+function drawRings(
   context: CanvasRenderingContext2D,
   polygons: readonly (readonly Ring[])[],
   width: number,
   height: number,
+  mode: 'fill' | 'stroke',
 ): void {
   const x = (lon: number) => ((lon + 180) / 360) * width;
   const y = (lat: number) => ((90 - lat) / 180) * height;
+  // Edges where Natural Earth cuts a polygon (along the antimeridian, or Antarctica's closing run
+  // at the pole) are not coastline: a stroke skips them so they never glow.
+  const cut = (a: readonly number[], b: readonly number[]) =>
+    (Math.abs(a[0]!) > 179.9 && Math.abs(b[0]!) > 179.9) || (a[1]! < -84 && b[1]! < -84);
   for (const offset of [-width, 0, width]) {
     context.beginPath();
     for (const polygon of polygons) {
       for (const ring of polygon) {
         let previous = ring[0]![0]!;
         let shift = 0;
-        ring.forEach(([lon, lat], index) => {
+        ring.forEach((point, index) => {
+          const [lon, lat] = point;
           if (lon! - previous > 180) shift -= 360;
           else if (previous - lon! > 180) shift += 360;
           previous = lon!;
           const px = x(lon! + shift) + offset;
-          if (index === 0) context.moveTo(px, y(lat!));
+          const skip = mode === 'stroke' && index > 0 && cut(ring[index - 1]!, point);
+          if (index === 0 || skip) context.moveTo(px, y(lat!));
           else context.lineTo(px, y(lat!));
         });
-        context.closePath();
+        if (mode === 'fill') context.closePath();
       }
     }
-    context.fill('evenodd');
+    if (mode === 'fill') context.fill('evenodd');
+    else context.stroke();
   }
 }
 
@@ -108,7 +116,8 @@ function polygonsOf(geometry: GeoJSON.Geometry | null): Ring[][] {
 
 /**
  * Red: land outside the US (110m). Green: the US (10m), which also covers Alaska and Hawaii.
- * Sampled by the earth shader from each fragment's latitude and longitude.
+ * Blue: a soft glow along every coast, the emissive edge that keeps continents readable on the
+ * night side. Sampled by the earth shader from each fragment's latitude and longitude.
  */
 function landTexture(): CanvasTexture {
   const small = window.innerWidth < 768;
@@ -126,22 +135,25 @@ function landTexture(): CanvasTexture {
     const others = feature(world, world.objects.countries as GeometryCollection).features.filter(
       (country) => String(country.id) !== USA_ID,
     );
+    const otherPolygons = others.flatMap((country) => polygonsOf(country.geometry));
     context.fillStyle = '#f00';
-    fillRings(
-      context,
-      others.flatMap((country) => polygonsOf(country.geometry)),
-      width,
-      height,
-    );
+    drawRings(context, otherPolygons, width, height, 'fill');
     const us = usAtlas as unknown as Topology;
     const nation = feature(us, us.objects.nation as GeometryCollection);
+    const usPolygons = nation.features.flatMap((part) => polygonsOf(part.geometry));
     context.fillStyle = '#0f0';
-    fillRings(
-      context,
-      nation.features.flatMap((part) => polygonsOf(part.geometry)),
-      width,
-      height,
-    );
+    drawRings(context, usPolygons, width, height, 'fill');
+    // The coast glow: a wide soft stroke under a narrow bright one, scaled to the texture size.
+    const px = width / 4096;
+    context.strokeStyle = 'rgba(0, 0, 255, 0.35)';
+    context.lineJoin = 'round';
+    context.lineWidth = 7 * px;
+    context.filter = `blur(${4 * px}px)`;
+    drawRings(context, [...otherPolygons, ...usPolygons], width, height, 'stroke');
+    context.filter = 'none';
+    context.strokeStyle = 'rgba(0, 0, 255, 0.55)';
+    context.lineWidth = 1.6 * px;
+    drawRings(context, [...otherPolygons, ...usPolygons], width, height, 'stroke');
   }
   const texture = new CanvasTexture(canvas);
   texture.generateMipmaps = false;
@@ -181,15 +193,23 @@ const earthFragment = /* glsl */ `
     vec4 land = texture2D(uLand, uv);
     float focus = smoothstep(0.5, 0.92, dot(o, uFocus));
     float ndl = dot(n, uSun);
-    float day = smoothstep(-0.25, 0.55, ndl);
+    float day = smoothstep(-0.35, 0.6, ndl);
     float facing = clamp(dot(n, v), 0.0, 1.0);
 
-    vec3 ocean = mix(vec3(0.006, 0.009, 0.015), vec3(0.022, 0.031, 0.046), day);
-    // Other land is a shade above the sea and fades away from the US; the US sits clearly above both.
-    vec3 elsewhere = mix(vec3(0.014, 0.016, 0.02), vec3(0.04, 0.045, 0.052), day);
-    vec3 home = mix(vec3(0.032, 0.034, 0.04), vec3(0.085, 0.088, 0.094), day);
-    vec3 color = mix(ocean, elsewhere, land.r * mix(0.45, 1.0, focus));
+    // Hemisphere ambient, in view space: cool sky light from above, a faint warm bounce from below.
+    // It is the floor the night side never drops under, whichever way the globe has turned.
+    vec3 hemi = mix(vec3(0.011, 0.009, 0.007), vec3(0.018, 0.025, 0.038), n.y * 0.5 + 0.5);
+    vec3 ocean = hemi + mix(vec3(0.004, 0.007, 0.012), vec3(0.018, 0.027, 0.042), day);
+    // Other land is a step above the sea, a little fainter away from the US; the US sits above both.
+    vec3 elsewhere = hemi + mix(vec3(0.02, 0.022, 0.026), vec3(0.046, 0.05, 0.058), day);
+    vec3 home = hemi + mix(vec3(0.036, 0.038, 0.044), vec3(0.082, 0.085, 0.092), day);
+    vec3 color = mix(ocean, elsewhere, land.r * mix(0.7, 1.0, focus));
     color = mix(color, home, land.g);
+    // Emissive coasts: a faint glow along every shoreline, lit or not.
+    color += uLimb * land.b * (0.075 + 0.05 * day) * mix(0.7, 1.0, focus);
+    // A whisper of grain on land, so large fills read as surface rather than flat paint.
+    float grain = fract(sin(dot(floor(uv * 2048.0), vec2(12.9898, 78.233))) * 43758.5453);
+    color += (grain - 0.5) * 0.006 * (land.r + land.g);
 
     // A soft sun glint on the water, strongest where the light reflects toward the camera.
     vec3 h = normalize(uSun + v);
@@ -197,7 +217,7 @@ const earthFragment = /* glsl */ `
     // Rim light: cool at the limb, warming where the sun rises over it.
     float rim = pow(1.0 - facing, 2.6);
     vec3 rimColor = mix(uLimb, uDawn, smoothstep(0.1, 0.8, ndl) * 0.3);
-    color += rimColor * rim * (0.06 + 0.34 * day);
+    color += rimColor * rim * (0.16 + 0.26 * day);
     gl_FragColor = vec4(color, 1.0);
   }
 `;
@@ -214,7 +234,7 @@ const haloFragment = /* glsl */ `
     float glow = pow(clamp(0.74 - dot(n, normalize(vView)), 0.0, 1.0), 3.2);
     float sunSide = smoothstep(-0.35, 0.7, dot(n, uSun));
     vec3 color = mix(uLimb, uDawn, sunSide * 0.22);
-    gl_FragColor = vec4(color, glow * (0.14 + 0.38 * sunSide));
+    gl_FragColor = vec4(color, glow * (0.22 + 0.3 * sunSide));
   }
 `;
 
@@ -228,7 +248,7 @@ const hazeFragment = /* glsl */ `
     vec3 n = normalize(vNormal);
     float graze = pow(1.0 - clamp(dot(n, normalize(vView)), 0.0, 1.0), 4.0);
     float day = smoothstep(-0.25, 0.5, dot(n, uSun));
-    gl_FragColor = vec4(uLimb, graze * (0.06 + 0.22 * day));
+    gl_FragColor = vec4(uLimb, graze * (0.12 + 0.18 * day));
   }
 `;
 
@@ -251,7 +271,7 @@ const lineFragment = /* glsl */ `
   varying float vDay;
   varying float vFocus;
   void main() {
-    gl_FragColor = vec4(uColor, uAlpha * (0.55 + 0.45 * vDay) * mix(uFar, 1.0, vFocus));
+    gl_FragColor = vec4(uColor, uAlpha * (0.72 + 0.28 * vDay) * mix(uFar, 1.0, vFocus));
   }
 `;
 
@@ -371,7 +391,7 @@ export function Coastlines() {
     );
     return lineGeometry(coasts.coordinates, 1.0015);
   }, []);
-  return <LitLines geometry={geometry} alpha={0.26} far={0.3} />;
+  return <LitLines geometry={geometry} alpha={0.28} far={0.62} />;
 }
 
 /** The US at 1:10M: its outline (coasts and land borders) and, fainter, the state lines. */
@@ -407,7 +427,7 @@ export function Graticule() {
     }
     return positions(segments);
   }, []);
-  return <LitLines geometry={geometry} alpha={0.05} far={0.35} />;
+  return <LitLines geometry={geometry} alpha={0.05} far={0.6} />;
 }
 
 /** A fixed, seeded star field far behind the globe. */
