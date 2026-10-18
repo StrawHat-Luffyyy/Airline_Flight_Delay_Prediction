@@ -205,8 +205,8 @@ a.liquid-glass:hover {
 
 /* ---------- Predict: flight fields ---------- */
 
-/* A field shell: a drawn face over a native control. Hover lifts the hairline; focus (keyboard or
-   pointer) warms it to amber with a soft halo, the same amber as the global focus ring. */
+/* A field face (a button that opens a dropdown or the calendar). Hover lifts the hairline; focus
+   and the open state warm it to amber with a soft halo, the same amber as the global focus ring. */
 .flight-field {
   border-radius: 12px;
   border: 1px solid var(--color-rule-strong);
@@ -218,44 +218,33 @@ a.liquid-glass:hover {
     box-shadow 260ms var(--ease-out-expo);
 }
 
-.flight-field:hover {
+.flight-field:hover:not(:disabled) {
   border-color: rgba(255, 255, 255, 0.26);
   background-color: rgba(255, 255, 255, 0.02);
 }
 
-.flight-field:focus-within {
-  border-color: rgba(232, 165, 75, 0.75);
+.flight-field:focus-visible,
+.flight-field[data-open] {
+  outline: none;
+  border-color: rgba(232, 165, 75, 0.8);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 0 0 3px rgba(232, 165, 75, 0.14);
+    0 0 0 3px rgba(232, 165, 75, 0.2);
 }
 
-.flight-field:focus-within .flight-field-chevron {
+.flight-field:focus-visible .flight-field-chevron,
+.flight-field[data-open] .flight-field-chevron {
   color: var(--color-delayed);
 }
 
 .flight-field-chevron {
-  transition: color 200ms var(--ease-out-expo);
+  transition:
+    color 200ms var(--ease-out-expo),
+    rotate 260ms var(--ease-out-expo);
 }
 
-/* The select is invisible over the drawn face, but its open list is drawn by the browser from the
-   select's own colours: without these it is a white list with the inherited light ink. */
-.flight-field select,
-.flight-field option,
-.flight-field optgroup {
-  background-color: #0b0b0b;
-  color: var(--color-ink);
-}
-
-.flight-field option:checked {
-  background-color: #2a2418;
-  color: var(--color-ink);
-}
-
-/* The shell carries the focus indicator, so the control inside does not draw a second one. */
-.flight-field select:focus-visible,
-.flight-field input:focus-visible {
-  outline: none;
+.flight-field[data-open] .lucide-chevron-down {
+  rotate: 180deg;
 }
 
 .flight-field[data-invalid] {
@@ -266,18 +255,185 @@ a.liquid-glass:hover {
   opacity: 0.55;
 }
 
-/* The native calendar icon is replaced by a drawn one; the field itself opens the picker. */
-.flight-date::-webkit-calendar-picker-indicator {
-  display: none;
+/* The open surface of a dropdown or the calendar: rendered in a portal (so no card can clip it),
+   near-black with a strong hairline, unfolding from the field's edge. */
+.flight-popover {
+  z-index: 60;
+  border-radius: 14px;
+  border: 1px solid var(--color-rule-strong);
+  background:
+    radial-gradient(120% 50% at 50% 0%, rgba(232, 165, 75, 0.045), transparent 70%),
+    #0c0c0c;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 18px 50px -12px rgba(0, 0, 0, 0.85);
+  color: var(--color-ink);
+  animation: popover-in 180ms var(--ease-out-expo) both;
+  transform-origin: top center;
 }
 
-.flight-date::-webkit-datetime-edit-fields-wrapper {
-  padding: 0;
+.flight-popover[data-side='above'] {
+  transform-origin: bottom center;
+  animation-name: popover-in-above;
 }
 
-.flight-date::-webkit-datetime-edit-text {
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes popover-in-above {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The search row: 16px text on phones (smaller makes iOS zoom the page), 14px from sm. The row
+   underlines amber while the box has focus, in place of the global focus ring. */
+.flight-search {
+  font-size: 16px;
+}
+
+@media (min-width: 640px) {
+  .flight-search {
+    font-size: 14px;
+  }
+}
+
+.flight-search:focus-visible {
+  outline: none;
+}
+
+.flight-search-row {
+  transition: box-shadow 200ms var(--ease-out-expo);
+}
+
+.flight-search-row:focus-within {
+  box-shadow: inset 0 -1px 0 rgba(232, 165, 75, 0.7);
+}
+
+/* A slim scrollbar that stays inside the rounded surface. */
+.flight-listbox {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(242, 241, 236, 0.22) transparent;
+}
+
+.flight-listbox::-webkit-scrollbar {
+  width: 8px;
+}
+
+.flight-listbox::-webkit-scrollbar-thumb {
+  background: rgba(242, 241, 236, 0.18);
+  border: 2px solid #0c0c0c;
+  border-radius: 4px;
+}
+
+.flight-listbox::-webkit-scrollbar-thumb:hover {
+  background: rgba(232, 165, 75, 0.5);
+}
+
+/* Options: the active one (keyboard or pointer) on a wash; the chosen one is marked by an amber
+   code and check, not by colour alone. */
+.flight-option {
+  transition: background-color 120ms var(--ease-out-expo);
+}
+
+.flight-option[data-active] {
+  background-color: rgba(255, 255, 255, 0.065);
+}
+
+.flight-option[aria-selected='true'] {
+  background-color: rgba(232, 165, 75, 0.08);
+}
+
+.flight-option[aria-selected='true'][data-active] {
+  background-color: rgba(232, 165, 75, 0.13);
+}
+
+/* Calendar days: round targets; the chosen day lit amber; neighbouring-month days dimmed; days
+   outside the dataset's range struck through and inert. */
+.calendar-day {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: 38px;
+  border-radius: 9999px;
+  font-size: 13px;
+  color: var(--color-ink);
+  transition:
+    background-color 140ms var(--ease-out-expo),
+    color 140ms var(--ease-out-expo),
+    box-shadow 200ms var(--ease-out-expo);
+}
+
+.calendar-day:hover:not([data-disabled]):not([data-selected]) {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
+.calendar-day:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-delayed);
+}
+
+.calendar-day[data-outside] {
   color: var(--color-ink-3);
-  padding: 0 0.05em;
+  opacity: 0.6;
+}
+
+.calendar-day[data-selected] {
+  background-color: var(--color-delayed);
+  color: var(--color-ground);
+  opacity: 1;
+}
+
+.calendar-day[data-selected]:focus-visible {
+  box-shadow:
+    0 0 0 2px #0c0c0c,
+    0 0 0 4px var(--color-delayed);
+}
+
+.calendar-day[data-disabled] {
+  color: var(--color-ink-3);
+  opacity: 0.32;
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+.calendar-month {
+  border-radius: 9999px;
+  padding: 0.6rem 0;
+  font-size: 13px;
+  color: var(--color-ink-2);
+  transition:
+    background-color 140ms var(--ease-out-expo),
+    color 140ms var(--ease-out-expo);
+}
+
+.calendar-month:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.07);
+  color: var(--color-ink);
+}
+
+.calendar-month[data-selected] {
+  background-color: var(--color-delayed);
+  color: var(--color-ground);
+}
+
+.calendar-month:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 /* The flight path between origin and destination. */
