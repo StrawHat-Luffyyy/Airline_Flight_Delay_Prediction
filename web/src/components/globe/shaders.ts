@@ -8,7 +8,21 @@ export const LIVE = {
   uTime: { value: 0 },
   uArcs: { value: 1 },
   uBright: { value: 1 },
+  /** Airport beacon brightness, per chapter. */
+  uBeacons: { value: 1 },
 };
+
+/**
+ * Re-links the shared LIVE uniforms onto a material. R3F copies each uniform object it is given
+ * (to keep a stable target), so passing LIVE.uTime in `uniforms` alone would freeze a copy at its
+ * first value. Use as (or inside) the material's ref callback.
+ */
+export function linkLive(material: { uniforms: Record<string, { value: unknown }> } | null): void {
+  if (!material) return;
+  for (const [name, uniform] of Object.entries(LIVE)) {
+    if (name in material.uniforms) material.uniforms[name] = uniform;
+  }
+}
 
 /** Pulse speed along an arc (fraction of the arc per second, before the 1.35 overshoot). */
 export const PULSE_SPEED = 0.11;
@@ -40,6 +54,11 @@ export function drawProgress(id: string, index: number, t: number, reduced: bool
     bornAt.set(id, born);
   }
   return Math.min(1, Math.max(0, (t - born - index * DRAW_STAGGER) / DRAW_S));
+}
+
+/** Lets an arc draw in again the next time it appears. */
+export function forgetDraw(id: string): void {
+  bornAt.delete(id);
 }
 
 export function resetDrawClock(): void {

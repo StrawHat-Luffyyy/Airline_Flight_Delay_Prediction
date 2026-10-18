@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  angleBetween,
   arcLift,
   buildRouteArcs,
   chapterAt,
+  delayTone,
+  fitSize,
+  flowCount,
   frame,
+  mergeAirportRankings,
   greatCircleMiles,
   introShot,
   nearestTurn,
@@ -71,12 +76,73 @@ describe('greatCirclePoints', () => {
 });
 
 describe('arcLift', () => {
-  it('grows with distance and stays within bounds', () => {
+  it('grows with distance and stays low enough for a close US framing', () => {
     const short = arcLift(latLonToVec3(40, -74, 1), latLonToVec3(39, -77, 1));
     const long = arcLift(latLonToVec3(40, -74, 1), latLonToVec3(34, -118, 1));
-    expect(short).toBeGreaterThanOrEqual(0.03);
+    expect(short).toBeGreaterThanOrEqual(0.012);
     expect(long).toBeGreaterThan(short);
-    expect(long).toBeLessThanOrEqual(0.32);
+    expect(long).toBeLessThanOrEqual(0.14);
+  });
+});
+
+describe('mergeAirportRankings', () => {
+  const row = (key: string, delayRate: number) => ({ key, delayRate });
+
+  it('is complete when the two ends of the ranking overlap, and drops the duplicates', () => {
+    const worst = [row('ASE', 0.29), row('ORD', 0.2), row('ATL', 0.15)];
+    const best = [row('ITO', 0.08), row('SLC', 0.1), row('ATL', 0.15)];
+    const merged = mergeAirportRankings(worst, best, 3);
+    expect(merged.complete).toBe(true);
+    expect(merged.rows.map((r) => r.key).sort()).toEqual(['ASE', 'ATL', 'ITO', 'ORD', 'SLC']);
+  });
+
+  it('is complete when either end came back short of the limit', () => {
+    expect(mergeAirportRankings([row('A', 1)], [row('B', 0)], 3).complete).toBe(true);
+  });
+
+  it('is incomplete when both ends are full and disjoint (the middle is missing)', () => {
+    const merged = mergeAirportRankings([row('A', 1), row('B', 1)], [row('C', 0), row('D', 0)], 2);
+    expect(merged.complete).toBe(false);
+    expect(merged.rows).toHaveLength(4);
+  });
+});
+
+describe('delayTone', () => {
+  it('is 0 at the national rate, positive above it and negative below, clamped to 1', () => {
+    expect(delayTone(0.18, 0.18)).toBe(0);
+    expect(delayTone(0.22, 0.18)).toBeCloseTo(0.5, 6);
+    expect(delayTone(0.05, 0.18)).toBe(-1);
+    expect(delayTone(0.9, 0.18)).toBe(1);
+  });
+
+  it('is null when either rate is unknown', () => {
+    expect(delayTone(null, 0.18)).toBeNull();
+    expect(delayTone(0.2, null)).toBeNull();
+  });
+});
+
+describe('flowCount', () => {
+  it('lights one moving point per 1,000 scheduled flights, at least 1 and at most 14', () => {
+    expect(flowCount(400)).toBe(1);
+    expect(flowCount(4_600)).toBe(5);
+    expect(flowCount(90_000)).toBe(14);
+  });
+});
+
+describe('fitSize', () => {
+  it('frames a short hop closer than a long haul, within the bounds', () => {
+    const hop = fitSize(0.05, 2, 4.5);
+    const haul = fitSize(0.6, 2, 4.5);
+    expect(hop).toBe(4.5);
+    expect(haul).toBeGreaterThanOrEqual(2);
+    expect(haul).toBeLessThan(hop);
+  });
+});
+
+describe('angleBetween', () => {
+  it('is the central angle in radians between two lat/lon points', () => {
+    close(angleBetween({ lat: 0, lon: 0 }, { lat: 0, lon: 90 }), Math.PI / 2);
+    close(angleBetween({ lat: 10, lon: 20 }, { lat: 10, lon: 20 }), 0);
   });
 });
 
@@ -198,7 +264,9 @@ describe('greatCircleMiles', () => {
   });
 
   it('is 0 for the same airport', () => {
-    expect(greatCircleMiles({ latitude: 10, longitude: 20 }, { latitude: 10, longitude: 20 })).toBe(0);
+    expect(greatCircleMiles({ latitude: 10, longitude: 20 }, { latitude: 10, longitude: 20 })).toBe(
+      0,
+    );
   });
 });
 
@@ -222,6 +290,7 @@ describe('introShot', () => {
 
   it('is monotonic: the camera never backs out while settling', () => {
     const sizes = [0, 0.2, 0.4, 0.6, 0.8, 1].map((t) => introShot(t).size);
-    for (let i = 1; i < sizes.length; i += 1) expect(sizes[i]!).toBeGreaterThanOrEqual(sizes[i - 1]!);
+    for (let i = 1; i < sizes.length; i += 1)
+      expect(sizes[i]!).toBeGreaterThanOrEqual(sizes[i - 1]!);
   });
 });

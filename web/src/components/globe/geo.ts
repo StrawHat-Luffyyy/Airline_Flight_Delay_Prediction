@@ -26,9 +26,62 @@ function centralAngle(a: Vec3, b: Vec3): number {
   return Math.acos(Math.min(1, Math.max(-1, cos)));
 }
 
-/** Arc height above the surface: a short hop stays low, a coast-to-coast arc climbs. */
+/**
+ * Arc height above the surface: a short hop stays low, a coast-to-coast arc climbs. Capped low,
+ * because the camera sits close over the US and a tall arc would fly out of frame.
+ */
 export function arcLift(a: Vec3, b: Vec3): number {
-  return Math.min(0.32, Math.max(0.03, centralAngle(a, b) * 0.45));
+  return Math.min(0.14, Math.max(0.012, centralAngle(a, b) * 0.2));
+}
+
+/** Central angle between two lat/lon points (degrees in), in radians. */
+export function angleBetween(
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number },
+): number {
+  return centralAngle(latLonToVec3(a.lat, a.lon, 1), latLonToVec3(b.lat, b.lon, 1));
+}
+
+/**
+ * Globe size (see Pose.size) that frames a feature spanning `angle` radians: a short hop is framed
+ * closer than a long haul, within [min, max].
+ */
+export function fitSize(angle: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, 0.8 / Math.max(angle, 1e-3)));
+}
+
+/**
+ * The two ends of an airport delay-rate ranking (each capped at `limit` rows) merged into one list.
+ * It is `complete` (every airport over the minimum is present) when the ends overlap or either came
+ * back short; otherwise the middle of the ranking is missing and the caller must say so.
+ */
+export function mergeAirportRankings<T extends { key: string | number }>(
+  worst: readonly T[],
+  best: readonly T[],
+  limit: number,
+): { rows: T[]; complete: boolean } {
+  const byKey = new Map<string | number, T>();
+  for (const row of [...worst, ...best]) byKey.set(row.key, row);
+  const overlap = worst.length + best.length - byKey.size;
+  return {
+    rows: [...byKey.values()],
+    complete: overlap > 0 || worst.length < limit || best.length < limit,
+  };
+}
+
+/** How far a delay rate sits from the national rate: -1 (well below) .. 0 .. 1 (well above). */
+export function delayTone(
+  rate: number | null,
+  national: number | null,
+  spread = 0.08,
+): number | null {
+  if (rate === null || national === null) return null;
+  return Math.min(1, Math.max(-1, (rate - national) / spread));
+}
+
+/** Moving lights along a route: one per 1,000 scheduled 2015 flights, between 1 and 14. */
+export function flowCount(flights: number): number {
+  return Math.min(14, Math.max(1, Math.round(flights / 1000)));
 }
 
 /**
@@ -57,7 +110,8 @@ export function parseRouteKey(key: string | number): { origin: string; dest: str
   return match ? { origin: match[1]!, dest: match[2]! } : null;
 }
 
-export type ArcKind = 'late' | 'punctual';
+/** late / punctual: the delay-rate ranking. network: a selected airport's busiest destinations. */
+export type ArcKind = 'late' | 'punctual' | 'network';
 
 export interface RouteArc {
   id: string;
@@ -66,7 +120,8 @@ export interface RouteArc {
   kind: ArcKind;
   delayRate: number | null;
   flights: number;
-  completed: number;
+  /** Completed flights; null where the source (an airport's network) does not report it. */
+  completed: number | null;
   /** Mean arrival delay of completed flights, minutes (negative = early). */
   avgArrDelay: number | null;
   points: Vec3[];
@@ -91,7 +146,7 @@ export function buildRouteArcs(
     key: string | number;
     delayRate: number | null;
     flights: number;
-    completed: number;
+    completed: number | null;
     avgArrDelay: number | null;
   }[],
   airports: ReadonlyMap<string, Coordinates>,
@@ -222,5 +277,5 @@ export function introShot(t: number): { size: number; lon: number; lat: number }
   const clamped = Math.min(1, Math.max(0, t));
   const e = clamped >= 1 ? 1 : 1 - Math.pow(2, -10 * clamped);
   if (e === 1) return { size: 1, lon: 0, lat: 0 };
-  return { size: 0.55 + 0.45 * e, lon: -48 * (1 - e), lat: 14 * (1 - e) };
+  return { size: 0.2 + 0.8 * e, lon: -40 * (1 - e), lat: 10 * (1 - e) };
 }

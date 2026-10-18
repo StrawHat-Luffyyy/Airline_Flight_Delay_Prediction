@@ -295,7 +295,12 @@ The glass panel holds the form; the result sits beside it on the ground. The gau
 Recharts on the ground: horizontal grid lines only (rule), axis ticks 11px ink-3, tooltips on Tooltip Black with a strong-hairline border and 8px radius, no entry animation. Every chart has a `role="img"` label and its numbers also appear in an adjacent table or list.
 
 ### Landing (the `/` page only)
-**Concept: night orbit.** A dark globe hangs in a star field on the right (on phones, at the top). Its coastlines are 110m Natural Earth line work in ink at 26%, under a 15-degree graticule at 4.5%. Airports glow as warm points at their airports.csv coordinates (`/api/meta`). Route arcs come from the delay-rate ranking (`/api/analytics/delay-rate?by=route`, at least 1,000 flights): the 10 most often late in Departure Amber and the 10 most punctual in Dusk Blue, with a pulse running origin to destination. Everything drawn is real data; nothing is decorative geometry.
+**Concept: night orbit over the US.** The dataset is US domestic only, so the camera lives over the lower 48: on desktop they fill the right two thirds, on phones the top half edge to edge, and the globe leans back about the framed point so the horizon curves away at the top. Only the volume chapter pulls back far enough for Alaska and Hawaii, and only the model and hand-off chapters show the planet. Everything drawn is real data; nothing is decorative geometry.
+- **Geography:** US coast, land borders and state lines are 1:10M Census line work (`us-atlas`; outline in ink at 46%, states at 12%). US land is lifted out of the night by a fill texture. Other coasts are 110m Natural Earth (`world-atlas`) and, with other land and the 15-degree graticule, fade with angular distance from the US.
+- **Airport columns:** every airport with 2,000+ departures in 2015 rises as a column. The data is `/api/analytics/delay-rate?by=origin`, both ends of the ranking; they overlap, so the list is complete. Height is departures, linear (ATL is the tallest). Colour is the delay rate against the national rate from `/api/analytics/summary`: warm ink at the national rate, ramping to Dusk Blue 8 points below and Departure Amber 8 points above. The columns grow in from the west coast eastward. Every other airport in airports.csv is a warm city light.
+- **Route arcs:** from the delay-rate ranking (`/api/analytics/delay-rate?by=route`, at least 1,000 flights): the 10 most often late in Departure Amber and the 10 most punctual in Dusk Blue.
+- **Moving lights:** each arc carries one light per 1,000 scheduled 2015 flights (1 to 14), all at one ground speed, so a busier route visibly carries more traffic.
+- **Map key** (top right, under the controls on desktop): column height, the colour ramp with its three real thresholds, and the moving-light rule. It shows only once its figures load, and steps aside while a details panel is open.
 
 **Scroll story.** Six full-viewport chapters, each a serif title over Geist body copy at 15px (one step above Body for projector legibility), all left-aligned on desktop and low on phones:
 1. Hero: title, live flight count, the KPI rule row with captions, the two actions.
@@ -305,21 +310,21 @@ Recharts on the ground: horizontal grid lines only (rule), axis ticks 11px ink-3
 5. Model: test ROC-AUC for baseline, logistic regression and LightGBM. The served model is in ink, the others in ink-3.
 6. Hand-off: "Continue to the dashboard" at display size over a hairline-ruled row of the five pages.
 
-The globe re-frames per chapter (pose table in `GlobeScene.tsx`: facing lat/lon, size and offset as fractions of the viewport, arc and airport brightness), eased with smoothstep between chapters and damped per frame.
+The globe re-frames per chapter (pose table in `GlobeScene.tsx`: facing lat/lon, size and offset as fractions of the viewport, tilt, and arc, airport and column brightness), eased with smoothstep between chapters and damped per frame. The volume and predict chapters bring the columns up; the routes chapter steps them back so the arcs read.
 
 **Globe material.**
-- **Lighting:** a sun fixed in view space (high right) lights a night-side earth: a soft terminator, a faint sun glint, and a rim that warms where the sun meets the limb.
+- **Lighting:** a sun fixed in view space (low right, slightly behind) puts the country in early evening: a soft terminator past the east coast, a faint glint on the water, and a rim that warms where the sun meets the limb.
 - **Atmosphere:** an inner haze at grazing angles and an outer halo, both brighter on the sun side.
-- **Line work:** coastlines and the graticule brighten on the lit hemisphere.
+- **Line work:** coastlines, state lines and the graticule brighten on the lit hemisphere.
 - **Airports:** city lights brighten on the night side.
-- **Route endpoints:** pulsing rings in their routes' colour, which blends amber and blue when an airport anchors both kinds.
+- **Route endpoints:** pulsing rings in their routes' colour, which blends amber and blue when an airport anchors both kinds (warm ink for a selected airport's network).
 - **Arcs:** each is a thin core with a comet trail and a white-hot head, inside a soft halo tube, so it glows with no post-processing pass.
 - **Aircraft:** one per arc, an instanced swept-wing silhouette, rides the pulse head along the great circle. The shader and the CPU share one pulse formula (`shaders.pulseHead`).
 
 **Interaction.**
-- **Hover:** hovering an arc or an airport on the globe (fine pointers) shows a tooltip at the cursor: the route and its delay rate, or the airport code, name and city.
+- **Hover:** hovering an arc, a column or an airport light on the globe (fine pointers) shows a tooltip at the cursor. A route shows its delay rate. An airport shows its code, name and city, plus departures and delay rate when it has a column.
 - **Board hover:** pointing at a board row lights its arc, dims the rest and turns the globe to face the route.
-- **Selection:** clicking an arc or a board row selects the route. The globe flies to it, zooming further for short hops (1.2 to 1.8x), and the "Selected route" panel opens. The panel shows:
+- **Selection:** clicking an arc or a board row selects the route. The globe flies to it, framed by route length (closer for a short hop), and the "Selected route" panel opens. The panel shows:
   - the route's rank;
   - origin and destination cities;
   - the delay rate as a Figure, with its completed-flight base;
@@ -327,26 +332,34 @@ The globe re-frames per chapter (pose table in `GlobeScene.tsx`: facing lat/lon,
   - "Score a flight", which opens Predict prefilled through `?origin=&dest=`.
 
   Escape, the close button or a click on open ground clears it, and so does a new chapter.
+- **Airport selection:** clicking (or tapping) a column selects its airport.
+  - Its 12 busiest destinations from `/api/routes` fan out as warm-ink arcs with moving lights; ranked routes that do not touch it dim; the camera frames the airport and its network.
+  - The "Selected airport" panel shows the delay rate as a Figure (amber above the national rate, blue below) with its completed-departure base, departures, average arrival delay, the gap to the national rate in points, and a destination board (flights, with an ink bar).
+  - Pointing at a board row lights its arc without turning the globe; each row opens Predict prefilled.
+  - A route and an airport are never selected together.
 - **Controls:**
   - **Drag:** rotates the globe.
-  - **Ctrl/Cmd + wheel:** zooms (0.7 to 2.6x). A plain wheel always scrolls the page.
+  - **Ctrl/Cmd + wheel:** zooms (0.7 to 2.2x). A plain wheel always scrolls the page.
   - **Double-click:** zooms in, or resets once zoomed far.
   - **Controls cluster** (top right, desktop): zoom in, zoom out and reset, each a labelled button.
-- **Idle:** after 2.6 s without input, a drag eases back to the chapter framing. The hero to Predict chapters sway around the US (16 degrees, about 74 s per cycle); the model and hand-off chapters auto-rotate (one turn a minute), settling on a whole turn when they leave.
+- **Idle:** after 2.6 s without input, a drag eases back to the chapter framing. The hero to Predict chapters sway gently around the US (3.5 degrees, about 57 s per cycle); the model and hand-off chapters auto-rotate (one turn a minute), settling on a whole turn when they leave.
 
 **Camera.**
-- **Establishing shot:** on load, the camera starts wide and turned toward the Pacific, then settles over 2.8 s.
+- **Lens:** a 16-degree field of view, so the camera stands back and the country stays true to shape when it fills the frame. Selections are framed no closer than size 2.9.
+- **Establishing shot:** on load, the camera starts on the whole planet, turned toward the Pacific, and descends onto the US over 3.4 s, tipping into its lean as it lands.
 - **Cursor bank:** the view banks up to 2 degrees with the cursor.
-- **Perspective aim:** while steering to a route, an outer group aims the faced point at the camera. With the globe off-centre and the camera close, the camera-facing point is not the middle of the visible disc.
+- **Perspective aim:** an outer group always aims the faced point at the camera, so it lands exactly where the pose puts it. With the globe off-centre and the camera close, the camera-facing point is not the middle of the visible disc.
+- **Lean:** a tilt group pivots about the faced surface point, so the framing holds while the globe leans back (0 to 44 degrees by chapter).
+- **Shared uniforms:** React Three Fiber copies each uniform object passed in `uniforms`. The per-frame ones (`shaders.LIVE`: time, and arc, airport and column brightness) are therefore re-linked onto every material with `linkLive` in its ref.
 
 **Constraints.**
 - **Eager path:** no three.js and no Motion. The copy, figures and entrance render first.
-- **Lazy chunks** load once the browser is idle: the globe (`globe/GlobeScene.tsx`: three, React Three Fiber, world-atlas) and the Motion layer (`landing/enhance.ts`).
+- **Lazy chunks** load once the browser is idle: the globe (`globe/GlobeScene.tsx`: three, React Three Fiber, world-atlas, us-atlas) and the Motion layer (`landing/enhance.ts`). Colours the eager map key shares with the globe live in `globe/palette.ts`, which imports nothing.
 - **Shared state:** scroll and pointer reach the globe through a render-free store (`globe/store.ts`), never React state.
 - **No WebGL:** an error boundary leaves the copy on the night ground.
 - **Under `prefers-reduced-motion`:**
   - the globe is one still frame (`frameloop="demand"`), redrawn instantly on any hover, selection, drag or zoom;
-  - there is no establishing shot, sway, auto-rotation, pulse, aircraft, ring pulse, arc draw-in, camera bank, scroll re-framing or reveal;
+  - there is no establishing shot, sway, auto-rotation, pulse, aircraft, moving lights, ring pulse, arc draw-in, column grow-in, camera bank, scroll re-framing or reveal, and the map key drops its moving-light line;
   - visitor-driven drag and zoom still work, but they snap instead of easing;
   - the Motion chunk is never requested.
 
