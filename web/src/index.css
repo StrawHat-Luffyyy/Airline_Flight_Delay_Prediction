@@ -238,6 +238,20 @@ a.liquid-glass:hover {
   transition: color 200ms var(--ease-out-expo);
 }
 
+/* The select is invisible over the drawn face, but its open list is drawn by the browser from the
+   select's own colours: without these it is a white list with the inherited light ink. */
+.flight-field select,
+.flight-field option,
+.flight-field optgroup {
+  background-color: #0b0b0b;
+  color: var(--color-ink);
+}
+
+.flight-field option:checked {
+  background-color: #2a2418;
+  color: var(--color-ink);
+}
+
 /* The shell carries the focus indicator, so the control inside does not draw a second one. */
 .flight-field select:focus-visible,
 .flight-field input:focus-visible {
