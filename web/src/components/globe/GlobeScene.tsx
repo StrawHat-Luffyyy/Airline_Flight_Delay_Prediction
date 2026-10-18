@@ -23,7 +23,6 @@ import {
   frame,
   introShot,
   latLonToVec3,
-  nearestTurn,
   poseAt,
   vec3ToLatLon,
   type ArcKind,
@@ -45,16 +44,13 @@ const SIZE_MAX = 2.9;
 /** The establishing shot on load, seconds: from the whole planet down onto the US. */
 const INTRO_AT = 0.15;
 const INTRO_S = 3.4;
-/** Auto-rotation resumes this long after the last drag or zoom, ms. */
+/** A drag eases back to the chapter framing this long after the last drag or zoom, ms. */
 const IDLE_MS = 2600;
-/** Full-speed auto-rotation, degrees per second (one turn a minute). */
-const SPIN_DEG_S = 6;
 /**
- * Hold-still sway around the framed point, degrees and radians per second. Small: over the US a
- * wide sway would carry a coast out of frame.
+ * The idle sway around the framed point, radians per second (one swing about every 70 s). There is
+ * no free rotation: the globe only ever sways around the US, so the data never turns out of view.
  */
-const SWAY_DEG = 3.5;
-const SWAY_RATE = 0.11;
+const SWAY_RATE = 0.09;
 /** Camera easing, per second: slow enough to read as a camera move, never a cut. */
 const EASE = 1.9;
 /** Where a selection is framed on desktop: left of the details panel, right of the copy. */
@@ -64,24 +60,25 @@ const SELECT_X = 0.16;
  * Chapter poses: hero, volume, routes, predict, model, hand-off. Size and offsets are fractions
  * of the viewport (see geo.frame); the faced point (lat, lon) lands at (x, y). The camera is close,
  * so the near surface reads about a third larger than `size` alone. `tilt` (degrees) leans the
- * globe back about the faced point so the departure columns stand up; `spin` (0..1) blends the
- * hold-still sway into continuous auto-rotation; `beacons` is the columns' brightness. On desktop
+ * globe back about the faced point so the departure columns stand up; `sway` (degrees) is how far
+ * it swings either side of the US while idle (small up close, wider for the whole planet, never so
+ * wide that the lower 48 leave the visible face); `beacons` is the columns' brightness. On desktop
  * the copy holds the left third, so the lower 48 fill the right two thirds.
  */
-type ChapterPose = Pose & { spin: number; beacons: number; tilt: number };
+type ChapterPose = Pose & { sway: number; beacons: number; tilt: number };
 const DESKTOP_POSES: ChapterPose[] = [
   // Hero: the lower 48, coast to coast on the right, leaning back like a view from the south.
-  { lat: 38, lon: -96.5, size: 2.1, x: 0.37, y: -0.06, arcs: 1, airports: 1, spin: 0, beacons: 0.8, tilt: 34 },
+  { lat: 38, lon: -96.5, size: 2.1, x: 0.37, y: -0.06, arcs: 1, airports: 1, sway: 3.5, beacons: 0.8, tilt: 34 },
   // Volume: back far enough to take in Alaska and Hawaii, the columns at full strength.
-  { lat: 40, lon: -121, size: 1.0, x: 0.4, y: -0.04, arcs: 0.25, airports: 1.4, spin: 0, beacons: 1, tilt: 30 },
+  { lat: 40, lon: -121, size: 1.0, x: 0.4, y: -0.04, arcs: 0.25, airports: 1.4, sway: 5, beacons: 1, tilt: 30 },
   // Routes: the lower 48 again, flatter so the arcs read, the columns stepped back.
-  { lat: 37.5, lon: -96, size: 2.05, x: 0.37, y: -0.04, arcs: 1, airports: 0.9, spin: 0, beacons: 0.35, tilt: 18 },
+  { lat: 37.5, lon: -96, size: 2.05, x: 0.37, y: -0.04, arcs: 1, airports: 0.9, sway: 3.5, beacons: 0.35, tilt: 18 },
   // Predict: closer and steeper, the delay colours up.
-  { lat: 36, lon: -95, size: 2.35, x: 0.36, y: -0.12, arcs: 0.55, airports: 1, spin: 0, beacons: 1, tilt: 44 },
-  // Model: the continent, turning slowly.
-  { lat: 32, lon: -95, size: 0.85, x: 0.32, y: 0, arcs: 0.45, airports: 0.8, spin: 0.35, beacons: 0.6, tilt: 8 },
-  // Hand-off: the whole planet, low behind the links.
-  { lat: 26, lon: -97, size: 0.46, x: 0, y: 0.3, arcs: 0.55, airports: 0.8, spin: 1, beacons: 0.4, tilt: 0 },
+  { lat: 36, lon: -95, size: 2.35, x: 0.36, y: -0.12, arcs: 0.55, airports: 1, sway: 3, beacons: 1, tilt: 44 },
+  // Model: the continent, swaying slowly around it.
+  { lat: 33, lon: -96, size: 0.85, x: 0.32, y: 0, arcs: 0.6, airports: 0.9, sway: 14, beacons: 0.6, tilt: 10 },
+  // Hand-off: the whole planet behind the links, still swinging around the US, never past it.
+  { lat: 30, lon: -97, size: 0.5, x: 0, y: 0.3, arcs: 0.75, airports: 1, sway: 22, beacons: 0.55, tilt: 6 },
 ];
 /**
  * Phones: the globe sits in the top half, above the copy. Size is measured against the half-width
@@ -104,7 +101,7 @@ function poseFor(poses: readonly ChapterPose[], chapter: number): ChapterPose {
   const ease = t * t * (3 - 2 * t);
   return {
     ...pose,
-    spin: low.spin + (high.spin - low.spin) * ease,
+    sway: low.sway + (high.sway - low.sway) * ease,
     beacons: low.beacons + (high.beacons - low.beacons) * ease,
     tilt: low.tilt + (high.tilt - low.tilt) * ease,
   };
@@ -162,7 +159,7 @@ function Rig({
   const group = useRef<Group>(null);
   const mobile = useThree((state) => state.size.width < 768);
   const poses = mobile ? MOBILE_POSES : DESKTOP_POSES;
-  const motion = useRef({ first: true, spin: 0, chapter: 0, roll: 0, tilt: 0 });
+  const motion = useRef({ first: true, chapter: 0, roll: 0, tilt: 0 });
   const network = useMemo(() => arcs.filter((arc) => arc.kind === 'network'), [arcs]);
 
   useFrame((state, delta) => {
@@ -196,20 +193,19 @@ function Rig({
         : undefined;
     const idle = !globe.dragging && performance.now() - globe.lastInteraction > IDLE_MS && !focus;
 
-    // Auto-rotation accumulates only while idle; otherwise it settles on a whole turn, so the
-    // framing returns without an unwinding spin.
-    if (!reduced && idle && pose.spin > 0.02) m.spin += dt * SPIN_DEG_S * pose.spin;
-    else if (pose.spin <= 0.02 || focus) m.spin = damp(m.spin, nearestTurn(m.spin), 1.2, dt);
     if (!reduced && idle) {
       globe.dragLon *= Math.exp(-dt * 0.5);
       globe.dragLat *= Math.exp(-dt * 0.5);
     }
 
     const intro = reduced ? introShot(1) : introShot((t - INTRO_AT) / INTRO_S);
-    const sway = reduced || focus ? 0 : Math.sin(t * SWAY_RATE) * SWAY_DEG * (1 - pose.spin);
-    const lon =
-      (focus?.lon ?? pose.lon) + intro.lon + sway + m.spin + globe.dragLon + globe.pointerX * 1.6;
-    const lat = (focus?.lat ?? pose.lat) + intro.lat + globe.dragLat + globe.pointerY * 1.2;
+    // A sine sway with a slower, smaller latitude drift, so the swing reads as natural, not mechanical.
+    const swing = reduced || focus ? 0 : pose.sway;
+    const swayLon = Math.sin(t * SWAY_RATE) * swing;
+    const swayLat = Math.sin(t * SWAY_RATE * 0.63 + 1.1) * swing * 0.18;
+    const lon = (focus?.lon ?? pose.lon) + intro.lon + swayLon + globe.dragLon + globe.pointerX * 1.6;
+    const lat =
+      (focus?.lat ?? pose.lat) + intro.lat + swayLat + globe.dragLat + globe.pointerY * 1.2;
 
     // A board-hovered route only turns the globe; a selection also frames it.
     const selecting = focus !== undefined && (airport !== undefined || getInteraction().selected);

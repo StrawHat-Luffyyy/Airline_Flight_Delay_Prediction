@@ -11,7 +11,6 @@ import {
   mergeAirportRankings,
   greatCircleMiles,
   introShot,
-  nearestTurn,
   greatCirclePoints,
   latLonToVec3,
   parseRouteKey,
@@ -270,14 +269,6 @@ describe('greatCircleMiles', () => {
   });
 });
 
-describe('nearestTurn', () => {
-  it('rounds an accumulated spin to the closest whole revolution', () => {
-    expect(nearestTurn(10)).toBe(0);
-    expect(nearestTurn(200)).toBe(360);
-    expect(nearestTurn(-190)).toBe(-360);
-    expect(nearestTurn(725)).toBe(720);
-  });
-});
 
 describe('introShot', () => {
   it('starts wide and turned, and lands exactly on the framed pose', () => {

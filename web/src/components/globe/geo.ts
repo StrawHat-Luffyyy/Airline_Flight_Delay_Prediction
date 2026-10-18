@@ -264,10 +264,6 @@ export function greatCircleMiles(
   return 2 * EARTH_RADIUS_MILES * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-/** The whole revolution (a multiple of 360 degrees) closest to an accumulated spin. */
-export function nearestTurn(degrees: number): number {
-  return Math.round(degrees / 360) * 360 + 0;
-}
 
 /**
  * The opening camera move, as offsets on the hero pose: it starts wide and turned toward the

@@ -85,6 +85,16 @@ export function dayName(dow: number, short = true): string {
   return short ? name.slice(0, 3) : name;
 }
 
+/** "2015-12-21" -> "Monday", read in UTC so the local time zone cannot shift it. Invalid -> "". */
+export function weekdayOf(isoDate: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
+  if (!match) return '';
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return '';
+  return dayName(((date.getUTCDay() + 6) % 7) + 1, false);
+}
+
 /** "2026-10-13T09:31:39.329Z" -> "13 Oct 2026". */
 export function formatDate(iso: string): string {
   const date = new Date(iso);

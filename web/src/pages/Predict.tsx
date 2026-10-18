@@ -6,13 +6,20 @@ import {
   type PredictResponse,
   type TopFactor,
 } from '@flight-delay/shared';
-import { useMemo, useState, type FormEvent } from 'react';
+import { ArrowRight } from 'lucide-react';
+import { useMemo, useState, type CSSProperties, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router';
 import { z } from 'zod';
 import { ApiError } from '../api/client';
 import { useMeta, usePredict, useRoutes } from '../api/hooks';
 import { QueryState, Skeleton } from '../components/QueryState';
-import { FIELD_CLASS, Note, PageHeader, SelectField } from '../components/ui';
+import { Note, PageHeader } from '../components/ui';
+import {
+  DateField,
+  RichSelect,
+  RouteRail,
+  type FieldOption,
+} from '../components/predict/FlightFields';
 import {
   dayName,
   formatDuration,
@@ -20,6 +27,7 @@ import {
   formatPercent,
   formatPoints,
   hourRangeLabel,
+  weekdayOf,
 } from '../lib/format';
 import { FACTOR_LABELS } from '../lib/labels';
 import { seedForm, type FormState } from '../lib/predictForm';
@@ -336,121 +344,159 @@ function PredictForm({
     if (ok && routesReady) onSubmit(toBody(current));
   };
 
+  const airlineOptions = useMemo<FieldOption[]>(
+    () => meta.airlines.map((airline) => ({ value: airline.code, code: airline.code, name: airline.name })),
+    [meta.airlines],
+  );
+  const originOptions = useMemo<FieldOption[]>(
+    () =>
+      airports.map((airport) => ({
+        value: airport.code,
+        code: airport.code,
+        name: airport.name,
+        detail: place(airport),
+      })),
+    [airports],
+  );
+  const destOptions: FieldOption[] = routesReady
+    ? destinations.map((route) => ({
+        value: route.dest,
+        code: route.dest,
+        name: airportNames.get(route.dest) ?? '',
+        detail: `${formatInteger(route.flights)} flights in 2015`,
+      }))
+    : [];
+  const hourOptions = useMemo<FieldOption[]>(
+    () => HOURS.map((hour) => ({ value: String(hour), code: hourRangeLabel(hour) })),
+    [],
+  );
+  const destPlaceholder = routes.isPending
+    ? 'Loading routes…'
+    : routes.isError
+      ? 'Routes unavailable'
+      : `No 2015 departures from ${form.origin}`;
+  const weekday = weekdayOf(form.date);
+
+  // Each group rises in turn on first paint (CSS only; reduced motion shows them at once).
+  const stagger = (index: number): CSSProperties =>
+    ({ '--delay': `${0.06 + index * 0.07}s` }) as CSSProperties;
+
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-5">
-      <div>
-        <label htmlFor="predict-date" className="mb-1.5 block text-[12px] text-ink-2">
-          Flight date
-        </label>
-        <input
-          id="predict-date"
-          type="date"
+    <form onSubmit={handleSubmit} noValidate className="space-y-6">
+      <fieldset className="rise" style={stagger(0)}>
+        <legend className="sr-only">Route</legend>
+        <RouteRail
+          origin={
+            <RichSelect
+              label="Origin"
+              variant="route"
+              value={form.origin}
+              options={originOptions}
+              onChange={(event) => set('origin')(event.target.value)}
+              error={errors.origin}
+            />
+          }
+          dest={
+            <RichSelect
+              label="Destination"
+              variant="route"
+              value={dest}
+              options={destOptions}
+              placeholder={destPlaceholder}
+              hint={routesReady ? `${formatInteger(destinations.length)} routes from ${form.origin}` : null}
+              onChange={(event) => set('dest')(event.target.value)}
+              error={errors.dest}
+              disabled={!routesReady}
+            />
+          }
+        />
+        {routes.isError ? (
+          <p className="mt-2 pl-[30px] text-[12px] text-cancelled" role="alert">
+            Could not load the routes from {form.origin}: {routes.error.message}{' '}
+            <button
+              type="button"
+              onClick={() => void routes.refetch()}
+              className="text-ink underline underline-offset-2"
+            >
+              Retry
+            </button>
+          </p>
+        ) : (
+          <p className="mt-2 pl-[30px] text-[11px] leading-relaxed text-ink-3">
+            Only routes flown in 2015, busiest first. Type a code to jump to it.
+          </p>
+        )}
+      </fieldset>
+
+      <div className="rise border-t border-rule pt-6" style={stagger(1)}>
+        <RichSelect
+          label="Airline"
+          value={form.airline}
+          options={airlineOptions}
+          onChange={(event) => set('airline')(event.target.value)}
+          error={errors.airline}
+        />
+      </div>
+
+      <div className="rise grid gap-4 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]" style={stagger(2)}>
+        <DateField
+          label="Flight date"
+          value={form.date}
           min={MIN_DATE}
           max={MAX_DATE}
-          value={form.date}
-          onChange={(event) => set('date')(event.target.value)}
-          aria-invalid={errors.date ? true : undefined}
-          aria-describedby={errors.date ? 'predict-date-error' : undefined}
-          className={FIELD_CLASS}
+          hint={weekday || null}
+          onChange={set('date')}
+          error={errors.date}
         />
-        {errors.date ? (
-          <p id="predict-date-error" className="mt-1.5 text-[12px] text-cancelled">
-            {errors.date}
-          </p>
-        ) : null}
+        <RichSelect
+          label="Departure hour"
+          value={form.hour}
+          options={hourOptions}
+          onChange={(event) => set('hour')(event.target.value)}
+          error={errors.schedDepHour}
+        />
       </div>
 
-      <SelectField
-        label="Airline"
-        value={form.airline}
-        onChange={(event) => set('airline')(event.target.value)}
-        error={errors.airline}
-      >
-        {meta.airlines.map((airline) => (
-          <option key={airline.code} value={airline.code}>
-            {airline.code} {airline.name}
-          </option>
-        ))}
-      </SelectField>
-
-      <div className="space-y-5">
-        <SelectField
-          label="Origin"
-          value={form.origin}
-          onChange={(event) => set('origin')(event.target.value)}
-          error={errors.origin}
+      <div className="rise pt-1" style={stagger(3)}>
+        <button
+          type="submit"
+          disabled={pending || !routesReady}
+          className="liquid-glass score-button group flex w-full items-center justify-center gap-2.5 rounded-full px-6 py-3.5 text-sm text-ink disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {airports.map((airport) => (
-            <option key={airport.code} value={airport.code}>
-              {airport.code} {airport.name}
-            </option>
-          ))}
-        </SelectField>
-        <SelectField
-          label="Destination"
-          value={dest}
-          onChange={(event) => set('dest')(event.target.value)}
-          error={errors.dest}
-          disabled={!routesReady}
-        >
-          {routesReady ? (
-            destinations.map((route) => (
-              <option key={route.dest} value={route.dest}>
-                {route.dest} {airportNames.get(route.dest) ?? ''} · {formatInteger(route.flights)}{' '}
-                flights
-              </option>
-            ))
+          {pending ? (
+            <>
+              <span
+                aria-hidden="true"
+                className="spinner size-3.5 rounded-full border border-ink-3 border-t-ink"
+              />
+              Scoring…
+            </>
           ) : (
-            <option value="">
-              {routes.isPending
-                ? 'Loading routes…'
-                : routes.isError
-                  ? 'Routes unavailable'
-                  : `No 2015 departures from ${form.origin}`}
-            </option>
+            <>
+              Score{' '}
+              <span className="num tracking-[0.04em]">
+                {form.origin} → {dest || '…'}
+              </span>
+              <ArrowRight
+                aria-hidden="true"
+                size={15}
+                strokeWidth={1.5}
+                className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1"
+              />
+            </>
           )}
-        </SelectField>
+        </button>
+        <p className="mt-3 text-center text-[11px] text-ink-3">
+          Pre-departure inputs only. The model never sees the actual delay.
+        </p>
       </div>
-      {routes.isError ? (
-        <p className="-mt-2 text-[12px] text-cancelled" role="alert">
-          Could not load the routes from {form.origin}: {routes.error.message}{' '}
-          <button
-            type="button"
-            onClick={() => void routes.refetch()}
-            className="text-ink underline underline-offset-2"
-          >
-            Retry
-          </button>
-        </p>
-      ) : (
-        <p className="-mt-2 text-[12px] text-ink-3">
-          Destinations list only the routes flown from {form.origin} in 2015, busiest first (
-          {routesReady ? formatInteger(destinations.length) : '…'}). Type a code to jump to it.
-        </p>
-      )}
-
-      <SelectField
-        label="Scheduled departure hour"
-        value={form.hour}
-        onChange={(event) => set('hour')(event.target.value)}
-        error={errors.schedDepHour}
-      >
-        {HOURS.map((hour) => (
-          <option key={hour} value={hour}>
-            {hourRangeLabel(hour)}
-          </option>
-        ))}
-      </SelectField>
-
-      <button
-        type="submit"
-        disabled={pending || !routesReady}
-        className="liquid-glass w-full rounded-full px-6 py-3 text-sm text-ink transition-colors disabled:opacity-60"
-      >
-        {pending ? 'Scoring…' : 'Score this flight'}
-      </button>
     </form>
   );
+}
+
+/** "Chicago, IL", or the airport name when airports.csv has no city. */
+function place(airport: MetaResponse['airports'][number]): string {
+  return [airport.city, airport.state].filter(Boolean).join(', ');
 }
 
 function toBody(form: FormState): PredictRequest {
@@ -495,7 +541,7 @@ export default function Predict() {
       </PageHeader>
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-        <div className="liquid-glass self-start rounded-3xl p-6 sm:p-8">
+        <div className="predict-card liquid-glass self-start rounded-3xl p-5 sm:p-7">
           <QueryState query={meta} label="airlines and airports" skeletonClass="h-96">
             {(data) => (
               <PredictForm

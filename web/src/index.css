@@ -200,7 +200,148 @@ a.liquid-glass:hover {
 }
 
 .rise {
-  animation: rise 0.7s var(--ease-out-expo) both;
+  animation: rise 0.7s var(--ease-out-expo) var(--delay, 0s) both;
+}
+
+/* ---------- Predict: flight fields ---------- */
+
+/* A field shell: a drawn face over a native control. Hover lifts the hairline; focus (keyboard or
+   pointer) warms it to amber with a soft halo, the same amber as the global focus ring. */
+.flight-field {
+  border-radius: 12px;
+  border: 1px solid var(--color-rule-strong);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition:
+    border-color 200ms var(--ease-out-expo),
+    background-color 200ms var(--ease-out-expo),
+    box-shadow 260ms var(--ease-out-expo);
+}
+
+.flight-field:hover {
+  border-color: rgba(255, 255, 255, 0.26);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.flight-field:focus-within {
+  border-color: rgba(232, 165, 75, 0.75);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 3px rgba(232, 165, 75, 0.14);
+}
+
+.flight-field:focus-within .flight-field-chevron {
+  color: var(--color-delayed);
+}
+
+.flight-field-chevron {
+  transition: color 200ms var(--ease-out-expo);
+}
+
+/* The shell carries the focus indicator, so the control inside does not draw a second one. */
+.flight-field select:focus-visible,
+.flight-field input:focus-visible {
+  outline: none;
+}
+
+.flight-field[data-invalid] {
+  border-color: rgba(208, 97, 74, 0.7);
+}
+
+.flight-field[data-disabled] {
+  opacity: 0.55;
+}
+
+/* The native calendar icon is replaced by a drawn one; the field itself opens the picker. */
+.flight-date::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+.flight-date::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+.flight-date::-webkit-datetime-edit-text {
+  color: var(--color-ink-3);
+  padding: 0 0.05em;
+}
+
+/* The flight path between origin and destination. */
+.route-rail {
+  background-image: linear-gradient(180deg, var(--color-ink-3) 0 3px, transparent 3px 7px);
+  background-size: 1px 7px;
+  opacity: 0.7;
+}
+
+/* Predict submit: the glass pill, warming at the edge on hover. */
+.score-button {
+  transition:
+    background-color 200ms var(--ease-out-expo),
+    box-shadow 300ms var(--ease-out-expo),
+    transform 200ms var(--ease-out-expo);
+}
+
+.score-button:hover:not(:disabled) {
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(232, 165, 75, 0.35),
+    0 10px 30px -14px rgba(232, 165, 75, 0.45);
+}
+
+.score-button:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+/* The Predict card: the one glass surface, with a faint warm light at its upper edge so it reads as
+   lit by the same evening sun as the landing globe. */
+.predict-card.liquid-glass {
+  background:
+    radial-gradient(120% 70% at 85% -10%, rgba(232, 165, 75, 0.07), transparent 60%),
+    radial-gradient(90% 60% at 0% 110%, rgba(124, 155, 209, 0.05), transparent 60%),
+    rgba(255, 255, 255, 0.022);
+  animation: rise 0.8s var(--ease-out-expo) both;
+}
+
+/* Hand-off links: a hairline draws across the top on hover or focus, and the cell lifts faintly. */
+.handoff-link::before {
+  content: '';
+  position: absolute;
+  inset: -1px 0 auto;
+  height: 1px;
+  background: var(--color-ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 500ms var(--ease-out-expo);
+}
+
+.handoff-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0));
+  opacity: 0;
+  transition: opacity 300ms var(--ease-out-expo);
+  pointer-events: none;
+}
+
+.handoff-link:hover::before,
+.handoff-link:focus-visible::before {
+  transform: scaleX(1);
+}
+
+.handoff-link:hover::after,
+.handoff-link:focus-visible::after {
+  opacity: 1;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  animation: spin 0.9s linear infinite;
 }
 
 /* ---------- Landing hero entrance (transform / opacity / filter only) ---------- */
@@ -243,7 +384,12 @@ a.liquid-glass:hover {
 
 /* Legibility: the copy column on phones gets its own fade so it reads over the globe. */
 .landing-scrim {
-  background: linear-gradient(180deg, rgba(1, 1, 1, 0) 0%, rgba(1, 1, 1, 0.1) 34%, rgba(1, 1, 1, 0.55) 70%);
+  background: linear-gradient(
+    180deg,
+    rgba(1, 1, 1, 0) 0%,
+    rgba(1, 1, 1, 0.1) 34%,
+    rgba(1, 1, 1, 0.55) 70%
+  );
 }
 
 .landing-copy {
@@ -255,7 +401,12 @@ a.liquid-glass:hover {
   position: absolute;
   inset: -4rem -1.25rem -2rem;
   z-index: -1;
-  background: linear-gradient(180deg, rgba(1, 1, 1, 0) 0%, rgba(1, 1, 1, 0.82) 4rem, rgba(1, 1, 1, 0.9) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(1, 1, 1, 0) 0%,
+    rgba(1, 1, 1, 0.82) 4rem,
+    rgba(1, 1, 1, 0.9) 100%
+  );
   pointer-events: none;
 }
 
@@ -264,9 +415,11 @@ a.liquid-glass:hover {
     background: radial-gradient(circle at 74% 52%, rgba(169, 184, 204, 0.08), transparent 36%);
   }
 
-  /* The globe owns the right; the left third darkens so the copy holds AA over any arc. */
+  /* The globe owns the right; the left third darkens so the copy holds AA over any arc, and the
+     top-right corner darkens under the controls and map key. */
   .landing-scrim {
     background:
+      radial-gradient(34% 30% at 100% 0%, rgba(1, 1, 1, 0.82), rgba(1, 1, 1, 0) 100%),
       linear-gradient(90deg, rgba(1, 1, 1, 0.94) 0%, rgba(1, 1, 1, 0.8) 36%, rgba(1, 1, 1, 0) 62%),
       linear-gradient(0deg, rgba(1, 1, 1, 0.5) 0%, rgba(1, 1, 1, 0) 28%);
   }

@@ -2,8 +2,10 @@ import type { DelayRateRow } from '@flight-delay/shared';
 import { ArrowRight } from 'lucide-react';
 import type { ReactNode, Ref } from 'react';
 import { Link } from 'react-router';
-import { useMeta, useModelMetrics } from '../../api/hooks';
+import { CAUSE_KEYS } from '@flight-delay/shared';
+import { useCauses, useMeta, useModelMetrics, useSummary } from '../../api/hooks';
 import { formatDate, formatInteger, formatPercent } from '../../lib/format';
+import { CAUSE_META } from '../../lib/labels';
 import { QueryState } from '../QueryState';
 import { clearHover, setHover, setSelected, useInteraction } from '../globe/store';
 import { RouteLabel } from './GlobeHud';
@@ -337,22 +339,80 @@ export function ModelChapter({ sectionRef }: { sectionRef: Ref<HTMLElement> }) {
 
 // ---------- Hand-off ----------
 
+/**
+ * One live figure per page, so each link previews what is behind it. 'loading' shows a skeleton;
+ * null (the query failed) shows nothing, so the link still works without its figure.
+ */
+interface PageFigure {
+  value: string;
+  caption: string;
+  /** A data colour, only where the figure is a delay rate or a cause (DESIGN.md Colour Is Data). */
+  color?: string;
+}
+
+function usePageFigures(): Record<string, PageFigure | 'loading' | null> {
+  const summary = useSummary();
+  const causes = useCauses('overall');
+  const meta = useMeta();
+  const metrics = useModelMetrics();
+
+  const overall = causes.data?.rows[0];
+  const topCause = overall
+    ? CAUSE_KEYS.map((key) => ({ key, share: overall.shares[key] ?? 0 })).sort(
+        (a, b) => b.share - a.share,
+      )[0]
+    : undefined;
+
+  const pending = (query: { isPending: boolean }) => (query.isPending ? 'loading' : null);
+
+  return {
+    '/overview':
+      summary.data?.delayRate != null
+        ? {
+            value: formatPercent(summary.data.delayRate),
+            caption: 'of completed flights arrived 15+ min late',
+            color: 'var(--color-delayed)',
+          }
+        : pending(summary),
+    '/causes': topCause
+      ? {
+          value: formatPercent(topCause.share),
+          caption: `of delay minutes: ${CAUSE_META[topCause.key].label.toLowerCase()}`,
+          color: CAUSE_META[topCause.key].color,
+        }
+      : pending(causes),
+    '/explorer': meta.data
+      ? { value: formatInteger(meta.data.flights), caption: 'flights to rank and open' }
+      : pending(meta),
+    '/predict': metrics.data
+      ? {
+          value: formatPercent(metrics.data.threshold.value),
+          caption: 'decision threshold, tuned on held-out data',
+        }
+      : pending(metrics),
+    '/model': metrics.data
+      ? { value: metrics.data.metrics.auc.toFixed(3), caption: 'test ROC-AUC, Oct to Dec' }
+      : pending(metrics),
+  };
+}
+
 const PAGES = [
   { to: '/overview', label: 'Overview', blurb: 'Volume, monthly trend, worst airlines' },
   { to: '/causes', label: 'Causes', blurb: 'What the late minutes are made of' },
   { to: '/explorer', label: 'Explorer', blurb: 'Rank anything, open the raw flights' },
-  { to: '/predict', label: 'Predict', blurb: 'Score one flight' },
-  { to: '/model', label: 'Model', blurb: 'Test metrics and importance' },
+  { to: '/predict', label: 'Predict', blurb: 'Score one flight before it leaves' },
+  { to: '/model', label: 'Model', blurb: 'Test metrics and what drives them' },
 ] as const;
 
 export function HandoffChapter({ sectionRef }: { sectionRef: Ref<HTMLElement> }) {
+  const figures = usePageFigures();
   return (
     <section
       ref={sectionRef}
       aria-labelledby="chapter-handoff"
       className="pointer-events-none relative mx-auto flex min-h-[100dvh] w-full max-w-[1440px] flex-col justify-end px-5 pb-12 pt-[40dvh] md:px-10 md:pb-16"
     >
-      <div className="pointer-events-auto">
+      <div className="landing-copy pointer-events-auto">
         <h2 id="chapter-handoff" className="sr-only">
           The dashboard
         </h2>
@@ -375,30 +435,70 @@ export function HandoffChapter({ sectionRef }: { sectionRef: Ref<HTMLElement> })
             />
           </Link>
         </div>
-        <nav aria-label="Pages" data-reveal className="mt-12 border-t border-rule-strong">
-          <ul className="grid sm:grid-cols-5">
-            {PAGES.map((page, index) => (
-              <li
-                key={page.to}
-                className={index > 0 ? 'border-t border-rule sm:border-l sm:border-t-0' : ''}
-              >
-                <Link
-                  to={page.to}
-                  className="group block py-4 transition-colors duration-200 hover:bg-wash sm:px-4 sm:first:pl-0"
+        <nav aria-label="Pages" data-reveal className="mt-10 border-t border-rule-strong">
+          <ul className="grid grid-cols-2 lg:grid-cols-5">
+            {PAGES.map((page, index) => {
+              const figure = figures[page.to] ?? null;
+              // Two columns on phones and tablets (the last link spans both), five from lg. The
+              // first column sits flush with the heading above; the rest pad off their rule.
+              const pad =
+                index === 0 ? 'pr-4 lg:pr-5' : index % 2 === 1 ? 'pl-4 lg:px-5' : 'pr-4 lg:px-5';
+              const rules = [
+                index % 2 === 1 ? 'border-l' : '',
+                index >= 2 ? 'border-t lg:border-t-0' : '',
+                index > 0 ? 'lg:border-l' : '',
+                index === 4 ? 'col-span-2 lg:col-span-1' : '',
+              ].join(' ');
+              return (
+                <li
+                  key={page.to}
+                  className={`border-rule ${rules}`}
                 >
-                  <span className="flex items-center justify-between text-sm text-ink">
-                    {page.label}
-                    <ArrowRight
-                      aria-hidden="true"
-                      size={13}
-                      strokeWidth={1.5}
-                      className="-translate-x-1 text-ink-3 opacity-0 transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100"
-                    />
-                  </span>
-                  <span className="mt-1 block text-xs text-ink-3">{page.blurb}</span>
-                </Link>
-              </li>
-            ))}
+                  <Link
+                    to={page.to}
+                    className={`handoff-link group relative flex h-full flex-col gap-4 py-4 sm:gap-5 sm:py-5 lg:min-h-[11.5rem] lg:py-6 ${pad}`}
+                  >
+                    <span className="flex items-start justify-between gap-3">
+                      <span>
+                        <span className="block font-display text-[1.4rem] leading-none text-ink sm:text-[1.6rem]">
+                          {page.label}
+                        </span>
+                        <span className="mt-2 hidden text-[13px] leading-snug text-ink-3 transition-colors duration-300 group-hover:text-ink-2 sm:block">
+                          {page.blurb}
+                        </span>
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className="grid size-8 shrink-0 place-items-center rounded-full border border-rule-strong text-ink-3 transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:border-ink-2 group-hover:bg-ink group-hover:text-ground group-focus-visible:bg-ink group-focus-visible:text-ground"
+                      >
+                        <ArrowRight
+                          size={14}
+                          strokeWidth={1.5}
+                          className="-rotate-45 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:rotate-0"
+                        />
+                      </span>
+                    </span>
+                    <span className="mt-auto block min-h-[2.75rem] sm:min-h-[3.25rem]">
+                      {figure && figure !== 'loading' ? (
+                        <>
+                          <span
+                            className="display-num block text-[clamp(1.6rem,2.4vw,2.1rem)] leading-none"
+                            style={figure.color ? { color: figure.color } : undefined}
+                          >
+                            {figure.value}
+                          </span>
+                          <span className="mt-1.5 block min-h-[2.75em] text-[11px] leading-snug text-ink-3">
+                            {figure.caption}
+                          </span>
+                        </>
+                      ) : figure === 'loading' ? (
+                        <span aria-hidden="true" className="skeleton block h-7 w-20" />
+                      ) : null}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
       </div>

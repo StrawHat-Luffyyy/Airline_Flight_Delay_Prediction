@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  weekdayOf,
   dayName,
   formatInteger,
   formatMillions,
@@ -58,5 +59,17 @@ describe('format', () => {
     expect(dayName(7, false)).toBe('Sunday');
     expect(dayName(0)).toBe('');
     expect(dayName(8)).toBe('');
+  });
+});
+
+describe('weekdayOf', () => {
+  it('names the weekday of an ISO date, independent of the local time zone', () => {
+    expect(weekdayOf('2015-12-21')).toBe('Monday');
+    expect(weekdayOf('2015-01-01')).toBe('Thursday');
+  });
+
+  it('is empty for anything that is not a date', () => {
+    expect(weekdayOf('')).toBe('');
+    expect(weekdayOf('2015-13-45')).toBe('');
   });
 });
