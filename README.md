@@ -13,7 +13,7 @@ The design, every measurement and the reasoning behind each choice are in [`docs
 - **Node.js 20 or newer** with npm. The project is tested on Node 22 in CI.
 - **Docker Desktop**, for MongoDB 7.
 - **Python 3.12**, only to retrain the model. The trained model is committed in `ml/artifacts/`, so you can skip training.
-- About 4 GB of free disk space. Measured on the full build: the CSV is 592 MB, the MongoDB data directory 1.6 GB (`du -sh /data/db` inside the container; WiredTiger files plus journal, against 970 MB of collection and index storage in `db.stats()`) and the training export 866 MB.
+- About 4 GB of free disk space. Measured on the full build: the CSV is 592 MB, the MongoDB data directory 1.6 GB (`du -sh /data/db` inside the container; WiredTiger files plus journal, against 1,330 MB of collection and index storage in `db.stats()`: 937 MB data plus 393 MB indexes) and the training export 908 MB. MB here means 10^6 bytes.
 
 ## Run it: from a fresh clone to the dashboard
 
@@ -31,14 +31,14 @@ Then build the database. The steps must run in this order:
 
 | # | Command | What it does | Time measured here |
 |---|---|---|---|
-| 1 | `npm run ingest -- --drop` | Streams the three CSVs into MongoDB in batches of 10,000 and records the run in `ingest_runs` | 296 s, peak RSS 342 MB |
-| 2 | `npm run resolve:airport-ids -- --apply` | Maps October's numeric BTS airport ids to IATA codes. Without `--apply` it only reports | |
-| 3 | `npm run build:indexes` | Creates the `flights` indexes (§6.2). Idempotent | |
-| 4 | `npm run build:stats` | Rebuilds the pre-aggregated `stats_*` collections with `$group` + `$merge` | 138 s |
-| 5 | `npm run build:lookup` | Builds `delay_lookup`, the historical delay rates used as model features (train split only) | 33 s |
-| 6 | `npm run ml:register` | Stores `ml/artifacts/metrics.json` in `model_runs`, which the Model page reads | seconds |
+| 1 | `npm run ingest -- --drop` | Streams the three CSVs into MongoDB in batches of 10,000 and records the run in `ingest_runs` | 295 s, peak RSS 353 MB |
+| 2 | `npm run resolve:airport-ids -- --apply` | Maps October's numeric BTS airport ids to IATA codes. Without `--apply` it only reports | 98 s |
+| 3 | `npm run build:indexes` | Creates the `flights` indexes (§6.2). Idempotent | 121 s |
+| 4 | `npm run build:stats` | Rebuilds the pre-aggregated `stats_*` collections with `$group` + `$merge` | 199 s |
+| 5 | `npm run build:lookup` | Builds `delay_lookup`, the historical delay rates used as model features (train split only) | 62 s |
+| 6 | `npm run ml:register` | Stores `ml/artifacts/metrics.json` in `model_runs`, which the Model page reads | 4 s |
 
-Times are from runs on an i5-12450H laptop with an NVMe SSD and nothing else running. A from-scratch rerun of all six steps while other jobs shared the machine took 1,007 s in total (`docs/DECISIONS.md`, Phase 7).
+Times are from the final clean-clone audit (2026-10-18): a fresh `git clone`, a new empty MongoDB volume, and only these README steps, on an i5-12450H laptop with an NVMe SSD. All six steps took 779 s in total. Earlier runs are logged in `docs/DECISIONS.md` (for example 1,007 s while other jobs shared the machine, Phase 7).
 
 Start the API and the dashboard:
 
@@ -62,6 +62,8 @@ ml/.venv/Scripts/python ml/train.py
 npm run ml:register
 ```
 
+On macOS or Linux, create the venv with `python3.12 -m venv ml/.venv` and use `ml/.venv/bin/python` in place of `ml/.venv/Scripts/python`. In the audit run, `export:training` took 330 s and `train.py` 152 s, and the retrained `metrics.json` matched the committed one exactly.
+
 - `export:training` streams the completed flights into `data/export/train.csv` and `test.csv` (git-ignored).
 - `train.py` trains a baseline, logistic regression and LightGBM on Jan-Sep. It picks the threshold and the model on September and scores Oct-Dec once. It writes `model.onnx`, `encoders.json`, `metrics.json` and `parity_sample.json` to `ml/artifacts/`.
 - Restart the API afterwards so it loads the new model.
@@ -78,7 +80,7 @@ npm run ml:register
 
 | Page | What it shows |
 |---|---|
-| `/` | Short intro with the real dataset size and headline rates |
+| `/` | Landing: a 3D globe of the real airports and the 10 most and 10 least delay-prone routes, behind a short scroll story (dataset size, routes, prediction, model). Hover a route or airport for its figures, select a route for details. Needs WebGL; without it the copy still renders |
 | Overview | KPIs, monthly delay-rate trend (train/test split marked), the month board, worst airlines, cause shares and an arrival-delay histogram |
 | Causes | Cause minutes by month or airline, the late-aircraft cascade by hour, and cancellation reasons |
 | Explorer | Worst/best airlines, airports and routes with a minimum-flights filter, the raw flights behind a route, and an hour × weekday heatmap |
