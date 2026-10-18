@@ -803,3 +803,38 @@ A loading figure shows a skeleton; a failed one is omitted, so the link still wo
 - **Globe:** model and hand-off chapters after 3 s and 18 s of idle, with the US in view both times.
 
 Screenshots: `docs/screenshots/predict-form.png`, `predict-form-mobile.png`, `landing-handoff.png`, `landing-lighting-hero.png`.
+
+### Predict: custom dropdowns and calendar (2026-10-18)
+
+**Asked for:**
+- consistent custom dark dropdowns (airline, origin, destination, hour) and a custom calendar;
+- search where it helps, month/year navigation, selected and disabled date styling, no clipping;
+- keyboard and screen-reader support;
+- existing data, validation, the 2015 date range and scoring logic unchanged.
+
+**Built** in `web/src/components/predict/`:
+- `FlightSelect` (listbox, searchable for origin, destination and airline);
+- `DatePicker` (date-picker dialog with day and month views);
+- `usePopover` (portal placement);
+- pure logic in `web/src/lib/picker.ts` with 13 tests (search ranking, type-ahead, UTC date arithmetic, month grid).
+
+**Decisions:**
+- **No new dependency.** No headless UI library is installed, and adding one for four fields was not worth it. The components follow the WAI-ARIA listbox and date-picker dialog patterns directly.
+- **Portal and fixed positioning.** Each field group animates in with a transform, which creates a stacking context, so an absolutely positioned popover in one group would sit under the next group. A portal avoids that, plus any future clipping. The popover flips above when there is more room there and follows the field on scroll.
+- **Search ranking:** exact code, then code prefix, then word start, then contains. Within a rank the API order holds, so destinations stay busiest-first. This keeps the old "type a code to jump" behaviour and adds city and name search.
+- **Bounds:** the calendar is limited to `MIN_DATE`..`MAX_DATE` (2015). Navigation clamps, and out-of-range days and months are disabled. `validate()` still checks the date on submit.
+- **Focus moves in a layout effect**, not on the next frame. In a background tab a frame can take hundreds of milliseconds, and the first keystrokes then landed on the field instead of the search box.
+- **Accessible names.** A `<label>` alone names a button by the label only, so the triggers use `aria-labelledby` for the label plus a comma-separated spoken value.
+
+**Verified** in Playwright against the running dev servers:
+- **Desktop (1440×900):**
+  - search and Enter (DEN, SEA), mouse selection, and arrow keys on destination;
+  - type-ahead on hour (21:00);
+  - calendar PageUp/arrows/Enter (22 Nov), clamping at December with "Next month" disabled, and the month view;
+  - Escape, Tab, click outside;
+  - a successful score (SEA→ANC, 22.4%).
+- **Mobile (390×844):** the dropdown and calendar fit the viewport (calendar 304px wide at x=40).
+- **Reduced motion:** the popover is fully visible at once.
+- **Console:** no errors.
+
+Screenshots: `docs/screenshots/predict-dropdown.png`, `predict-calendar.png`.

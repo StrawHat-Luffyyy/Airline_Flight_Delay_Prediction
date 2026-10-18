@@ -278,13 +278,30 @@ Quiet, pill-shaped, ink on ground; never filled with a data colour.
 ### Inputs / Fields
 - **Style:** native select and date inputs at 14px, strong-hairline border, 8px radius, ground at 60% fill, 10px 36px 10px 12px padding, a drawn 12px chevron in ink-2. Labels sit above at 12px ink-2.
 - **Focus:** the border turns amber and the global 2px amber focus ring (3px offset) appears.
-- **Flight fields (Predict only, `components/predict/FlightFields.tsx`):** a drawn face over a real native control, so the keyboard, type-to-jump, screen readers and phone pickers behave natively.
+- **Flight fields (Predict only, `components/predict/`):** every field is a button face that opens a custom popover; no native select or date input remains.
   - **Face:** the code in mono (19px on the route fields, 14px elsewhere), the name beside it in Geist, and a quieter 11px detail line (city, or flights in 2015) so nothing truncates mid-number.
   - **Shell:** 12px radius, strong-hairline border over a faint top-lit gradient; hover lifts the hairline.
-  - **Focus (`:focus-within`):** the border turns amber with a 3px amber halo at 14% and the chevron warms; the control inside draws no second ring.
+  - **Focus and open:** the border turns amber with a 3px amber halo at 20%; the chevron warms and turns over.
   - **Error and disabled:** a Signal Red border (message below as before); disabled at 55%.
-  - **Date:** a visible native date input in mono with the browser's calendar icon replaced by a drawn one; a click anywhere opens the platform picker, and the weekday shows beside the label.
-- **Error:** `aria-invalid` with a 12px Signal Red message linked by `aria-describedby`.
+  - **Accessible name:** the label plus a spoken value with commas ("Origin — ORD, Chicago O'Hare International Airport, Chicago, IL").
+- **Popover** (`.flight-popover`): rendered in a portal with fixed positioning (`usePopover`), so no card, transform or overflow can clip it.
+  - **Placement:** opens below, or above when there is more room there; never runs past the viewport; follows the field on scroll and resize.
+  - **Surface:** near-black (#0c0c0c) with a faint amber light at the top, a strong hairline, a 14px radius, and the one drop shadow a floating surface needs.
+  - **Motion:** unfolds from the field edge in 180ms (instant under reduced motion).
+  - **Closing:** a click outside closes it.
+- **Dropdown (`FlightSelect`):**
+  - **Search:** origin, destination and airline search by code, airport or city (`lib/picker.filterOptions`: exact code, then code prefix, then word start, then contains; busiest-first order kept within a rank). Matches are amber, the result count sits at the right, and an empty search says so. The search text is 16px on phones (so iOS does not zoom) and 14px from sm, underlined amber while focused.
+  - **Departure hour:** no search box; type-ahead instead.
+  - **Options:** the active option sits on a wash. The chosen one has an amber code, an amber check and a faint amber wash, so it is marked by more than colour.
+  - **Scrollbar:** slim, warming to amber on hover.
+  - **Keyboard:** Arrow keys, Home/End and PageUp/PageDown move; Enter chooses; Escape closes; Tab closes and moves on. Typing on a closed field opens it already searching.
+- **Calendar (`DatePicker`):**
+  - **Days:** a Monday-first grid with round 13px mono days. The chosen day is filled amber. Neighbouring-month days are dimmed; days outside 2015 are struck through and inert.
+  - **Month view:** the serif title (1.15rem) opens a month view with year steps.
+  - **Bounds:** arrows and months outside 2015 are disabled.
+  - **Footer:** "Back to selected" once you have navigated away.
+  - **Keyboard:** the WAI-ARIA date-picker pattern (arrows, PageUp/PageDown, Shift for a year, Home/End, Enter/Space, Escape), with roving focus.
+- **Type inside buttons:** the global `button, input { font: inherit }` rule is unlayered, so it beats Tailwind's text-size utilities on those elements. Put type styles on an inner span (or a component class).
 
 ### Navigation
 - **Style:** one top bar with a bottom hairline: serif wordmark at left, five pill tabs (13px), and a right-aligned mono data strip in ink-3 (flight count in ink · date range · stats build date).

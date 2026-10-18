@@ -14,12 +14,9 @@ import { ApiError } from '../api/client';
 import { useMeta, usePredict, useRoutes } from '../api/hooks';
 import { QueryState, Skeleton } from '../components/QueryState';
 import { Note, PageHeader } from '../components/ui';
-import {
-  DateField,
-  RichSelect,
-  RouteRail,
-  type FieldOption,
-} from '../components/predict/FlightFields';
+import { DatePicker } from '../components/predict/DatePicker';
+import { RouteRail, type FieldOption } from '../components/predict/FlightFields';
+import { FlightSelect } from '../components/predict/FlightSelect';
 import {
   dayName,
   formatDuration,
@@ -387,24 +384,28 @@ function PredictForm({
         <legend className="sr-only">Route</legend>
         <RouteRail
           origin={
-            <RichSelect
+            <FlightSelect
               label="Origin"
               variant="route"
               value={form.origin}
               options={originOptions}
-              onChange={(event) => set('origin')(event.target.value)}
+              searchable
+              searchNoun="code, airport or city"
+              onChange={set('origin')}
               error={errors.origin}
             />
           }
           dest={
-            <RichSelect
+            <FlightSelect
               label="Destination"
               variant="route"
               value={dest}
               options={destOptions}
+              searchable
+              searchNoun="code, airport or city"
               placeholder={destPlaceholder}
               hint={routesReady ? `${formatInteger(destinations.length)} routes from ${form.origin}` : null}
-              onChange={(event) => set('dest')(event.target.value)}
+              onChange={set('dest')}
               error={errors.dest}
               disabled={!routesReady}
             />
@@ -423,23 +424,25 @@ function PredictForm({
           </p>
         ) : (
           <p className="mt-2 pl-[30px] text-[11px] leading-relaxed text-ink-3">
-            Only routes flown in 2015, busiest first. Type a code to jump to it.
+            Only routes flown in 2015, busiest first. Search by code, airport or city.
           </p>
         )}
       </fieldset>
 
       <div className="rise border-t border-rule pt-6" style={stagger(1)}>
-        <RichSelect
+        <FlightSelect
           label="Airline"
           value={form.airline}
           options={airlineOptions}
-          onChange={(event) => set('airline')(event.target.value)}
+          searchable
+          searchNoun="code or name"
+          onChange={set('airline')}
           error={errors.airline}
         />
       </div>
 
       <div className="rise grid gap-4 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]" style={stagger(2)}>
-        <DateField
+        <DatePicker
           label="Flight date"
           value={form.date}
           min={MIN_DATE}
@@ -448,11 +451,12 @@ function PredictForm({
           onChange={set('date')}
           error={errors.date}
         />
-        <RichSelect
+        <FlightSelect
           label="Departure hour"
           value={form.hour}
           options={hourOptions}
-          onChange={(event) => set('hour')(event.target.value)}
+          minListWidth={176}
+          onChange={set('hour')}
           error={errors.schedDepHour}
         />
       </div>
