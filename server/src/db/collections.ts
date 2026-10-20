@@ -115,10 +115,42 @@ export interface ResolveRunDoc {
   error?: string;
 }
 
+/** A replay run of the Phase 8 producer (`stream_stats`, kind "producer-run"). */
+export interface StreamRunDoc {
+  _id: string;
+  kind: 'producer-run';
+  runId: string;
+  status: 'running' | 'completed' | 'interrupted' | 'failed';
+  month: number;
+  rate: number;
+  limit: number | null;
+  startedAt: Date;
+  finishedAt: Date | null;
+  /** Every CSV row read, any month. */
+  rowsScanned: number;
+  /** Rows of the replayed month (= sentRaw + sentDlq once the run completes). */
+  monthRows: number;
+  sentRaw: number;
+  sentDlq: number;
+  dlqReasons: Record<string, number>;
+  /** Records csv-parse could not read at all (month unknown; counted, never sent). */
+  malformedCsv: number;
+  /** Whole run, including reading past the earlier months of the file. */
+  elapsedMs: number;
+  /** From the first row of the month to the last acknowledged send. */
+  sendElapsedMs: number;
+  /** sentRaw per second of sendElapsedMs (the replay rate actually achieved). */
+  achievedRate: number;
+  peakRssMb: number;
+  error?: string;
+}
+
 export const collections = {
   flights: (db: Db): Collection<FlightDoc> => db.collection<FlightDoc>('flights'),
   airlines: (db: Db): Collection<AirlineDoc> => db.collection<AirlineDoc>('airlines'),
   airports: (db: Db): Collection<AirportDoc> => db.collection<AirportDoc>('airports'),
   ingestRuns: (db: Db): Collection<IngestRunDoc> => db.collection<IngestRunDoc>('ingest_runs'),
   resolveRuns: (db: Db): Collection<ResolveRunDoc> => db.collection<ResolveRunDoc>('resolve_runs'),
+  /** Phase 8 bookkeeping: producer runs and consumer heartbeats. Never the batch collections. */
+  streamStats: (db: Db): Collection<StreamRunDoc> => db.collection<StreamRunDoc>('stream_stats'),
 };

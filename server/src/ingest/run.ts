@@ -21,7 +21,7 @@ import { REQUIRED_FLIGHT_COLUMNS, transformFlightRow, type ReferenceData } from 
 
 export const BATCH_SIZE = 10_000;
 const PROGRESS_EVERY_ROWS = 500_000;
-const DEFAULT_DATA_DIR = fileURLToPath(new URL('../../../data/raw', import.meta.url));
+export const DEFAULT_DATA_DIR = fileURLToPath(new URL('../../../data/raw', import.meta.url));
 const MALFORMED_CSV = 'malformed_csv';
 
 interface RunStats {
@@ -44,8 +44,9 @@ function reject(stats: RunStats, reason: string): void {
  * Streams CSV records as objects keyed by header. A missing required column fails fast.
  * A record csv-parse cannot read (e.g. broken quoting) is skipped, counted via `onSkip`,
  * and does not abort the load. File read errors propagate to the consumer via `pipeline`.
+ * Shared with the Phase 8 replay producer, so the CSV is parsed one way only.
  */
-function csvRows(
+export function csvRows(
   file: string,
   requiredColumns: readonly string[],
   onSkip: () => void,
@@ -72,7 +73,7 @@ function csvRows(
   return parser;
 }
 
-function requireFile(dir: string, name: string): string {
+export function requireFile(dir: string, name: string): string {
   const file = join(dir, name);
   if (!existsSync(file)) {
     throw new Error(
