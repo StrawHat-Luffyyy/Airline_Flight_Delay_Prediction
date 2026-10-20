@@ -9,7 +9,8 @@ import type { DlqMessage } from '@flight-delay/shared';
 import type { Collection, Db } from 'mongodb';
 import type { Logger } from 'pino';
 import { handleBatch } from './consume.js';
-import { ensureStreamIndexes, streamFlights, upsertEvents } from './store.js';
+import { scoreEvents, type Predictor } from './score.js';
+import { ensureStreamIndexes, findStoredKeys, streamFlights, upsertEvents } from './store.js';
 
 /** Events per eachBatch call (the client's default is 32). */
 const MAX_BATCH = 500;
@@ -53,6 +54,8 @@ export interface ConsumerOptions {
   groupId: string;
   instanceId: string;
   logger: Logger;
+  /** Live scoring: predictDelay bound to the loaded model (§15.7). */
+  predict: Predictor;
 }
 
 export interface ConsumerCounters {
@@ -72,7 +75,7 @@ export interface RunningConsumer {
 }
 
 export async function startConsumer(options: ConsumerOptions): Promise<RunningConsumer> {
-  const { kafka, db, topics, groupId, instanceId, logger } = options;
+  const { kafka, db, topics, groupId, instanceId, logger, predict } = options;
   await ensureStreamIndexes(db);
   const flights = streamFlights(db);
   const stats = streamConsumers(db);
@@ -156,7 +159,24 @@ export async function startConsumer(options: ConsumerOptions): Promise<RunningCo
             batch.messages,
             { topic: batch.topic, partition: batch.partition, now: Date.now() },
             {
-              write: (events) => upsertEvents(flights, events, new Date()),
+              write: async (events) => {
+                // Score only flights not stored yet: a redelivery never re-scores, and a stored
+                // prediction never changes.
+                const stored = await findStoredKeys(
+                  flights,
+                  events.map((event) => event.key),
+                );
+                const scores = await scoreEvents(
+                  events.filter((event) => !stored.has(event.key)),
+                  predict,
+                );
+                return upsertEvents(
+                  flights,
+                  events,
+                  new Date(),
+                  new Map(scores.map((score) => [score.key, score])),
+                );
+              },
               sendDlq: async (messages: readonly DlqMessage[]) => {
                 await dlqProducer.send({
                   topic: topics.dlq,

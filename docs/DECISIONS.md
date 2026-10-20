@@ -953,3 +953,41 @@ Every run met the conservation check: rows of the month = events on `flights.raw
   The crash-test group was deleted. The project's bash guard hook blocks manual database drops, so **`flight_delay_crash_test` is still in MongoDB** for the user to remove.
 - **`stream:smoke`:** all 4 checks passed (producer conservation, consumer conservation including a dead-lettered malformed message, idempotent replay, and every reject on the DLQ). It deletes its topics, group and database afterwards.
 - **Batch collections unchanged:** `flights` 5,819,079, `delay_lookup` 36,420, `model_runs` 2, and every `stats_*` count identical before and after.
+
+### Phase 8d: live scoring (2026-10-20)
+
+**Built:**
+- **Scorer:** `server/src/stream/score.ts`, with `predictor.ts` and `reference-cache.ts`.
+- **Consumer:** scores each flight not yet stored and writes the prediction in the same insert.
+- **Backfill:** `npm run stream:score-missing`, for flights stored before scoring existed (all of 8c).
+- **Smoke:** the smoke test now also checks that every stored flight was scored.
+
+**Decisions:**
+- **Same code path as `POST /api/predict`.** `createPredictor` uses the same `loadModel()` (`ml/artifacts/model.onnx` and its encoders), the same `mongoReferenceData` and the same `predictDelay`. There is no second encoder or feature builder. The stored prediction is the response's probability, label, threshold and model version.
+- **No leakage, in two layers:**
+  - Compile time: the scorer takes a branded `ScoringRequest` that only `toScoringRequest(event.pre)` produces. A whole event or a hand-built object does not type-check (`@ts-expect-error` tests, enforced by `npm run typecheck`).
+  - Run time: the request is re-validated with `/api/predict`'s own strict `PredictRequestSchema`, which rejects every extra key. Tests show each outcome field is refused, that the predictor receives exactly five keys, and that the request is identical whatever the outcome.
+- **Outcome read after scoring:** `outcome.isDelayed` is read only after the prediction, to set `correct`. Cancelled and diverted flights have no arrival outcome, so `correct` is null and they will be left out of accuracy.
+- **Leakage audit** (`leakage-auditor`):
+  - no leakage;
+  - the same path as the API;
+  - December is out-of-sample: `encoders.lookupScope` is `"full"`, `delay_lookup` is built from train months January to September only, and the model was trained on January to September.
+- **Reference cache.** §15.7 says the same `mongoReferenceData`, and the stream uses it, wrapped in `cachedReferenceData`:
+  - What it does: it memoises the airline, airport and route checks (positive answers only), which turns four MongoDB reads per flight into a few thousand in total. `predictDelay` is unchanged.
+  - Proof it changes nothing: 20 random live scores re-scored through a running `POST /api/predict` matched **bit-for-bit** (maximum absolute difference 0), with the same label, threshold and model version.
+  - Freshness: unknown codes and routes are not cached, so reference rebuilds are picked up. `delay_lookup` is read once per process, as in the API, so restart after `build:lookup`.
+- **Failures:** only a MongoDB error fails the batch, so Kafka redelivers it. A 4xx from the predictor (`UNKNOWN_CODE`, `UNKNOWN_ROUTE`) or an invalid request (`INVALID_REQUEST`) is recorded on the flight as `scoreError`; so is any other per-flight failure (`SCORING_FAILED`). Retrying a deterministic failure would block its partition forever. This was a should-fix from the 8d code review.
+- **One score per flight.** Flights already stored are never re-scored, so a redelivery does not change a stored prediction. The score sits in `$setOnInsert`, so even two racing writers keep the first.
+
+**For 8e** (from the leakage audit):
+- Report **precision and recall** as the main live metrics, computed from TP, FP and FN on `prediction.label` and `outcome.isDelayed`. Put accuracy beside a same-window majority baseline (`1 - delay rate`). On the batch test set, accuracy at the tuned threshold was 59.8%, against 83.9% for always answering "on time".
+- Compute from `stream_flights` (one document per flight), never from consumer counters or `deliveries`.
+- Group by `modelVersion`, and define "last N" by `firstWrittenAt`.
+- The threshold is frozen from September validation. December is test data, so nothing is tuned on stream results.
+- Stream metrics will not equal the batch test metrics for December exactly. `/predict` uses the route's typical `scheduledTime` and distance from `stats_route`, not each flight's own, and refused flights are left out.
+
+**Measured:**
+- **Backfill:** **479,230 flights scored, 0 refused**, in 171 s (**2,807 flights/s**), with model `lightgbm-20261013093139-12f165c2`. 469,717 flights were judged right or wrong, exactly the number of completed December flights; 282,618 of them were right. A second run scanned 0.
+- **Parity:** 20 of 20 matched `/api/predict` exactly.
+- **Smoke:** all 5 checks passed, including that every stored flight was scored live.
+- **Throughput:** scoring runs at about 2,807 flights/s, against 10,904/s for 8c's unscored inserts, so live scoring will bound consumer throughput. The end-to-end consumer rate with scoring is measured in 8g on a fresh `stream_flights`; all December keys are already stored.

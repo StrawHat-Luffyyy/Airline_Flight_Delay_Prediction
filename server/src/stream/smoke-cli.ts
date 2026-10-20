@@ -18,6 +18,8 @@ import { startConsumer, type RunningConsumer } from './consumer.js';
 import { ADMIN_TIMEOUT_MS, createKafka } from './kafka.js';
 import { replayMonth, type EventSink } from './replay.js';
 import { streamFlights } from './store.js';
+import type { DelayModel } from '../ml/model.js';
+import { createPredictor } from './predictor.js';
 import { initTopics, topicSpecs, type TopicAdmin } from './topics.js';
 
 const SMOKE_DB = 'flight_delay_smoke_test';
@@ -80,7 +82,13 @@ async function main(): Promise<void> {
   await producer.connect();
   await mongo.connect();
   const db = mongo.db(SMOKE_DB);
+  let model: DelayModel | undefined;
   try {
+    // Scored with the served model, reading airlines, airports, stats_route and delay_lookup from
+    // the main database (read-only); everything the smoke test writes goes to SMOKE_DB.
+    const scorer = await createPredictor(mongo.db(env.MONGODB_DB));
+    model = scorer.model;
+    const { predict } = scorer;
     await db.dropDatabase();
     const topicAdmin: TopicAdmin = {
       listTopics: () => admin.listTopics({ timeout: ADMIN_TIMEOUT_MS }),
@@ -125,6 +133,7 @@ async function main(): Promise<void> {
       groupId: prefix,
       instanceId: 'smoke',
       logger,
+      predict,
     });
     const running = consumer;
     await waitFor(() => running.counters.consumed >= EXPECTED_EVENTS + 1, 'the first consume');
@@ -136,6 +145,10 @@ async function main(): Promise<void> {
       'consumer conservation (raw = stored + DLQ)',
       { ...running.counters, stored },
     );
+    const scored = await streamFlights(db).countDocuments({
+      'prediction.probability': { $gte: 0 },
+    });
+    check(scored === EXPECTED_EVENTS, 'every stored flight was scored live', { scored });
 
     // 4. Replay the same rows again: counts must not change.
     await replay();
@@ -162,7 +175,12 @@ async function main(): Promise<void> {
     await admin.deleteGroups([prefix]).catch(() => undefined);
     await admin.deleteTopics({ topics: [topics.raw, topics.dlq] }).catch(() => undefined);
     await db.dropDatabase().catch(() => undefined);
-    await Promise.allSettled([admin.disconnect(), producer.disconnect(), mongo.close()]);
+    await Promise.allSettled([
+      admin.disconnect(),
+      producer.disconnect(),
+      mongo.close(),
+      model?.close(),
+    ]);
     rmSync(dir, { recursive: true, force: true });
   }
 }

@@ -18,7 +18,8 @@
     "kafka:init": "tsx src/stream/kafka-init-cli.ts",
     "stream:replay": "tsx src/stream/replay-cli.ts",
     "stream:consume": "tsx src/stream/consume-cli.ts",
-    "stream:smoke": "tsx src/stream/smoke-cli.ts"
+    "stream:smoke": "tsx src/stream/smoke-cli.ts",
+    "stream:score-missing": "tsx src/stream/score-missing-cli.ts"
   },
   "dependencies": {
     "@confluentinc/kafka-javascript": "1.11.0",
