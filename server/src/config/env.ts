@@ -37,6 +37,7 @@ const envSchema = z.object({
         .min(1),
     ),
   KAFKA_CLIENT_ID: z.string().min(1).default('flight-delay'),
+  KAFKA_CONSUMER_GROUP: z.string().min(1).default('flight-stream'),
   KAFKA_TOPIC_RAW: z
     .string()
     .regex(/^[a-zA-Z0-9._-]{1,249}$/)
