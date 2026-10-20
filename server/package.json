@@ -16,7 +16,9 @@
     "export:training": "tsx src/features/export-cli.ts",
     "ml:register": "tsx src/ml/register-cli.ts",
     "kafka:init": "tsx src/stream/kafka-init-cli.ts",
-    "stream:replay": "tsx src/stream/replay-cli.ts"
+    "stream:replay": "tsx src/stream/replay-cli.ts",
+    "stream:consume": "tsx src/stream/consume-cli.ts",
+    "stream:smoke": "tsx src/stream/smoke-cli.ts"
   },
   "dependencies": {
     "@confluentinc/kafka-javascript": "1.11.0",

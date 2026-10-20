@@ -907,3 +907,49 @@ Screenshots: `docs/screenshots/predict-dropdown.png`, `predict-calendar.png`.
 | `--limit 200 --rate 0` | 200 | 0 | — | 4,244/s | 131 MB | 200; stopped after 5,340,049 rows read |
 
 Every run met the conservation check: rows of the month = events on `flights.raw` + DLQ events. The topic offsets match the reported counts exactly, so no event was written twice.
+
+### Phase 8c: consumer and storage (2026-10-20)
+
+**Built:**
+- **`npm run stream:consume -- [--idle-exit SECONDS]`:** `server/src/stream/consumer.ts`, `consume.ts`, `store.ts` and `consume-cli.ts`.
+- **`npm run stream:smoke`:** an end-to-end check against the real broker.
+- **Config:** a `KAFKA_CONSUMER_GROUP` env var (default `flight-stream`).
+- **Tests:** unit tests for batch decoding and commit order; MongoDB integration tests on `flight_delay_stream_test`, which they create and drop. Both ran against the live database, not skipped.
+
+**Decisions:**
+- **At-least-once, then idempotent.** Auto-commit is off and `eachBatchAutoResolve` is false. For each batch the order is fixed in the pure `handleBatch`:
+  1. decode;
+  2. upsert to `stream_flights`;
+  3. send malformed messages to the DLQ (awaited);
+  4. commit `last offset + 1`;
+  5. only then mark the batch resolved.
+
+  Any failure throws before the commit, and the client seeks back and redelivers the batch. This was checked against the client's own `_consumer.js` (the `eachBatch` error path, `resolveOffset`, `commitOffsets`, and `disconnect` waiting for in-flight batches).
+- **Upserts keyed by `_id = flight key`.** `$setOnInsert` stores the event, `producedAt`, `firstWrittenAt` and an empty prediction; `$set` updates `lastRunId` and `lastWrittenAt`; `$inc` bumps `deliveries`. The first write wins, so a redelivery never changes a stored event or its latency.
+  - The bulk write is ordered, so two deliveries of one flight in a batch apply as an insert then an update, and `inserted` and `redelivered` stay exact.
+  - Partitions cannot race on a key: the message key is the origin, so a flight always lands on one partition.
+- **Batches and concurrency:** up to 500 messages per batch (`js.consumer.max.batch.size`; the client default is 32), and 3 partitions consumed concurrently, one worker each. Memory is bounded at 3 × 500 messages.
+- **Rejects:** malformed messages (empty, not JSON, or failing `FlightEventSchema`) go to `flights.dlq` with `source: "consumer"`, a reason naming the bad fields, their partition and offset, and the raw value capped at 10,000 characters.
+- **Backoff on failure:** a failing batch backs off from 1 s, doubling to 30 s, before it is redelivered, instead of refetching in a tight loop. The consumer is reported as `failed`, with the error, until a batch succeeds.
+- **Heartbeat** (`stream_stats`, `kind: "consumer"`, one document per process): status, `lastSeenAt` every 2 s, per-process counters and throughput.
+  - These counters are observations. The authoritative totals are the `stream_flights` count and the Kafka offsets.
+  - A hard-killed process leaves `status: "running"` and a frozen `lastSeenAt`. **8e must judge liveness by `lastSeenAt` age** (about 3 heartbeats), use the newest document per group, and never sum counters across documents.
+- **Graceful stop:** `stop()` disconnects, which lets the in-flight batch finish and commit. It waits for any in-flight heartbeat, then writes `stopped`.
+  - Signal handlers are installed before startup.
+  - On Windows a SIGINT cannot be sent to a Node process programmatically, so the scripted runs exercised the same `stop()` through `--idle-exit`. Ctrl+C uses that path too.
+  - A startup failure releases the clients and the timer, and records `failed`.
+- **`deliveries` can exceed the number of messages on the topic** after a crash inside the write-to-commit window. The invariant is the `stream_flights` count, so later checks use `>=` for deliveries.
+- **Review fixes:** the 8c review found no must-fixes. Four should-fixes were applied: backoff with failed status; no heartbeat after `stopped`; cleanup on failed startup; resolve only after commit, with a staleness check before it.
+
+**Measured** against the real broker:
+- **Full consume:** 481,430 messages in 976 batches → **479,230 flights stored**, the same as `flights` for December, with 2,200 redelivered from earlier test replays, 0 dead-lettered, and **lag 0 on all three partitions**. Insert rate from first to last write: **10,904 flights/s** (43.9 s).
+- **Idempotent re-replay** of 5,000 events: 5,000 consumed, 0 inserted, 5,000 redelivered. `stream_flights` stayed at 479,230; total deliveries went from 481,430 to 486,430.
+- **Crash recovery,** isolated in `flight_delay_crash_test` with consumer group `crash-test`:
+  1. The consumer was hard-killed (`Stop-Process -Force`) after storing 316,598 flights, with 318,598 offsets committed and 167,832 unread.
+  2. The restart consumed exactly those 167,832 and inserted 162,632, giving **479,230 = every flight, none lost, none duplicated** (unique `_id`).
+  3. Total deliveries were 486,430, the number of messages on the topic; no batch was in the write-to-commit window at the kill. Lag was 0.
+  4. A random sample of 2,000 keys was all present in the main run.
+
+  The crash-test group was deleted. The project's bash guard hook blocks manual database drops, so **`flight_delay_crash_test` is still in MongoDB** for the user to remove.
+- **`stream:smoke`:** all 4 checks passed (producer conservation, consumer conservation including a dead-lettered malformed message, idempotent replay, and every reject on the DLQ). It deletes its topics, group and database afterwards.
+- **Batch collections unchanged:** `flights` 5,819,079, `delay_lookup` 36,420, `model_runs` 2, and every `stats_*` count identical before and after.

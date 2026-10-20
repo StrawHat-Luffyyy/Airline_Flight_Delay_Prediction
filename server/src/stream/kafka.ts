@@ -20,6 +20,10 @@ export function createKafka(): KafkaJS.Kafka {
   });
 }
 
+export function consumerGroup(): string {
+  return env.KAFKA_CONSUMER_GROUP;
+}
+
 export function topicNames(): { raw: string; dlq: string } {
   return { raw: env.KAFKA_TOPIC_RAW, dlq: env.KAFKA_TOPIC_DLQ };
 }

@@ -18,6 +18,7 @@ describe('parseEnv', () => {
       PREDICT_RATE_LIMIT_PER_MIN: 30,
       KAFKA_BROKERS: ['127.0.0.1:9092'],
       KAFKA_CLIENT_ID: 'flight-delay',
+      KAFKA_CONSUMER_GROUP: 'flight-stream',
       KAFKA_TOPIC_RAW: 'flights.raw',
       KAFKA_TOPIC_DLQ: 'flights.dlq',
     });
