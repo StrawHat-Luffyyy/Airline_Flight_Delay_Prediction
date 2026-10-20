@@ -870,3 +870,40 @@ Screenshots: `docs/screenshots/predict-dropdown.png`, `predict-calendar.png`.
 - **`kafka:init` against the real broker,** after deleting the two topics: the first run created `flights.raw` (3 partitions, replication factor 1) and `flights.dlq` (1 partition, replication factor 1), confirmed with `kafka-topics.sh --describe`. Second and third runs logged "topics already exist" and created nothing.
 
 **Known limit:** one broker with replication factor 1 has no fault tolerance. Losing the broker or its volume loses any events not yet consumed. This is stated again in `BIGDATA_JUSTIFICATION.md` in 8g.
+
+### Phase 8b: replay producer (2026-10-20)
+
+**Built:**
+- **Command:** `npm run stream:replay -- [--month 12] [--rate N|0] [--limit N] [--dir PATH]`, in `server/src/stream/replay.ts`, `replay-cli.ts`, `replay-args.ts` and `pacer.ts`.
+- **Event contract:** `shared/src/stream.ts`, a versioned, strict zod `FlightEventSchema` with separate `pre` and `outcome` objects, plus `flightKey` and `DlqMessageSchema`.
+- **Run records:** one `stream_stats` document per run (`kind: "producer-run"`).
+
+**Decisions:**
+- **One parser.** The replay reads `flights.csv` with the ingest's `csvRows` (now exported from `server/src/ingest/run.ts`) and parses each row with `transformFlightRow`. `toFlightEvent` only reshapes the transformed document:
+  - `pre` is built field by field from pre-departure columns;
+  - `outcome` holds `depDelay`, `arrDelay`, `isDelayed`, `cancelled` and `diverted`.
+
+  The schema is strict at every level, so an outcome field inside `pre` is a validation error.
+- **Key:** `date|airline|flightNumber|origin|schedDepMin`, shared by producer and consumer. Measured on `flights` (December): **479,230 flights and 479,230 distinct keys**, so the key is unique in the source.
+- **Partitioning:** the message key is `origin`, so one airport's events stay ordered on one partition. The real run spread events 36% / 38% / 26% across the three partitions (hub airports are not split evenly).
+- **Delivery:** the producer is idempotent (`idempotent: true`, `acks: -1`, `maxInFlightRequests: 5`; idempotence requires at most 5 in flight). Send counts rise only after the broker acknowledges a batch. A partial failure under-counts and never over-counts.
+- **Rejects:** rows the transformer rejects go to `flights.dlq` with `source: "producer"`, the reason and the raw row. Records `csv-parse` cannot read at all are counted (`malformedCsv`) but not dead-lettered: their month is unknown, so they cannot belong to the replayed month. The real file has none, and ingestion rejected 0 of 5,819,079 rows. The December DLQ path is therefore exercised by unit tests, not by real data.
+- **Pacing:** a token bucket (`--rate`, events/s; `0` = unthrottled) sends batches of `rate/10` events (1 to 500). A pause is never banked into a burst longer than one second.
+- **Timestamps:** `producedAt` is stamped just before each send, so pacing waits are not counted as latency. All events in a batch share it.
+- **Timing:** the run records `elapsedMs` (whole file) and `sendElapsedMs` (first December row to last acknowledgement). The achieved rate uses the send phase. The first measurement used the whole run and reported 11 events/s, because reaching December means reading about 5.34M earlier rows (about 93 s). That record is still in `stream_stats` with the old figure.
+- **Robustness after the 8b review:**
+  - the CLI owns the counters, so a failed run records what Kafka had acknowledged;
+  - the run is recorded only after the producer connects;
+  - a rejected row is copied without a `parse` that could throw;
+  - reading stops as soon as `--limit` is met;
+  - a DLQ message without a row has a null key.
+
+**Measured** against the real broker:
+
+| Run | December rows sent | DLQ | Send phase | Achieved | Peak RSS | `flights.raw` offsets grew by |
+|---|---|---|---|---|---|---|
+| `--limit 1000 --rate 500` | 1,000 | 0 | 1.94 s | 516/s | 131 MB | 1,000 (322 + 356 + 322) |
+| `--rate 0` (all of December) | 479,230 | 0 | 47.99 s | 9,987/s | 290 MB | 479,230 (to 481,230 in total) |
+| `--limit 200 --rate 0` | 200 | 0 | — | 4,244/s | 131 MB | 200; stopped after 5,340,049 rows read |
+
+Every run met the conservation check: rows of the month = events on `flights.raw` + DLQ events. The topic offsets match the reported counts exactly, so no event was written twice.

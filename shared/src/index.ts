@@ -21,3 +21,4 @@ export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 export * from './flights.js';
 export * from './analytics.js';
 export * from './model.js';
+export * from './stream.js';
