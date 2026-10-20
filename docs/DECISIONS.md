@@ -838,3 +838,35 @@ Screenshots: `docs/screenshots/predict-form.png`, `predict-form-mobile.png`, `la
 - **Console:** no errors.
 
 Screenshots: `docs/screenshots/predict-dropdown.png`, `predict-calendar.png`.
+
+### Phase 8a: Kafka infrastructure and topics (2026-10-20)
+
+**Built:**
+- **Compose:** a `kafka` service, `apache/kafka:4.3.1` in single-node KRaft mode (combined broker and controller, no ZooKeeper), loopback-only port `127.0.0.1:9092`, named volume `kafka_data`.
+- **Client:** `@confluentinc/kafka-javascript` pinned to exactly 1.11.0.
+- **Config:** optional `KAFKA_*` env vars, zod-validated, in `.env.example`.
+- **Topics:** `server/src/stream/topics.ts`, a pure topic spec and an idempotent `initTopics`, unit-tested with a fake admin; `npm run kafka:init`.
+
+**Decisions:**
+- **Client: `@confluentinc/kafka-javascript`, not `kafkajs`.** Checked on the npm registry on 2026-10-20:
+  - `kafkajs`'s latest release is 2.2.4, published 2023-02-27. Nothing has been released in over three years.
+  - `@confluentinc/kafka-javascript` released 1.10.0 (July 2026), 1.10.1 (September) and 1.11.0 (2026-10-07). It is Confluent's supported client, built on librdkafka (idempotent producer, manual offset commits), with prebuilt binaries for Windows x64, Linux and macOS, and Node 18 to 24.
+  - It offers a KafkaJS-compatible promisified API (`import { KafkaJS } from '@confluentinc/kafka-javascript'`). The code reads like KafkaJS without depending on an unmaintained library.
+  - Context7 confirmed the import and the admin methods we use (`listTopics`, `fetchTopicMetadata`, `createTopics`); exact signatures came from the package's own `types/kafkajs.d.ts`.
+  - Trade-off: it is a native module, so installation depends on a prebuilt binary for the platform. It installed and loaded on this Windows machine (Node 24.11.1).
+- **Image tag: `apache/kafka:4.3.1`, never `latest`.** Docker Hub, re-checked on 2026-10-20: 4.3.1 (2026-06-23) is the newest stable release; 4.4.0 and 4.3.2 are still release candidates. 4.2.2 is newer by date but on the older 4.2 line.
+- **The full single-node configuration is declared.** The image drops all its defaults once any setting is overridden. Internal topic replication factors are 1.
+- **Auto topic creation is off** (`KAFKA_AUTO_CREATE_TOPICS_ENABLE=false`, confirmed as a static broker config). Topics exist only through `kafka:init`, so a typo in a topic name fails instead of silently creating a 1-partition topic. Retention is the broker default of 168 hours.
+- **`127.0.0.1`, not `localhost`.** The first real run failed with "Local: Broker transport failure". On Windows, `localhost` resolves to `::1` first, but the port is bound to `127.0.0.1` only, and clients reconnect to the advertised address after bootstrap. The advertised listener, the default `KAFKA_BROKERS` and the controller voter all use `127.0.0.1`.
+- **Waiting for new topics.** The first real run also showed that a topic's metadata is not readable the instant `createTopics` returns ("Unknown topic or partition"). `initTopics` re-reads it with a bounded retry (15 × 400 ms).
+  - **Race:** an "already exists" error from a concurrent run counts as success when the topic then has the right partition count.
+  - **Mismatch:** an existing topic with the wrong partition count fails before anything is created. Changing the count would break the one-airport-per-partition ordering.
+- **Heap: `KAFKA_HEAP_OPTS=-Xms256m -Xmx512m`**, confirmed on the broker's Java process.
+- **Kafka stays out of the API server.** Only `server/src/stream/` imports the client, and the `KAFKA_*` vars all have defaults, so the API starts and serves with Kafka stopped. That was verified: with the broker stopped, `/api/health` returned `{"status":"ok","mongo":"up","modelLoaded":true}`, and `/api/meta` and `/api/predict` returned 200.
+
+**Measured:**
+- **Docker Desktop:** 8,175,534,080 bytes (7.61 GiB) and 12 CPUs (`docker info`, engine 29.8.2).
+- **Broker memory** (`docker stats`): 282 to 375 MiB, beside MongoDB at 290 MiB.
+- **`kafka:init` against the real broker,** after deleting the two topics: the first run created `flights.raw` (3 partitions, replication factor 1) and `flights.dlq` (1 partition, replication factor 1), confirmed with `kafka-topics.sh --describe`. Second and third runs logged "topics already exist" and created nothing.
+
+**Known limit:** one broker with replication factor 1 has no fault tolerance. Losing the broker or its volume loses any events not yet consumed. This is stated again in `BIGDATA_JUSTIFICATION.md` in 8g.

@@ -16,7 +16,25 @@ describe('parseEnv', () => {
       CORS_ORIGIN: 'http://localhost:5173',
       HOST: '127.0.0.1',
       PREDICT_RATE_LIMIT_PER_MIN: 30,
+      KAFKA_BROKERS: ['127.0.0.1:9092'],
+      KAFKA_CLIENT_ID: 'flight-delay',
+      KAFKA_TOPIC_RAW: 'flights.raw',
+      KAFKA_TOPIC_DLQ: 'flights.dlq',
     });
+  });
+
+  it('needs no Kafka settings, and splits a broker list', () => {
+    expect(parseEnv({ ...valid, KAFKA_BROKERS: 'a:9092, b:9093' }).KAFKA_BROKERS).toEqual([
+      'a:9092',
+      'b:9093',
+    ]);
+  });
+
+  it('rejects a malformed broker or topic name', () => {
+    expect(() => parseEnv({ ...valid, KAFKA_BROKERS: 'localhost' })).toThrow(/KAFKA_BROKERS/);
+    expect(() => parseEnv({ ...valid, KAFKA_BROKERS: 'a:70000' })).toThrow(/KAFKA_BROKERS/);
+    expect(parseEnv({ ...valid, KAFKA_BROKERS: 'a:9092,' }).KAFKA_BROKERS).toEqual(['a:9092']);
+    expect(() => parseEnv({ ...valid, KAFKA_TOPIC_RAW: 'bad topic' })).toThrow(/KAFKA_TOPIC_RAW/);
   });
 
   it('names every missing variable in the error', () => {

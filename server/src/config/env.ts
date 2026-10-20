@@ -15,6 +15,36 @@ const envSchema = z.object({
   HOST: z.string().min(1).default('127.0.0.1'),
   // POST /api/predict requests per client IP per minute (the only write-like, CPU-bound endpoint).
   PREDICT_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(10_000).default(30),
+  // Phase 8 speed layer (PROJECT_OVERVIEW §15). All optional: the API runs without Kafka.
+  // Comma-separated host:port list. 127.0.0.1 rather than localhost: see docker-compose.yml.
+  KAFKA_BROKERS: z
+    .string()
+    .default('127.0.0.1:9092')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((broker) => broker.trim())
+        .filter((broker) => broker !== ''),
+    )
+    .pipe(
+      z
+        .array(
+          z
+            .string()
+            .regex(/^[^\s:,]+:\d{1,5}$/, 'expected host:port')
+            .refine((broker) => Number(broker.split(':')[1]) <= 65535, 'port must be 1-65535'),
+        )
+        .min(1),
+    ),
+  KAFKA_CLIENT_ID: z.string().min(1).default('flight-delay'),
+  KAFKA_TOPIC_RAW: z
+    .string()
+    .regex(/^[a-zA-Z0-9._-]{1,249}$/)
+    .default('flights.raw'),
+  KAFKA_TOPIC_DLQ: z
+    .string()
+    .regex(/^[a-zA-Z0-9._-]{1,249}$/)
+    .default('flights.dlq'),
 });
 
 export type Env = z.infer<typeof envSchema>;

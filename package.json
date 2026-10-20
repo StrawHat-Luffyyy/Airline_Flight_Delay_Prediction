@@ -22,7 +22,8 @@
     "build:stats": "npm run build:stats --workspace=@flight-delay/server --",
     "build:lookup": "npm run build:lookup --workspace=@flight-delay/server --",
     "export:training": "npm run export:training --workspace=@flight-delay/server --",
-    "ml:register": "npm run ml:register --workspace=@flight-delay/server --"
+    "ml:register": "npm run ml:register --workspace=@flight-delay/server --",
+    "kafka:init": "npm run kafka:init --workspace=@flight-delay/server --"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

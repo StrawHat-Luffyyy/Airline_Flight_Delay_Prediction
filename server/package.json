@@ -14,9 +14,11 @@
     "build:stats": "tsx src/stats/build-cli.ts",
     "build:lookup": "tsx src/features/lookup-cli.ts",
     "export:training": "tsx src/features/export-cli.ts",
-    "ml:register": "tsx src/ml/register-cli.ts"
+    "ml:register": "tsx src/ml/register-cli.ts",
+    "kafka:init": "tsx src/stream/kafka-init-cli.ts"
   },
   "dependencies": {
+    "@confluentinc/kafka-javascript": "1.11.0",
     "cors": "^2.8.5",
     "csv-parse": "^6.2.1",
     "dotenv": "^17.2.3",
