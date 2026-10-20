@@ -117,7 +117,8 @@ flight-delay/
 - **Tooling:** `tsx` for dev, `vitest` + `supertest` for tests, ESLint + Prettier
 - **Web:** React 18, Vite, TypeScript, `@tanstack/react-query`, `recharts`, Tailwind CSS
 - **Data/ML:** MongoDB 7 (Docker), Python 3.11 with `pandas`, `scikit-learn`, `lightgbm`, `skl2onnx` / `onnxmltools` (offline only)
-- **Infra:** Docker Compose (`mongo`, optional `mongo-express` for inspection)
+- **Infra:** Docker Compose (`mongo`, `kafka` for the Phase 8 streaming layer, optional `mongo-express` for inspection)
+- **Streaming (Phase 8):** Apache Kafka (KRaft, single node), `@confluentinc/kafka-javascript` (section 15)
 
 Atlas free tier (512 MB) will not hold the full dataset. Use the local Docker MongoDB.
 
@@ -254,6 +255,7 @@ All query/params validated with zod; errors in the shape `{ error: { code, messa
 | POST | `/predict` | Body: `{date, airline, origin, dest, schedDepHour}` -> `{probability, label, threshold, topFactors[]}` |
 | GET | `/model/metrics` | Latest `model_runs` document |
 | GET | `/model/feature-importance` | From latest run |
+| GET | `/stream/status` | Live replay state, throughput, lag, DLQ count and rolling live-prediction metrics with sample sizes (Phase 8, section 15.8) |
 
 `/predict` derives `distance`, `scheduledTime` and lookup rates server-side from MongoDB (`airports`, `delay_lookup`, a small `route_stats` lookup), so the client sends only the five fields above. Reject unknown airline/airport codes with 422. Cache `/meta` and the heavy analytics responses in memory (simple TTL map is enough; do not add Redis).
 
@@ -265,6 +267,7 @@ Pages:
 3. **Explorer** — worst airlines/airports/routes tables with filters, hour x day-of-week delay-rate heatmap (CSS grid is fine).
 4. **Predict** — form (date, airline, origin, destination, scheduled hour) -> probability gauge + top contributing factors.
 5. **Model** — metrics table, confusion matrix, feature-importance bar chart.
+6. **Live** (Phase 8) — streaming status and rolling live-prediction metrics, polled from `/stream/status`.
 
 Keep it clean and functional. Loading and error states are required on every data-fetching component. All API types come from `shared/`.
 
@@ -286,12 +289,14 @@ Keep it clean and functional. Loading and error states are required on every dat
 
 **Phase 7 — Hardening + docs.** Error handling, rate limiting on `/predict`, README with exact run steps, `BIGDATA_JUSTIFICATION.md`, `SCHEMA.md`, final `DECISIONS.md`. Optional stretch: sharded compose file, scheduled `build:stats`, SHAP-style per-prediction explanations.
 
+**Phase 8 — Streaming layer (Kafka).** Added after Phase 7 because the college now requires one big data tool besides MongoDB. A speed layer next to the batch layer: replay December 2015 flights from `data/raw/flights.csv` into Kafka, consume them into new MongoDB collections, score each with the existing predictor, and compare predictions with actual outcomes. Full specification in section 15. Built as separately committed sub-steps 8a to 8g (section 15.10). *Accept:* every measurement in section 15.9 recorded in `docs/STREAMING.md`; the rest of the app and `/api/health` keep working with Kafka stopped.
+
 ## 12. Big Data justification (write into `docs/BIGDATA_JUSTIFICATION.md`)
 
 Cover this explicitly because the subject is graded on it:
 - **Volume:** ~5.8M rows, multi-GB raw; why a document store with indexes and pre-aggregation is chosen over scanning CSVs.
 - **Variety:** structured flight records + semi-structured cause sub-documents + reference data; schema flexibility of documents (nullable `causes`).
-- **Velocity (simulated):** optional `npm run simulate:stream` that replays Dec flights into MongoDB in small batches to demonstrate incremental ingestion and incremental stats updates.
+- **Velocity (simulated):** the Phase 8 Kafka speed layer (section 15) replays December flights through Kafka into MongoDB and scores them live; state its single-broker limits honestly.
 - **Schema design trade-offs:** denormalization vs `$lookup`, computed pattern, partial indexes, `$merge` for materialized views.
 - **Scalability:** sharding strategy (6.3), index selectivity, `allowDiskUse`, cursor streaming instead of in-memory loads.
 - **MongoDB vs alternatives:** brief comparison with Hadoop/Spark/SQL, and an honest note on where Spark would be better (heavy iterative ML), which is why training is offline.
@@ -317,3 +322,127 @@ Cover this explicitly because the subject is graded on it:
 - [ ] Dashboard has all five pages with loading/error states
 - [ ] Docs: README, SCHEMA, DECISIONS, BIGDATA_JUSTIFICATION, EXPLAIN_RESULTS
 - [ ] Tests pass in CI (GitHub Actions: lint, typecheck, vitest)
+- [ ] Phase 8: Kafka streaming layer measured and documented in `docs/STREAMING.md` (section 15.9)
+
+## 15. Streaming layer (Phase 8): Kafka speed layer
+
+### 15.1 Goal and scope
+
+A **speed layer** beside the existing **batch layer** (sections 6 to 8): December 2015 flights are replayed from `data/raw/flights.csv` into Kafka at a configurable rate, and a TypeScript consumer:
+1. writes each event to MongoDB;
+2. scores it with the existing predictor;
+3. compares the prediction with the flight's actual outcome.
+
+The replay simulates velocity; there is no live feed, and the docs say so. December is held-out test data (the model and `delay_lookup` use January to September only), so live scores are genuine out-of-sample predictions.
+
+Hard boundaries:
+- **Existing collections untouched:** `flights`, `stats_*`, `delay_lookup` and `model_runs` are never written by Phase 8 code. It writes only `stream_flights` and `stream_stats`.
+- **App independent of Kafka:** with Kafka stopped, every existing page and endpoint works unchanged, and `/api/health` stays healthy. Its Kafka status is informational only.
+- **Same rules as the batch layer:** never load the CSV fully into memory; no `any`; zod at every boundary; pino logging without full documents.
+
+### 15.2 Infrastructure
+
+- **Service:** a `kafka` service in `docker-compose.yml` using the **official Apache Kafka image**, pinned to an exact tag (proposed `apache/kafka:4.3.1`, the newest stable tag at time of writing; re-checked in 8a). Never `latest`.
+- **Mode:** single node in **KRaft mode** (combined broker and controller, no ZooKeeper), with `KAFKA_NODE_ID`, `KAFKA_PROCESS_ROLES=broker,controller`, explicit listeners and `KAFKA_CONTROLLER_QUORUM_VOTERS`. Internal topic replication factors are set to 1. Overriding any setting drops the image defaults, so the full set is declared.
+- **Network:** the port is bound to `127.0.0.1` only, as `mongo` is. The data volume is named.
+- **Memory and health:** a modest JVM heap (`KAFKA_HEAP_OPTS`, proposed `-Xms256m -Xmx512m`) so Kafka fits Docker Desktop alongside MongoDB. 8a records the Docker memory allocation and the broker's observed memory use. A healthcheck runs the broker's API-versions or topics tool.
+- **Client:** `@confluentinc/kafka-javascript`, an exact version in `server/package.json` (proposed 1.11.0), through its KafkaJS-compatible API. The kafkajs vs Confluent comparison and the reason for the choice are recorded in `docs/DECISIONS.md`.
+- **Config:** `KAFKA_BROKERS`, `KAFKA_CLIENT_ID` and the topic names come from env (zod-validated) and appear in `.env.example`. Nothing is hard-coded.
+
+### 15.3 Topics (`npm run kafka:init`)
+
+| Topic | Partitions | Replication | Key | Purpose |
+|---|---|---|---|---|
+| `flights.raw` | 3 | 1 | `origin` | Replayed flight events. Keying by origin keeps one airport's events in order on one partition. |
+| `flights.dlq` | 1 | 1 | flight key, or none | Malformed or unprocessable events, each with a reason. |
+
+`kafka:init` is an idempotent TypeScript admin script: it creates missing topics, leaves existing ones alone ("already exists" is success), and fails loudly if an existing topic has the wrong partition count.
+
+### 15.4 Event contract (shared zod schema, versioned)
+
+```ts
+interface FlightEvent {
+  v: 1;
+  key: string;          // deterministic flight key, 15.6
+  runId: string;        // one replay invocation
+  producedAt: number;   // epoch ms, set by the producer at send time
+  pre: {                // strict pre-departure fields only
+    date: string;       // YYYY-MM-DD
+    airline: string; flightNumber: number;
+    origin: string; dest: string;
+    schedDepMin: number; schedDepHour: number;
+  };
+  outcome: {            // what actually happened; never given to the scorer
+    depDelay: number | null; arrDelay: number | null;
+    isDelayed: boolean | null; cancelled: boolean; diverted: boolean;
+  };
+}
+```
+
+Keeping `pre` and `outcome` in separate sub-objects makes the leakage boundary structural (15.7).
+
+### 15.5 Producer (`npm run stream:replay`)
+
+- **Flags:** `--month 12` (default 12), `--rate <events/sec>` (token-bucket pacing; `0` = as fast as possible), `--limit <n>`.
+- **Bounded memory:** streams `flights.csv` with the existing `csv-parse` pipeline and never holds more than one send batch. December sits at the end of the file, so earlier months are read and skipped without being kept.
+- **Parsing:** reuses `transformFlightRow` from `server/src/ingest/transform.ts` (with the same airline and airport reference data as ingestion); no parsing logic is duplicated. Rows the transformer rejects go to `flights.dlq` with `{source: "producer", reason}`, so nothing is silently dropped.
+- **Delivery:** an **idempotent producer** (librdkafka `enable.idempotence`, `acks=all`). The `producedAt` timestamp is set at send.
+- **Run summary:** a log line and a `stream_stats` run document: rows read, events sent to `flights.raw`, events sent to `flights.dlq`, elapsed time, achieved rate.
+
+### 15.6 Consumer and storage (`npm run stream:consume`)
+
+- **Group:** a consumer group (`flight-stream`) on `flights.raw`.
+- **At-least-once:** auto-commit is off. For each batch the consumer validates, scores, writes to MongoDB and only then commits the batch's offsets.
+- **Effectively-once results:** each event is an idempotent upsert keyed by `_id = key`, where `key = date|airline|flightNumber|origin|schedDepMin` (deterministic and pure, unit-tested). Re-delivered or re-replayed events never create a second document. A `deliveries` counter records re-deliveries as evidence.
+- **Dead-letter queue:** events that fail schema validation go to `flights.dlq` with `{source: "consumer", reason, topic, partition, offset, value}` *before* the offset is committed; nothing is dropped. A scoring failure on a valid event (such as an unknown route) is not malformed: the event is stored with `prediction: null` and `scoreError`, and counted as unscored.
+- **Graceful shutdown:** on SIGINT or SIGTERM it finishes the in-flight batch, commits, disconnects from Kafka and closes MongoDB.
+- **`stream_flights`:** one document per flight with `{_id: key, runId, pre, outcome, prediction: {probability, label, threshold, modelVersion} | null, scoreError, producedAt, firstWrittenAt, lastWrittenAt, deliveries}`. Indexes: `{firstWrittenAt: -1}` and `{runId: 1}`.
+- **`stream_stats`:** run and consumer bookkeeping: producer run summaries, a consumer heartbeat (last seen, events consumed, DLQ sent, throughput over the last interval). Live metrics are not stored as running counters, which at-least-once delivery could double-count; they are computed from `stream_flights` (15.8).
+
+### 15.7 Live scoring (no leakage)
+
+- **Same code path:** the consumer scores with **`predictDelay` from `server/src/ml/predict.ts`**, using the same `loadModel` and `mongoReferenceData` as `POST /api/predict`. There is no second encoder or feature builder.
+- **Strict input:** the scorer's input type is the strict pre-departure request `{date, airline, origin, dest, schedDepHour}`, built only from `event.pre` by one mapping function whose zod schema is `.strict()`.
+- **Outcomes afterwards:** `outcome` fields are read only after scoring, to mark whether the prediction was right.
+- **Proof:** a test shows the scorer cannot receive outcome fields. It is a compile-time `@ts-expect-error` plus a runtime rejection of any extra key, such as `arrDelay`, `depDelay`, `cancelled` or `isDelayed`.
+- **Stored:** the predicted probability, label, threshold and model version, with each event.
+
+### 15.8 API and dashboard
+
+- **`GET /api/stream/status`** returns `{state: "live" | "idle" | "degraded", reason?}` plus:
+  - events consumed;
+  - DLQ count (from the DLQ topic's offsets, or `stream_stats` when Kafka is down);
+  - throughput (events/s over the last interval);
+  - consumer lag per partition, if the admin API provides it (otherwise `null` with a reason);
+  - the rolling delay rate;
+  - rolling precision, recall and accuracy of live predictions against outcomes.
+
+  Every rate states its sample size `n`. Rolling means the last N completed, scored flights (N configurable, default 2,000), with whole-run totals beside it. Metrics are computed from `stream_flights` and cached for a few seconds.
+- **Degraded behaviour:** if Kafka or the consumer is down, the status endpoint returns a clear degraded state with a reason, never a 500. `/api/health` gains an informational `kafka: "up" | "down"` field that never changes its overall status.
+- **Live page (lowest priority):** one new dashboard page in the existing visual style. It polls the status endpoint, has loading, error and degraded states, invents no numbers, and shows the sample size next to every live metric.
+
+### 15.9 Acceptance (all measured, recorded in `docs/STREAMING.md`)
+
+1. **Conservation:** for one run, rows read for the month = events to `flights.raw` + producer DLQ events, and events on `flights.raw` = documents upserted + consumer DLQ events.
+2. **Unique keys:** the `stream_flights` count equals the number of distinct keys produced (any duplicate key in the source is reported, not hidden).
+3. **Idempotent replay:** re-running the same replay changes no document counts (only `deliveries`).
+4. **Crash recovery:** killing the consumer mid-run (hard kill) and restarting it loses nothing and duplicates nothing; the counts from item 1 still hold.
+5. **Throughput** at three replay rates.
+6. **Latency:** end-to-end p50 and p95, from `producedAt` to the MongoDB write (`firstWrittenAt`).
+7. **Metrics check:** the status endpoint's live metrics match an independent recomputation from `stream_flights` in MongoDB.
+
+### 15.10 Sub-steps (each committed separately; plan approved before building)
+
+8a Kafka infrastructure and topics · 8b producer · 8c consumer and storage · 8d live scoring · 8e status endpoint · 8f Live page (lowest priority) · 8g docs and measurements.
+
+### 15.11 Tests
+
+- **Unit:** flight-key determinism, event validation, idempotent consumer logic (batch, upsert, commit order, DLQ routing, with fakes), and the no-outcome-fields scorer test.
+- **Smoke:** `npm run stream:smoke` runs against the real Kafka container: init topics, produce a small replay, consume, assert the conservation and idempotency counts.
+- **Isolation:** test databases use a `_test` suffix and are dropped in `afterAll`. Test topics use a test prefix.
+
+### 15.12 Docs
+
+- **README:** run order (`docker compose up -d mongo kafka`, `kafka:init`, `stream:consume`, `stream:replay`).
+- **`docs/DECISIONS.md`:** entries for the client choice, image tag, heap, keying, delivery semantics and the metrics design.
+- **`docs/BIGDATA_JUSTIFICATION.md`:** where Kafka sits (the velocity layer of a batch plus speed architecture) and its honest limits. A single broker with replication factor 1 has **no fault tolerance**: losing the broker or its volume loses unconsumed events. The replay is simulated velocity; production would need at least 3 brokers, `min.insync.replicas = 2` and monitoring.
