@@ -6,8 +6,9 @@
 import type { FlightEvent, FlightOutcome, PreDeparture } from '@flight-delay/shared';
 import type { AnyBulkWriteOperation, Collection, Db } from 'mongodb';
 import type { WriteResult } from './consume.js';
+import type { ScoreResult } from './score.js';
 
-/** Filled in by live scoring (8d). */
+/** The live score stored with a flight (the /api/predict response, minus its explanation). */
 export interface StoredPrediction {
   probability: number;
   label: 'delayed' | 'on-time';
@@ -27,6 +28,12 @@ export interface StreamFlightDoc {
   prediction: StoredPrediction | null;
   /** Why scoring failed (e.g. an unknown route); null when scored or not yet scored. */
   scoreError: string | null;
+  /**
+   * Prediction vs outcome, set once at scoring: null when unscored or when the flight has no
+   * arrival outcome (cancelled or diverted). Flights stored before live scoring get it from
+   * `npm run stream:score-missing`.
+   */
+  correct: boolean | null;
   /** When the producer sent it (the event's producedAt). */
   producedAt: Date;
   /** When the consumer first wrote it: end-to-end latency is firstWrittenAt - producedAt. */
@@ -59,27 +66,45 @@ export async function upsertEvents(
   collection: Collection<StreamFlightDoc>,
   events: readonly FlightEvent[],
   now: Date,
+  /** Live scores by flight key, written with the first insert; absent = not scored. */
+  scores: ReadonlyMap<string, ScoreResult> = new Map(),
 ): Promise<WriteResult> {
-  const operations: AnyBulkWriteOperation<StreamFlightDoc>[] = events.map((event) => ({
-    updateOne: {
-      filter: { _id: event.key },
-      update: {
-        $setOnInsert: {
-          runId: event.runId,
-          pre: event.pre,
-          outcome: event.outcome,
-          prediction: null,
-          scoreError: null,
-          producedAt: new Date(event.producedAt),
-          firstWrittenAt: now,
+  const operations: AnyBulkWriteOperation<StreamFlightDoc>[] = events.map((event) => {
+    const score = scores.get(event.key);
+    return {
+      updateOne: {
+        filter: { _id: event.key },
+        update: {
+          $setOnInsert: {
+            runId: event.runId,
+            pre: event.pre,
+            outcome: event.outcome,
+            prediction: score?.prediction ?? null,
+            scoreError: score?.scoreError ?? null,
+            correct: score?.correct ?? null,
+            producedAt: new Date(event.producedAt),
+            firstWrittenAt: now,
+          },
+          $set: { lastRunId: event.runId, lastWrittenAt: now },
+          $inc: { deliveries: 1 },
         },
-        $set: { lastRunId: event.runId, lastWrittenAt: now },
-        $inc: { deliveries: 1 },
+        upsert: true,
       },
-      upsert: true,
-    },
-  }));
+    };
+  });
   // Ordered, so two deliveries of one flight in a batch apply in sequence (insert, then update).
   const result = await collection.bulkWrite(operations, { ordered: true });
   return { inserted: result.upsertedCount, redelivered: events.length - result.upsertedCount };
+}
+
+/** The flight keys among `keys` that are already stored (so their redelivery is not re-scored). */
+export async function findStoredKeys(
+  collection: Collection<StreamFlightDoc>,
+  keys: readonly string[],
+): Promise<Set<string>> {
+  if (keys.length === 0) return new Set();
+  const found = await collection
+    .find({ _id: { $in: [...new Set(keys)] } }, { projection: { _id: 1 } })
+    .toArray();
+  return new Set(found.map((doc) => doc._id));
 }

@@ -1,8 +1,11 @@
 import { flightKey, type FlightEvent } from '@flight-delay/shared';
 import { MongoClient, type Db } from 'mongodb';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { scoreMissing } from '../../src/stream/score-missing.js';
+import type { Predictor, ScoreResult } from '../../src/stream/score.js';
 import {
   ensureStreamIndexes,
+  findStoredKeys,
   streamFlights,
   upsertEvents,
   type StreamFlightDoc,
@@ -113,5 +116,77 @@ describe('upsertEvents (MongoDB integration)', () => {
     await ensureStreamIndexes(db);
     const names = (await streamFlights(db).indexes()).map((index) => index.name).sort();
     expect(names).toEqual(['_id_', 'firstWrittenAt_-1', 'runId_1']);
+  });
+
+  it('stores the live score with the first insert and never changes it on redelivery', async (context) => {
+    if (!client) return context.skip();
+    const scoreOf = (probability: number): ScoreResult => ({
+      key: event(10).key,
+      prediction: { probability, label: 'delayed', threshold: 0.2, modelVersion: 'm1' },
+      scoreError: null,
+      correct: true,
+    });
+    await upsertEvents(
+      streamFlights(db),
+      [event(10)],
+      new Date(9000),
+      new Map([[event(10).key, scoreOf(0.4)]]),
+    );
+    await upsertEvents(
+      streamFlights(db),
+      [event(10)],
+      new Date(9500),
+      new Map([[event(10).key, scoreOf(0.9)]]),
+    );
+    expect(await streamFlights(db).findOne({ _id: event(10).key })).toMatchObject({
+      prediction: { probability: 0.4, label: 'delayed', threshold: 0.2, modelVersion: 'm1' },
+      scoreError: null,
+      correct: true,
+      deliveries: 2,
+    });
+  });
+
+  it('finds which keys are already stored', async (context) => {
+    if (!client) return context.skip();
+    const found = await findStoredKeys(streamFlights(db), [event(1).key, 'nope', event(1).key]);
+    expect([...found]).toEqual([event(1).key]);
+  });
+
+  it('backfills unscored flights once, through the same scorer, leaving scored ones alone', async (context) => {
+    if (!client) return context.skip();
+    const seen: string[] = [];
+    const predict: Predictor = async (request) => {
+      seen.push(JSON.stringify(Object.keys(request).sort()));
+      return {
+        probability: 0.1,
+        label: 'on-time',
+        threshold: 0.2,
+        modelVersion: 'm2',
+        derived: { dayOfWeek: 1, isHolidayWeek: true, distance: 1744, scheduledTime: 275 },
+        topFactors: [],
+      };
+    };
+    const unscoredBefore = await streamFlights(db).countDocuments({
+      prediction: null,
+      scoreError: null,
+    });
+    const first = await scoreMissing(streamFlights(db), predict, { batchSize: 1 });
+    expect(first).toEqual({ scanned: unscoredBefore, scored: unscoredBefore, refused: 0 });
+    // The flight scored at insert (probability 0.4) keeps its score.
+    expect(await streamFlights(db).findOne({ _id: event(10).key })).toMatchObject({
+      prediction: { probability: 0.4 },
+    });
+    expect(await streamFlights(db).findOne({ _id: event(1).key })).toMatchObject({
+      prediction: { probability: 0.1, modelVersion: 'm2' },
+      correct: false,
+    });
+    expect(new Set(seen)).toEqual(
+      new Set([JSON.stringify(['airline', 'date', 'dest', 'origin', 'schedDepHour'])]),
+    );
+    expect(await scoreMissing(streamFlights(db), predict)).toEqual({
+      scanned: 0,
+      scored: 0,
+      refused: 0,
+    });
   });
 });

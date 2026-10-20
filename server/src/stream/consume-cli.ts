@@ -9,6 +9,7 @@ import { closeMongo, connectToMongo, getDb } from '../db/client.js';
 import { logger } from '../logger.js';
 import { startConsumer } from './consumer.js';
 import { consumerGroup, createKafka, topicNames } from './kafka.js';
+import { createPredictor } from './predictor.js';
 
 const USAGE = 'Usage: npm run stream:consume -- [--idle-exit SECONDS]';
 
@@ -35,43 +36,53 @@ async function main(): Promise<void> {
   await connectToMongo();
   const groupId = consumerGroup();
   const instanceId = `${hostname()}-${process.pid}`;
-  const running = await startConsumer({
-    kafka: createKafka(),
-    db: getDb(),
-    topics: topicNames(),
-    groupId,
-    instanceId,
-    logger,
-  });
-  logger.info({ groupId, instanceId, topics: topicNames(), idleExitMs }, 'stream:consume started');
-
-  if (!signalled) {
-    await new Promise<void>((resolve) => {
-      let timer: ReturnType<typeof setInterval> | undefined;
-      onSignal = () => {
-        if (timer !== undefined) clearInterval(timer);
-        resolve();
-      };
-      if (idleExitMs !== undefined) {
-        // Idle time counts from the start too, so pick a value longer than the first rebalance.
-        timer = setInterval(() => {
-          if (Date.now() - running.lastBatchAt() >= idleExitMs) {
-            clearInterval(timer);
-            logger.info({ idleExitMs }, 'stream:consume idle, stopping');
-            resolve();
-          }
-        }, 500);
-      }
+  const { predict, model } = await createPredictor(getDb());
+  logger.info({ modelVersion: model.encoders.modelVersion }, 'stream:consume model loaded');
+  try {
+    const running = await startConsumer({
+      kafka: createKafka(),
+      db: getDb(),
+      predict,
+      topics: topicNames(),
+      groupId,
+      instanceId,
+      logger,
     });
+    logger.info(
+      { groupId, instanceId, topics: topicNames(), idleExitMs },
+      'stream:consume started',
+    );
+
+    if (!signalled) {
+      await new Promise<void>((resolve) => {
+        let timer: ReturnType<typeof setInterval> | undefined;
+        onSignal = () => {
+          if (timer !== undefined) clearInterval(timer);
+          resolve();
+        };
+        if (idleExitMs !== undefined) {
+          // Idle time counts from the start too, so pick a value longer than the first rebalance.
+          timer = setInterval(() => {
+            if (Date.now() - running.lastBatchAt() >= idleExitMs) {
+              clearInterval(timer);
+              logger.info({ idleExitMs }, 'stream:consume idle, stopping');
+              resolve();
+            }
+          }, 500);
+        }
+      });
+    }
+    process.off('SIGINT', handler);
+    process.off('SIGTERM', handler);
+    await running.stop();
+    // The final counters for this process, for scripted runs.
+    logger.info(
+      { ...running.counters, heartbeat: `consumer:${groupId}:${instanceId}` },
+      'stream:consume finished',
+    );
+  } finally {
+    await model.close();
   }
-  process.off('SIGINT', handler);
-  process.off('SIGTERM', handler);
-  await running.stop();
-  // The final counters for this process, for scripted runs.
-  logger.info(
-    { ...running.counters, heartbeat: `consumer:${groupId}:${instanceId}` },
-    'stream:consume finished',
-  );
 }
 
 main()

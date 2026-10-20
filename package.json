@@ -26,7 +26,8 @@
     "kafka:init": "npm run kafka:init --workspace=@flight-delay/server --",
     "stream:replay": "npm run stream:replay --workspace=@flight-delay/server --",
     "stream:consume": "npm run stream:consume --workspace=@flight-delay/server --",
-    "stream:smoke": "npm run stream:smoke --workspace=@flight-delay/server --"
+    "stream:smoke": "npm run stream:smoke --workspace=@flight-delay/server --",
+    "stream:score-missing": "npm run stream:score-missing --workspace=@flight-delay/server --"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
