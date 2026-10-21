@@ -115,7 +115,21 @@ describe('upsertEvents (MongoDB integration)', () => {
     if (!client) return context.skip();
     await ensureStreamIndexes(db);
     const names = (await streamFlights(db).indexes()).map((index) => index.name).sort();
-    expect(names).toEqual(['_id_', 'firstWrittenAt_-1', 'runId_1']);
+    expect(names).toEqual(['_id_', 'firstWrittenAt_-1__id_-1', 'runId_1', 'stream_totals']);
+    const ttl = (await db.collection('stream_stats').indexes()).find(
+      (index) => index.name === 'lastSeenAt_ttl',
+    );
+    expect(ttl).toMatchObject({ key: { lastSeenAt: 1 }, expireAfterSeconds: 6 * 60 * 60 });
+  });
+
+  it('replaces the legacy firstWrittenAt index with the tie-broken one', async (context) => {
+    if (!client) return context.skip();
+    await streamFlights(db).dropIndex('firstWrittenAt_-1__id_-1');
+    await streamFlights(db).createIndex({ firstWrittenAt: -1 }, { name: 'firstWrittenAt_-1' });
+    await ensureStreamIndexes(db);
+    const names = (await streamFlights(db).indexes()).map((index) => index.name);
+    expect(names).not.toContain('firstWrittenAt_-1');
+    expect(names).toContain('firstWrittenAt_-1__id_-1');
   });
 
   it('stores the live score with the first insert and never changes it on redelivery', async (context) => {

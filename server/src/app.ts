@@ -17,6 +17,12 @@ import type { DelayModel } from './ml/model.js';
 import { mongoReferenceData, type ReferenceData } from './ml/predict.js';
 import { apiRouter } from './routes/api.js';
 import { modelRouter } from './routes/model.js';
+import { streamRouter } from './routes/stream.js';
+import { consumerGroup, createStatusProbe } from './stream/kafka.js';
+import type { KafkaProbe } from './stream/status/kafka-probe.js';
+import { loadHeartbeat, loadStreamMetrics, type StreamMetrics } from './stream/status/queries.js';
+import { createStreamStatus } from './stream/status/service.js';
+import type { Heartbeat } from './stream/status/state.js';
 
 const DEFAULT_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -33,6 +39,12 @@ export interface AppOptions {
   referenceData?: ReferenceData;
   /** Per-IP limit on POST /api/predict; defaults to PREDICT_RATE_LIMIT_PER_MIN per minute. */
   predictRateLimit?: { limit: number; windowMs: number };
+  /** Kafka view for /stream/status and /health; defaults to a lazily connected real probe. */
+  kafkaProbe?: KafkaProbe;
+  /** MongoDB reads for /stream/status; defaults to stream_flights and stream_stats behind getDb. */
+  loadStreamMetrics?: () => Promise<StreamMetrics>;
+  /** The newest consumer heartbeat for /stream/status; defaults to stream_stats behind getDb. */
+  loadStreamHeartbeat?: () => Promise<Heartbeat | null>;
 }
 
 /** Bodies are tiny (/predict sends five fields, about 100 bytes); anything larger is refused. */
@@ -44,6 +56,7 @@ export function createApp(options: AppOptions = {}) {
   const db = options.getDb ?? getDb;
   const model = options.model ?? null;
   const cacheTtlMs = options.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
+  const kafkaProbe = options.kafkaProbe ?? createStatusProbe();
 
   app.use(pinoHttp({ logger }));
   app.use(helmet());
@@ -78,11 +91,16 @@ export function createApp(options: AppOptions = {}) {
   app.use(express.json({ limit: JSON_LIMIT }));
 
   app.get('/api/health', async (_request, response) => {
-    const mongoIsUp = await checkMongo();
+    // Kafka is informational: it never changes `status` or the HTTP code, and health never waits on
+    // it once a first probe has completed (the last result is reported; a refresh runs behind it).
+    const refresh = kafkaProbe.read();
+    const known = kafkaProbe.lastKnown();
+    const [mongoIsUp, kafka] = await Promise.all([checkMongo(), known ?? refresh]);
     const body: HealthResponse = HealthResponseSchema.parse({
       status: mongoIsUp ? 'ok' : 'degraded',
       mongo: mongoIsUp ? 'up' : 'down',
       modelLoaded: model !== null,
+      kafka: kafka.reachable ? 'up' : 'down',
     });
     response.status(mongoIsUp ? 200 : 503).json(body);
   });
@@ -95,6 +113,25 @@ export function createApp(options: AppOptions = {}) {
       model,
       referenceData: options.referenceData ?? mongoReferenceData(db),
       cacheTtlMs,
+    }),
+  );
+
+  app.use(
+    '/api',
+    streamRouter({
+      status: createStreamStatus({
+        loadMetrics:
+          options.loadStreamMetrics ??
+          (() => loadStreamMetrics(db(), { windowSize: env.STREAM_WINDOW_SIZE })),
+        loadHeartbeat: options.loadStreamHeartbeat ?? (() => loadHeartbeat(db(), consumerGroup())),
+        kafka: kafkaProbe,
+        groupId: consumerGroup(),
+        servedModel:
+          model === null
+            ? null
+            : { modelVersion: model.encoders.modelVersion, threshold: model.encoders.threshold },
+        logger,
+      }),
     }),
   );
 

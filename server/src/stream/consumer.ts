@@ -6,46 +6,26 @@
  */
 import type { KafkaJS } from '@confluentinc/kafka-javascript';
 import type { DlqMessage } from '@flight-delay/shared';
-import type { Collection, Db } from 'mongodb';
+import type { Db } from 'mongodb';
 import type { Logger } from 'pino';
 import { handleBatch } from './consume.js';
 import { scoreEvents, type Predictor } from './score.js';
-import { ensureStreamIndexes, findStoredKeys, streamFlights, upsertEvents } from './store.js';
+import { HEARTBEAT_INTERVAL_MS } from './status/state.js';
+import {
+  ensureStreamIndexes,
+  findStoredKeys,
+  streamConsumers,
+  streamFlights,
+  upsertEvents,
+  type StreamConsumerDoc,
+} from './store.js';
 
 /** Events per eachBatch call (the client's default is 32). */
 const MAX_BATCH = 500;
-const HEARTBEAT_MS = 2_000;
 const MAX_BACKOFF_MS = 30_000;
 
 /** Thrown inside a batch whose partition was reassigned before its commit. */
 class StaleBatch extends Error {}
-
-/** The consumer's own row in stream_stats: liveness and running counters for /stream/status. */
-export interface StreamConsumerDoc {
-  _id: string;
-  kind: 'consumer';
-  groupId: string;
-  instanceId: string;
-  status: 'running' | 'stopped' | 'failed';
-  startedAt: Date;
-  lastSeenAt: Date;
-  /** Messages read from flights.raw by this process. */
-  consumed: number;
-  /** Flights stored for the first time. */
-  inserted: number;
-  /** Deliveries of flights already stored (redelivery or a repeated replay). */
-  redelivered: number;
-  /** Messages this process sent to the DLQ. */
-  dlq: number;
-  batches: number;
-  /** Messages per second over the last heartbeat interval. */
-  throughput: number;
-  error?: string;
-}
-
-export function streamConsumers(db: Db): Collection<StreamConsumerDoc> {
-  return db.collection<StreamConsumerDoc>('stream_stats');
-}
 
 export interface ConsumerOptions {
   kafka: KafkaJS.Kafka;
@@ -145,7 +125,7 @@ export async function startConsumer(options: ConsumerOptions): Promise<RunningCo
     await consumer.connect();
     await consumer.subscribe({ topics: [topics.raw] });
     await beat('running');
-    heartbeat = setInterval(periodicBeat, HEARTBEAT_MS);
+    heartbeat = setInterval(periodicBeat, HEARTBEAT_INTERVAL_MS);
 
     await consumer.run({
       eachBatchAutoResolve: false,

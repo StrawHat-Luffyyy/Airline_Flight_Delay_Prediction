@@ -6,11 +6,13 @@ import { ErrorResponseSchema } from '@flight-delay/shared';
 import { createApp } from '../src/app.js';
 import { parseEnv } from '../src/config/env.js';
 import { errorHandler } from '../src/middleware/error.js';
+import { kafkaUp } from './helpers/kafka.js';
 
 const body = { date: '2015-12-21', airline: 'AA', origin: 'ORD', dest: 'LAX', schedDepHour: 17 };
 
 describe('POST /api/predict rate limit (Phase 7)', () => {
   const app = createApp({
+    kafkaProbe: kafkaUp,
     pingMongo: async () => true,
     model: null,
     predictRateLimit: { limit: 2, windowMs: 60_000 },
@@ -29,6 +31,7 @@ describe('POST /api/predict rate limit (Phase 7)', () => {
 
   it('counts malformed bodies too (the limiter runs before body parsing)', async () => {
     const limited = createApp({
+      kafkaProbe: kafkaUp,
       pingMongo: async () => true,
       model: null,
       predictRateLimit: { limit: 1, windowMs: 60_000 },
@@ -65,6 +68,7 @@ describe('error mapping and limits (Phase 7)', () => {
 
   it('answers 503 through the full app when the database cannot be reached', async () => {
     const app = createApp({
+      kafkaProbe: kafkaUp,
       pingMongo: async () => false,
       model: null,
       cacheTtlMs: 0,
@@ -78,7 +82,7 @@ describe('error mapping and limits (Phase 7)', () => {
   });
 
   it('caps JSON bodies at 10 kB (a /predict body is about 100 bytes)', async () => {
-    const app = createApp({ pingMongo: async () => true, model: null });
+    const app = createApp({ kafkaProbe: kafkaUp, pingMongo: async () => true, model: null });
     const response = await request(app)
       .post('/api/predict')
       .set('content-type', 'application/json')

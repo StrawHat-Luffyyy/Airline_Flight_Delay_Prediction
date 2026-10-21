@@ -1,9 +1,19 @@
 /**
  * The Kafka client for the Phase 8 speed layer: `@confluentinc/kafka-javascript` (librdkafka) through
- * its KafkaJS-compatible API. Only stream code imports this; the API server never requires Kafka.
+ * its KafkaJS-compatible API. The API server uses it only through the status probe, in a separate
+ * process with short timeouts, so it never requires Kafka to start or to serve.
  */
+import { fork } from 'node:child_process';
 import { KafkaJS } from '@confluentinc/kafka-javascript';
 import { env } from '../config/env.js';
+import { logger } from '../logger.js';
+import {
+  KAFKA_CACHE_MS,
+  KAFKA_TIMEOUT_MS,
+  createKafkaProbe,
+  type KafkaProbe,
+} from './status/kafka-probe.js';
+import { createIsolatedProbe } from './status/isolated-probe.js';
 
 /** Bounds every admin call, so a stopped broker fails fast instead of hanging a CLI. */
 export const ADMIN_TIMEOUT_MS = 10_000;
@@ -26,4 +36,37 @@ export function consumerGroup(): string {
 
 export function topicNames(): { raw: string; dlq: string } {
   return { raw: env.KAFKA_TOPIC_RAW, dlq: env.KAFKA_TOPIC_DLQ };
+}
+
+/**
+ * The Kafka probe that runs inside the probe process (status/probe-worker.ts). Its admin client logs
+ * nothing: a stopped broker is reported in the status response, not as log noise.
+ */
+export function createInProcessProbe(): KafkaProbe {
+  return createKafkaProbe({
+    createAdmin: () => createKafka().admin({ kafkaJS: { logLevel: KafkaJS.logLevel.NOTHING } }),
+    groupId: consumerGroup(),
+    topics: topicNames(),
+    timeoutMs: KAFKA_TIMEOUT_MS,
+    cacheMs: KAFKA_CACHE_MS,
+  });
+}
+
+/** Slack on top of the in-process timeout for process start-up and IPC. */
+const PROBE_PROCESS_SLACK_MS = 500;
+
+/**
+ * The API's Kafka probe for /stream/status and /health: librdkafka runs in a forked child process
+ * (status/isolated-probe.ts explains the crash this contains). Nothing starts until the first read.
+ */
+export function createStatusProbe(): KafkaProbe {
+  // Same extension as this module: .ts under tsx, .js if ever compiled.
+  const extension = import.meta.url.endsWith('.ts') ? '.ts' : '.js';
+  const worker = new URL(`./status/probe-worker${extension}`, import.meta.url);
+  return createIsolatedProbe({
+    // execArgv carries the tsx loader into the child; stdout/stderr are shared with the API.
+    spawn: () => fork(worker, [], { execArgv: process.execArgv }),
+    timeoutMs: KAFKA_TIMEOUT_MS + PROBE_PROCESS_SLACK_MS,
+    logger,
+  });
 }

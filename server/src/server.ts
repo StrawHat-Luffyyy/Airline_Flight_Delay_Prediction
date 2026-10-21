@@ -3,6 +3,7 @@ import { closeMongo, connectToMongo } from './db/client.js';
 import { env } from './config/env.js';
 import { logger } from './logger.js';
 import { DEFAULT_ARTIFACTS_DIR, loadModel, type DelayModel } from './ml/model.js';
+import { createStatusProbe } from './stream/kafka.js';
 
 /** The API still serves analytics without a model; /predict then answers 503 until a restart. */
 async function loadModelOrNull(): Promise<DelayModel | null> {
@@ -22,7 +23,8 @@ async function loadModelOrNull(): Promise<DelayModel | null> {
 async function start(): Promise<void> {
   await connectToMongo();
   const model = await loadModelOrNull();
-  const app = createApp({ model });
+  const kafkaProbe = createStatusProbe();
+  const app = createApp({ model, kafkaProbe });
   const server = app.listen(env.PORT, env.HOST, () => {
     logger.info({ host: env.HOST, port: env.PORT }, 'Flight delay API listening');
   });
@@ -36,6 +38,7 @@ async function start(): Promise<void> {
         model
           ?.close()
           .catch((error: unknown) => logger.error({ err: error }, 'Error closing model')),
+        kafkaProbe.close(),
       ]).finally(() => process.exit(0));
     });
   };

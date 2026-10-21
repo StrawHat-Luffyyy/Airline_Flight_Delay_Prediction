@@ -7,6 +7,7 @@ import type { FlightEvent, FlightOutcome, PreDeparture } from '@flight-delay/sha
 import type { AnyBulkWriteOperation, Collection, Db } from 'mongodb';
 import type { WriteResult } from './consume.js';
 import type { ScoreResult } from './score.js';
+import { HEARTBEAT_TTL_SECONDS } from './status/state.js';
 
 /** The live score stored with a flight (the /api/predict response, minus its explanation). */
 export interface StoredPrediction {
@@ -43,18 +44,74 @@ export interface StreamFlightDoc {
   deliveries: number;
 }
 
+/** The consumer's own row in stream_stats: liveness and running counters for /stream/status. */
+export interface StreamConsumerDoc {
+  _id: string;
+  kind: 'consumer';
+  groupId: string;
+  instanceId: string;
+  status: 'running' | 'stopped' | 'failed';
+  startedAt: Date;
+  lastSeenAt: Date;
+  /** Messages read from flights.raw by this process. */
+  consumed: number;
+  /** Flights stored for the first time. */
+  inserted: number;
+  /** Deliveries of flights already stored (redelivery or a repeated replay). */
+  redelivered: number;
+  /** Messages this process sent to the DLQ. */
+  dlq: number;
+  batches: number;
+  /** Messages per second over the last heartbeat interval. */
+  throughput: number;
+  error?: string;
+}
+
+export function streamConsumers(db: Db): Collection<StreamConsumerDoc> {
+  return db.collection<StreamConsumerDoc>('stream_stats');
+}
+
 export const STREAM_FLIGHTS = 'stream_flights';
 
 export function streamFlights(db: Db): Collection<StreamFlightDoc> {
   return db.collection<StreamFlightDoc>(STREAM_FLIGHTS);
 }
 
-/** Recent-first reads for rolling metrics, and per-run counts. createIndex is idempotent. */
+/**
+ * Replay order for the rolling window: newest first, `_id` breaking ties (a whole batch shares one
+ * firstWrittenAt), so the window boundary is deterministic and needs no in-memory sort.
+ */
+export const WINDOW_INDEX = { firstWrittenAt: -1, _id: -1 } as const;
+/** Confusion-matrix and scored/refused counts as COUNT_SCANs, without reading documents. */
+export const COUNTS_INDEX = {
+  'prediction.modelVersion': 1,
+  'prediction.threshold': 1,
+  'prediction.label': 1,
+  'outcome.isDelayed': 1,
+  scoreError: 1,
+} as const;
+/** Superseded by WINDOW_INDEX (same leading key, plus the tie-break). */
+const LEGACY_WINDOW_INDEX = 'firstWrittenAt_-1';
+
+/**
+ * stream_flights: replay-order window, per-run counts and the status counts. stream_stats: a TTL on
+ * heartbeat lastSeenAt (producer-run documents have no lastSeenAt, so they never expire).
+ * createIndexes is idempotent.
+ */
 export async function ensureStreamIndexes(db: Db): Promise<void> {
-  await streamFlights(db).createIndexes([
-    { key: { firstWrittenAt: -1 }, name: 'firstWrittenAt_-1' },
+  const flights = streamFlights(db);
+  await flights.createIndexes([
+    { key: WINDOW_INDEX, name: 'firstWrittenAt_-1__id_-1' },
     { key: { runId: 1 }, name: 'runId_1' },
+    { key: COUNTS_INDEX, name: 'stream_totals' },
   ]);
+  if (await flights.indexExists(LEGACY_WINDOW_INDEX)) await flights.dropIndex(LEGACY_WINDOW_INDEX);
+  await db
+    .collection('stream_stats')
+    .createIndex(
+      { lastSeenAt: 1 },
+      { name: 'lastSeenAt_ttl', expireAfterSeconds: HEARTBEAT_TTL_SECONDS },
+    );
 }
 
 /**

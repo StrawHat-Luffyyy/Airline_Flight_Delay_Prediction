@@ -7,6 +7,7 @@ import { LookupTable } from '../../src/features/row.js';
 import type { Encoders } from '../../src/ml/encoders.js';
 import type { DelayModel } from '../../src/ml/model.js';
 import type { ReferenceData } from '../../src/ml/predict.js';
+import { kafkaUp } from '../helpers/kafka.js';
 
 const encoders: Encoders = {
   modelVersion: 'fake-model',
@@ -56,7 +57,13 @@ const reference: ReferenceData = {
 const body = { date: '2015-12-23', airline: 'AA', origin: 'ORD', dest: 'LAX', schedDepHour: 17 };
 
 function app(model: DelayModel | null = fakeModel) {
-  return createApp({ pingMongo: async () => true, model, referenceData: reference, cacheTtlMs: 0 });
+  return createApp({
+    kafkaProbe: kafkaUp,
+    pingMongo: async () => true,
+    model,
+    referenceData: reference,
+    cacheTtlMs: 0,
+  });
 }
 
 describe('POST /api/predict', () => {

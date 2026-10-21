@@ -21,6 +21,7 @@ describe('parseEnv', () => {
       KAFKA_CONSUMER_GROUP: 'flight-stream',
       KAFKA_TOPIC_RAW: 'flights.raw',
       KAFKA_TOPIC_DLQ: 'flights.dlq',
+      STREAM_WINDOW_SIZE: 2000,
     });
   });
 
