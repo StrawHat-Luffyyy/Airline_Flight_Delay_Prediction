@@ -11,6 +11,7 @@ import {
   ModelMetricsResponseSchema,
   PredictResponseSchema,
   RoutesResponseSchema,
+  StreamStatusResponseSchema,
   SummaryResponseSchema,
   TrendResponseSchema,
   type CancellationsQuery,
@@ -176,5 +177,27 @@ export function useFeatureImportance() {
 export function usePredict() {
   return useMutation({
     mutationFn: (body: PredictRequest) => apiPost('/api/predict', body, PredictResponseSchema),
+  });
+}
+
+/** How often the Live page polls the stream status (the API caches its counts for 3 s). */
+export const STREAM_POLL_MS = 5_000;
+
+/**
+ * The Kafka speed layer's status, polled while the tab is visible. A failed poll keeps the last
+ * answer (react-query keeps `data`), so the page can show it as stale instead of blanking.
+ */
+export function useStreamStatus() {
+  return useQuery({
+    queryKey: ['stream-status'],
+    queryFn: ({ signal }) =>
+      apiGet('/api/stream/status', StreamStatusResponseSchema, undefined, signal),
+    refetchInterval: STREAM_POLL_MS,
+    // Pauses while the tab is hidden; the app-wide defaults (10 min stale time, no refetch on
+    // focus) suit static analytics, not this, so returning to the tab refetches at once.
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+    retry: 1,
   });
 }

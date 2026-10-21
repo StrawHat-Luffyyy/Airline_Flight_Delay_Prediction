@@ -157,6 +157,50 @@ a.liquid-glass:hover {
   animation: lamp 1.2s var(--ease-out-expo) forwards;
 }
 
+/* Live page: a value that changed since the last poll holds the same amber lamp, then fades. */
+.lit-value {
+  border-radius: 2px;
+  animation: lamp 1.2s var(--ease-out-expo) forwards;
+}
+
+/* Live page state beacon: live breathes a ring, idle is hollow, degraded is Signal Red. */
+.beacon {
+  position: relative;
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 9999px;
+}
+.beacon-live {
+  background: var(--color-ink);
+}
+.beacon-live::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border: 1px solid var(--color-ink);
+  border-radius: inherit;
+  opacity: 0;
+  animation: beacon 2.4s var(--ease-out-expo) infinite;
+}
+.beacon-idle {
+  border: 1px solid var(--color-ink-3);
+}
+.beacon-degraded {
+  background: var(--color-cancelled);
+}
+@keyframes beacon {
+  from {
+    opacity: 0.7;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
 /* Loading skeleton */
 @keyframes sheen {
   from {
@@ -609,7 +653,9 @@ a.liquid-glass:hover {
     scroll-behavior: auto !important;
   }
   .lamp > td,
-  .lamp > th {
+  .lamp > th,
+  .lit-value,
+  .beacon-live::after {
     animation: none;
   }
 }

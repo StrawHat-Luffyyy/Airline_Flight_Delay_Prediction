@@ -1110,3 +1110,63 @@ Every run met the conservation check: rows of the month = events on `flights.raw
   - `reset-cli` connects inside its `try`;
   - the API no longer imports the consumer module.
 - **leakage-auditor:** no must-fix and no leakage. All four should-fixes were fixed: the window wording plus `departureHours`, the wider verify script with a pairwise AUC, the cancelled-flight window test, and the threshold-aware mixed flag and `servedModel`.
+
+### Phase 8f: Live page (2026-10-22)
+
+**Built:**
+- **Page:** a sixth dashboard tab, **Live** (`/live`, `web/src/pages/Live.tsx`). It polls `GET /api/stream/status` every 5 s through the typed client (`useStreamStatus`).
+- **View model:** a pure view model (`web/src/lib/live.ts`) with tests.
+- **Design record:** the page's patterns are recorded in `web/DESIGN.md` ("Live page").
+
+**Decisions:**
+- **No new visual vocabulary.** The page reuses the departure-board world: the KPI rule row, `Board`, hairline sections and `Facts` lists. The only new pieces are a 9 px state beacon (live breathes, idle is hollow, degraded is Signal Red) and the board's amber lamp, applied to a value that changes between polls. Both stop under `prefers-reduced-motion`.
+- **A sample size beside every live metric, as its own denominator:**
+  - precision shows "of N flagged" (TP + FP);
+  - recall shows "of N delayed" (TP + FN);
+  - every other rate shows "n N" (the judged flights);
+  - each column head also carries its n, with an amber "low sample" mark below 200.
+- **Accuracy is always paired.** It sits directly above the majority-baseline row, on the same sample. The only amber value is the delayed share (the Lit Column Rule); every other metric stays in ink.
+- **Window versus whole replay, side by side.** A "What the window covers" list states the window's flight dates, scheduled departure hours and storage time. It also says in plain words that the window is in replay order, so after a full replay it is a slice of the last day's schedule, not a sample of the month. The API's own field names (`firstWrittenAt`, `window.groups[]`) are not shown to examiners; the copy says the same thing in plain words.
+- **Stale data is labelled, not dropped.** When a poll fails, react-query keeps the last answer. The page keeps showing it, with:
+  - a hollow beacon;
+  - the state word dimmed with "last known";
+  - a Signal Red "Could not refresh" line.
+  The heartbeat age is computed in the browser from `lastSeenAt`, so it keeps ageing while the API is unreachable. A first-load failure shows the standard `ErrorBlock` with Retry and a hint to start the API.
+- **ROC-AUC** shows only in the window column. The whole-replay cell says "window only", and a note explains why.
+
+**Verified in the browser** (Playwright, 1440x900 and 390x844; screenshots in `docs/screenshots/`):
+- **Live** (`live-desktop.png`, `live-mobile.png`), with a real consumer running:
+  - the state reads "Live";
+  - 479,230 flights stored;
+  - lag 0 on all 3 partitions;
+  - window precision 0.164 of 1,797 flagged, recall 0.934 of 316 delayed, ROC-AUC 0.575;
+  - whole replay n 469,717.
+- **Degraded** (`live-degraded-desktop.png`, `live-degraded-mobile.png`), after a real `docker compose stop kafka`:
+  - the state reads "Degraded: Kafka unreachable…";
+  - lag and DLQ show as dashes;
+  - the MongoDB metrics are still shown.
+- **Stale** (`live-stale-desktop.png`), with the API stopped while the page was open: "last known" and "Could not refresh: The API answered 502 Bad Gateway". The heartbeat age kept counting (19 s).
+- **First-load error** (`live-error-desktop.png`): "Could not load the stream status" with Retry.
+- **Layout:** no horizontal overflow at 390 px (scroll width 380). The rate board and the verdict-count board have aligned value columns (measured).
+- **Consumer through a broker restart** (8e open item, first evidence): a running `stream:consume` survived `docker compose stop kafka` then `start` with no error logged, and the status returned to live 5 s after the start. This was one run with no messages flowing.
+- **Checks:**
+  - the impeccable detector returned advisories only (off-scale sizes in pre-existing CSS, plus the 10 px "served" pill, which matches the Model page);
+  - 47 test files and 396 tests pass;
+  - lint, typecheck, Prettier and the web build pass.
+- **ts-reviewer: no must-fix.** All eight should-fixes were applied:
+  - **Heartbeat age:** now the API's `ageSeconds` plus the browser time since that answer, so it is free of clock skew.
+  - **Stale pipeline row:** dims to 50% and is labelled "last known".
+  - **Sub-lines:** they wrap instead of truncating behind a tooltip.
+  - **ISO timestamps:** readable in every reason; offsets are handled; an unparsable timestamp is shown as is.
+  - **Lamp:** now lights on a change since the *previous* poll, not since the first render.
+  - **Tests:** the formatting helpers moved to `lib/live.ts` and are tested.
+  - **Fixture:** the test no longer pins a floating-point rounding quirk.
+  - **Ticking:** the age texts tick in their own small component instead of re-rendering both boards every second.
+- **Nits also fixed:**
+  - "1 partition" singular;
+  - `ageLabel` floors (59.6 s is "59 s ago");
+  - redundant `aria-live` removed;
+  - the low-sample tag names its threshold.
+- **Refetch on tab return:** the status hook overrides the app's static-data defaults (10 min stale time, no refetch on focus), so returning to the tab refetches at once.
+- **Fixed during the review pass:** the "low sample" tag had been amber, which broke the Lit Column Rule. It is now ink-2.
+

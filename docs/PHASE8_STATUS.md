@@ -3,15 +3,15 @@
 Read this first if you are a new session resuming Phase 8. The specification is `PROJECT_OVERVIEW.md` §15 (Phase 8 entry in §11). The detailed reasoning and evidence for each sub-step is in `docs/DECISIONS.md`, under the headings "Phase 8a" to "Phase 8d".
 
 **State on 2026-10-22:**
-- Sub-steps 8a to 8e are committed on `main`; nothing is pushed.
-- **8f is next and has not been started.** The user reviews each sub-step before the next.
+- Sub-steps 8a to 8f are committed on `main`; nothing is pushed.
+- **8g is next and has not been started.** The user reviews each sub-step before the next.
 - `docs/STREAMING.md` does not exist yet; it is written in 8g.
 
-Every number below was measured in this project during 8a to 8e. Nothing is estimated.
+Every number below was measured in this project during 8a to 8f. Nothing is estimated.
 
 ---
 
-## 1. Done: sub-steps 8a to 8e
+## 1. Done: sub-steps 8a to 8f
 
 ### 8a: Kafka infrastructure and topics, commit `65463b6`
 
@@ -96,7 +96,7 @@ Every number below was measured in this project during 8a to 8e. Nothing is esti
 
 **Tests at the 8d commit:** 39 test files and 322 tests pass. Lint, typecheck and Prettier are clean.
 
-### 8e: status endpoint (see the 8e commit)
+### 8e: status endpoint, commit `dbd1952`
 
 **Built:**
 - **Endpoint:** `GET /api/stream/status`, with the shared `StreamStatusResponseSchema` (`shared/src/stream-status.ts`).
@@ -121,6 +121,28 @@ Every number below was measured in this project during 8a to 8e. Nothing is esti
   - n = 469,717;
   - precision 0.278, recall 0.584;
   - accuracy 0.602 against a majority baseline of 0.794.
+
+### 8f: Live page (see the 8f commit)
+
+**Built:**
+- **Page:** the **Live** tab (`/live`, `web/src/pages/Live.tsx`), polling `/api/stream/status` every 5 s. It shows:
+  - the state with its reason;
+  - a pipeline row (flights stored, consumer throughput, lag, DLQ size);
+  - a metric board, with the rolling window beside the whole replay. Every value carries its own sample size, and accuracy sits next to its majority baseline;
+  - what the window covers;
+  - Kafka partitions and the consumer heartbeat.
+- **View model:** `web/src/lib/live.ts`, with tests.
+- **Design record:** `web/DESIGN.md` ("Live page").
+
+**Verified** in the browser at 1440x900 and 390x844, in four states, with screenshots in `docs/screenshots/live-*.png`:
+- live, with a real consumer;
+- degraded, after a real `docker compose stop kafka`;
+- stale, with the API stopped while the page was open;
+- first-load error.
+
+**Consumer through a broker restart:** a running consumer survived a Kafka stop and start with no error, and the status was live again 5 s after the start. This was one run with no messages flowing.
+
+**Tests at the 8f commit:** 47 test files and 396 tests pass; lint, typecheck, Prettier and the web build are clean.
 
 ---
 
@@ -164,13 +186,9 @@ Every number below was measured in this project during 8a to 8e. Nothing is esti
 
 ---
 
-## 3. Approved plan for 8f and 8g (not started; 8e is done, see §1)
+## 3. Approved plan for 8g (not started; 8e and 8f are done, see §1)
 
 Each sub-step runs lint, typecheck and tests, gets a code review, a conventional commit, and stops for the user.
-
-### 8f: Live page (lowest priority)
-- **Build:** a "Live" tab in the existing visual style (`web/DESIGN.md`), polling the status endpoint, with loading, error and degraded states, the sample size beside every live metric, and no invented numbers.
-- **Verify:** desktop and mobile in the browser; screenshots of the live and degraded states in `docs/screenshots/`.
 
 ### 8g: docs and measurements
 - **Build:** a measurement script and `docs/STREAMING.md`, plus:
@@ -283,7 +301,7 @@ MSYS_NO_PATHCONV=1 docker compose exec kafka /opt/kafka/bin/kafka-consumer-group
 - **`stream_stats`** in `flight_delay` holds every producer-run and consumer-heartbeat document from 8b to 8d, including the run record showing the pre-fix `achievedRate: 11`.
 
 ### Found in 8e
-- **Native crash:** `@confluentinc/kafka-javascript` 1.11.0 `admin.fetchOffsets` crashes its process (0xC0000005) when the broker comes back after a stop. The API contains this with a forked probe process. **The consumer (`stream:consume`) uses the same library and was not tested against a broker restart.** Check that in 8g, and remember that a consumer crash is recoverable by restarting it (8c crash test).
+- **Native crash:** `@confluentinc/kafka-javascript` 1.11.0 `admin.fetchOffsets` crashes its process (0xC0000005) when the broker comes back after a stop. The API contains this with a forked probe process. The consumer (`stream:consume`) uses the same library. In 8f a running consumer survived one broker stop and start with no messages flowing. Under load this is untested; check it in 8g. A consumer crash is recoverable by restarting it (8c crash test).
 - **No web health indicator:** `web/` has no page that calls `/api/health`. The schema change is covered by a web parse test only.
 
 ### Reviewer suggestions not done

@@ -9,6 +9,7 @@ const Causes = lazy(() => import('./pages/Causes'));
 const Explorer = lazy(() => import('./pages/Explorer'));
 const Predict = lazy(() => import('./pages/Predict'));
 const Model = lazy(() => import('./pages/Model'));
+const Live = lazy(() => import('./pages/Live'));
 
 function PageFallback() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/explorer" element={<Explorer />} />
           <Route path="/predict" element={<Predict />} />
           <Route path="/model" element={<Model />} />
+          <Route path="/live" element={<Live />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
