@@ -991,3 +991,122 @@ Every run met the conservation check: rows of the month = events on `flights.raw
 - **Parity:** 20 of 20 matched `/api/predict` exactly.
 - **Smoke:** all 5 checks passed, including that every stored flight was scored live.
 - **Throughput:** scoring runs at about 2,807 flights/s, against 10,904/s for 8c's unscored inserts, so live scoring will bound consumer throughput. The end-to-end consumer rate with scoring is measured in 8g on a fresh `stream_flights`; all December keys are already stored.
+
+### Phase 8e: status endpoint (2026-10-22)
+
+**Built:**
+- **Endpoint:** `GET /api/stream/status`, with a shared `StreamStatusResponseSchema` (`shared/src/stream-status.ts`). Its code:
+  - `server/src/stream/status/`:
+    - `metrics.ts`: the metric formulas and ROC-AUC;
+    - `queries.ts`: the pure pipeline and filter builders plus the loaders;
+    - `state.ts`: consumer liveness and the overall state;
+    - `kafka-probe.ts`: the lag and DLQ size;
+    - `isolated-probe.ts` and `probe-worker.ts`: the probe process;
+    - `service.ts`: builds the response.
+  - The route itself is `server/src/routes/stream.ts`.
+- **Health:** `/api/health` gains an informational `kafka: "up" | "down"`.
+- **CLIs:**
+  - `npm run stream:indexes` creates or migrates the stream indexes.
+  - `npm run stream:verify-status` recomputes the metrics independently.
+  - `npm run stream:reset` is for 8g. It has **not** been run.
+- **Config:** a new env var, `STREAM_WINDOW_SIZE` (default 2,000; range 100 to 20,000).
+
+**Decisions on the response:**
+- **Always HTTP 200.** A problem with Kafka, the consumer or MongoDB is reported as `state: "degraded"` with a reason. MongoDB reads, the heartbeat read and Kafka each have their own timeout (3 s, 3 s and 1 s), so nothing hangs. Data that fails the response schema degrades the body instead of becoming a 500.
+- **State rules,** worst first:
+  1. `degraded` if the MongoDB metrics are unavailable;
+  2. `degraded` if Kafka is unreachable;
+  3. `idle` if there is no consumer heartbeat;
+  4. `idle` if the newest heartbeat says `stopped`;
+  5. `degraded` if that heartbeat is stale (crashed or killed; a stale `failed` counts as dead too);
+  6. `degraded` if a fresh heartbeat says `failed`;
+  7. `live` otherwise.
+- **Data source label.** The response says `source: "replay of Dec 2015 flights"`.
+- **Rolling window = the newest N judged flights in replay order.**
+  - "Judged" means a stored prediction and an arrival outcome (`correct != null`).
+  - Replay order is `firstWrittenAt`, then `_id`. A whole consumer batch shares one `firstWrittenAt` (342 flights shared the newest value), so the `_id` tie-break keeps the window boundary deterministic. The old `firstWrittenAt_-1` index was replaced by `firstWrittenAt_-1__id_-1`, which serves the sort without an in-memory SORT.
+  - The response states the ordering (`orderedBy`, `order`) and reports what period the window covers: `windowStart`/`windowEnd` (flight dates), `departureHours` and `writtenFrom`/`writtenTo`.
+  - **The window is a slice of the schedule, not a sample of the month.** The producer replays the CSV in its own order (date, then scheduled departure). After the full December replay, the window is the 2,000 latest-departing flights of 2015-12-31: departure hours 13 to 23. On that slice the model flags most flights: precision 0.164, recall 0.934, accuracy 0.239 against a majority baseline of 0.842, and ROC-AUC 0.575.
+  - These window numbers are not "recent performance" and must not be compared with the test-set AUC. `WINDOW_ORDER` says so in the response itself. This was the leakage auditor's should-fix 1.
+- **Whole-collection totals** count every flight in `stream_flights` once, however often it was delivered, per `(modelVersion, threshold)`. On the full replay the totals are:
+
+  | Metric | Value |
+  |---|---|
+  | Judged flights (n) | 469,717 |
+  | TP / FP / FN / TN | 56,479 / 146,806 / 40,293 / 226,139 |
+  | Precision | 0.278 |
+  | Recall | 0.584 |
+  | F1 | 0.376 |
+  | Base rate | 0.206 |
+  | Accuracy | 0.602, against a majority baseline of 0.794 |
+
+  TP + TN = 282,618, the 8d count of `correct: true`.
+- **Metric rules:**
+  - The positive class is "delayed" (an arrival 15 or more minutes late).
+  - Precision, recall and F1 are null, never 0 or NaN, when their denominator is zero.
+  - Accuracy appears only beside the same-sample majority baseline `max(baseRate, 1 - baseRate)`, or not at all.
+  - A group with n under 200 is marked `lowSample` (`lowSampleBelow` is in the response). Its numbers are still returned.
+  - Every group carries its `modelVersion` and `threshold`. `servedModel` is true only when both match the model the API serves.
+  - `mixedModelVersions` is true when the groups hold more than one (modelVersion, threshold) pair. This was auditor should-fix 4.
+  - `thresholdSource` states that the threshold was chosen at training (max F1 on the September predictions of the January to August fit), then frozen. Nothing is tuned on stream results.
+- **ROC-AUC for the window only.**
+  - It is the Mann-Whitney statistic over the window's stored probabilities, with ties counting one half. The pipeline `$push`es at most N (p, y) pairs after the `$limit`, so memory is bounded by the window size.
+  - For the whole collection it would need all 469,717 probabilities in memory, so `totals.rocAuc` is null and `rocAucReason` explains why.
+- **Metrics from `stream_flights` only,** never from consumer counters or `deliveries`. An integration test re-delivers every flight and shows that n and the stored counts do not change, while `deliveries` becomes 2.
+- **The totals are separate COUNT_SCANs,** not one snapshot. While a consumer is writing they can differ by a few flights; with the consumer idle they are exact, as `stream:verify-status` checks. An aggregate `$group` over a covered index was tried first. It examined no documents but took 1.9 s on 479,230, so it was rejected.
+- **Totals cached for 3 s; heartbeat never cached.** Liveness is the age of `lastSeenAt`, so the heartbeat is read on every request. This was a ts-reviewer must-fix: a cached heartbeat could read up to 3 s too old.
+- **Fixed wording for MongoDB errors.** A MongoDB failure is reported as `"MongoDB query failed (<ErrorName>)"` or as the timeout message, and the driver's own message (which can include hosts and ports) is only logged.
+
+**Consumer liveness and heartbeats:**
+- **Timing:**
+  - The heartbeat interval is **2 s** (`HEARTBEAT_INTERVAL_MS`), and a heartbeat is stale after **10 s** (`STALE_AFTER_MS`). A test enforces that the interval is at most a third of the threshold.
+  - A hard-killed consumer leaves `status: "running"` behind, so liveness never trusts the stored status alone.
+- **TTL:**
+  - `stream_stats` has a TTL index `lastSeenAt_ttl` with `expireAfterSeconds: 21600` (6 h). Producer-run documents have no `lastSeenAt`, so they never expire.
+  - MongoDB's TTL monitor deletes only about once a minute, so the endpoint never relies on old heartbeats being gone. It reads the newest heartbeat of the group (`sort lastSeenAt -1, limit 1`) and never sums counters across heartbeat documents.
+  - Observed: after the index was created, the 2-day-old heartbeats from 8c and 8d were gone within a few minutes.
+
+**Kafka from the API process: two measured problems and their fixes:**
+- **Event-loop stalls.** The first probe discarded its admin client after a timeout. `disconnect()` on a librdkafka client with requests in flight blocks the Node event loop until those requests time out:
+  - measured 803 ms for one pending call;
+  - against a closed port, each read took about 3,005 ms (not the intended 1 s), with 2 s stalls that delayed every other request.
+  - **Fix:** a client is never disconnected while it has calls in flight. The three admin calls run with `allSettled`; a read that times out leaves its fetch running, and the next read reuses it instead of stacking new calls.
+  - After the fix, reads take at most 1,006 ms and the largest stall is 3 ms. Retiring an idle client took at most 15 ms.
+- **No recovery.** A client that lost its broker kept failing every call for minutes after the broker returned, while a fresh client worked at once.
+  - **Fix:** a fetch whose calls failed retires its client once it is idle, and the next read creates a new one.
+  - Kafka is now reachable again 4.7 s after `docker compose start kafka`.
+- **Native crash, contained in a child process:**
+  - **What happened:** with the API polling status, every `docker compose stop kafka` followed by `start` killed the API process. It exited with code 3221225477 (0xC0000005, an access violation) and logged nothing, 4 times out of 4.
+  - **How it was isolated:** by bisection. The trigger is `admin.fetchOffsets` (ListConsumerGroupOffsets) in `@confluentinc/kafka-javascript` 1.11.0 on Windows, while the broker comes back. A script of about 30 lines that uses only that client, creates one admin client while the broker is stopped and calls `fetchOffsets` once a second crashes the same way.
+  - **What did not cause it:** the two `fetchTopicOffsets` calls alone never crashed. MongoDB, the ONNX model and our client lifecycle were ruled out: the crash persisted with retire and disconnect disabled.
+  - **Fix:** the API never loads librdkafka. `createStatusProbe()` forks `probe-worker.ts`, which runs the in-process probe, and talks to it over IPC with a 1.5 s bound. Answers are validated with zod. If the child exits, the pending read reports Kafka unreachable with the exit code, a warning is logged, and the next read forks a new child.
+  - **Result:** in three stop/start runs afterwards, the child crashed with the same code during the restart, and the API kept serving and recovered each time.
+  - **Open:** the consumer (`stream:consume`) does not call `fetchOffsets`, but it uses the same library; it was not tested against a broker restart in 8e. `stream:smoke` and `kafka:init` call admin APIs in short-lived CLIs, where a crash only fails that command.
+- **The decision this updates.** The 8a decision said "Kafka stays out of the API server". The API still does not need Kafka to start or to serve, and librdkafka now runs only in the forked probe process. With Kafka stopped every other endpoint is unaffected.
+- **Health never waits on Kafka.** After the first probe it reports the last completed result and refreshes behind it, so health stayed at about 13 ms with Kafka stopped.
+- **DLQ size:** the DLQ size is the end offset minus the start offset of `flights.dlq`, which counts retained messages. If only the DLQ offsets fail, the lag is still reported and `dlqMessages` is null.
+
+**Evidence:**
+- **Performance:** all timings are in `docs/PERF.md`. Uncached status takes 158.6 ms (median of 3) with Kafka up, and is a degraded 200 in about 1,022 ms with Kafka stopped. Health takes 6.8 ms and 13.2 ms. Every query plan is IXSCAN, COUNT_SCAN or DISTINCT_SCAN; there is no COLLSCAN.
+- **Independent recomputation:** `npm run stream:verify-status` streams every `stream_flights` document through a cursor and classifies each by its stored `correct` and label. It recomputes rates per group, recomputes the window's ROC-AUC by direct pair counting (O(n²)), and compares all of it with the live endpoint. **35 of 35 checks matched,** including precision, recall, F1, base rate, accuracy and the baseline, `noOutcome`, `departureHours` and ROC-AUC (0.5751638654198864 both ways).
+- **Web:** `web/` has no health indicator: no page calls `/api/health`. The shared `HealthResponseSchema` now requires `kafka`. A web test parses a body with `kafka: "down"` through the typed client and rejects an unknown value. The web typecheck and build pass.
+
+**`stream:reset` (for 8g, not run):**
+- **What it clears:** only `stream_flights` and `stream_stats` (`deleteMany`, so their indexes are kept); the consumer group's committed offsets (`deleteGroups`); and the messages on `flights.raw` and `flights.dlq` (DeleteRecords up to each partition's end offset). Topics are not deleted, so their partitions and config never change.
+- **Guards:**
+  - It refuses unless `--db` names the configured `MONGODB_DB` and `--yes` is given.
+  - It refuses while the consumer group has members.
+  - Kafka is cleared first, so an unreachable broker clears nothing.
+  - The batch collections are never named in the code, and a runtime check rejects any collection that does not start with `stream_`.
+
+**Reviews:**
+- **ts-reviewer:** both must-fixes were fixed: no client is retired while connecting, and the heartbeat is no longer cached. Should-fixes also fixed:
+  - health never waits on Kafka;
+  - fixed error wording;
+  - a DLQ failure is kept separate;
+  - unchecked casts filtered;
+  - snapshot consistency documented;
+  - stale `failed` heartbeats;
+  - `reset-cli` connects inside its `try`;
+  - the API no longer imports the consumer module.
+- **leakage-auditor:** no must-fix and no leakage. All four should-fixes were fixed: the window wording plus `departureHours`, the wider verify script with a pairwise AUC, the cancelled-flight window test, and the threshold-aware mixed flag and `servedModel`.

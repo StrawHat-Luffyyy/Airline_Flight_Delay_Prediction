@@ -27,7 +27,10 @@
     "stream:replay": "npm run stream:replay --workspace=@flight-delay/server --",
     "stream:consume": "npm run stream:consume --workspace=@flight-delay/server --",
     "stream:smoke": "npm run stream:smoke --workspace=@flight-delay/server --",
-    "stream:score-missing": "npm run stream:score-missing --workspace=@flight-delay/server --"
+    "stream:score-missing": "npm run stream:score-missing --workspace=@flight-delay/server --",
+    "stream:indexes": "npm run stream:indexes --workspace=@flight-delay/server --",
+    "stream:verify-status": "npm run stream:verify-status --workspace=@flight-delay/server --",
+    "stream:reset": "npm run stream:reset --workspace=@flight-delay/server --"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

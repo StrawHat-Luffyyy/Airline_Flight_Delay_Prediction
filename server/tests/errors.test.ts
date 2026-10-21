@@ -4,8 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { ErrorResponseSchema } from '@flight-delay/shared';
 import { createApp } from '../src/app.js';
 import { errorHandler } from '../src/middleware/error.js';
+import { kafkaUp } from './helpers/kafka.js';
 
-const app = createApp({ pingMongo: async () => true });
+const app = createApp({ kafkaProbe: kafkaUp, pingMongo: async () => true });
 
 describe('error responses', () => {
   it('returns 404 NOT_FOUND for unknown routes', async () => {

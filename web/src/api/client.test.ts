@@ -1,4 +1,4 @@
-import { SummaryResponseSchema } from '@flight-delay/shared';
+import { HealthResponseSchema, SummaryResponseSchema } from '@flight-delay/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, apiGet, apiPost, buildPath } from './client';
 import { nextFlightsCursor } from './hooks';
@@ -47,6 +47,19 @@ describe('buildPath', () => {
   it('skips empty params', () => {
     expect(buildPath('/api/x', { a: 1, b: undefined, c: '', d: 'z' })).toBe('/api/x?a=1&d=z');
     expect(buildPath('/api/x')).toBe('/api/x');
+  });
+});
+
+describe('health response (Phase 8 adds an informational kafka field)', () => {
+  it('parses a health body that reports Kafka down, without changing status', async () => {
+    stubFetch(json({ status: 'ok', mongo: 'up', modelLoaded: true, kafka: 'down' }));
+    const health = await apiGet('/api/health', HealthResponseSchema);
+    expect(health).toEqual({ status: 'ok', mongo: 'up', modelLoaded: true, kafka: 'down' });
+  });
+
+  it('rejects an unknown kafka value instead of passing it through', async () => {
+    stubFetch(json({ status: 'ok', mongo: 'up', modelLoaded: true, kafka: 'maybe' }));
+    await expect(apiGet('/api/health', HealthResponseSchema)).rejects.toThrow();
   });
 });
 

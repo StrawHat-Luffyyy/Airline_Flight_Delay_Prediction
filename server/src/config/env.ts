@@ -46,6 +46,8 @@ const envSchema = z.object({
     .string()
     .regex(/^[a-zA-Z0-9._-]{1,249}$/)
     .default('flights.dlq'),
+  // Rolling window of GET /api/stream/status: the newest N judged flights in replay order.
+  STREAM_WINDOW_SIZE: z.coerce.number().int().min(100).max(20_000).default(2_000),
 });
 
 export type Env = z.infer<typeof envSchema>;
