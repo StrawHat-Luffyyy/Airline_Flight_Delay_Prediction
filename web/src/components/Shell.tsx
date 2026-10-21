@@ -8,6 +8,7 @@ const TABS = [
   { to: '/explorer', label: 'Explorer' },
   { to: '/predict', label: 'Predict' },
   { to: '/model', label: 'Model' },
+  { to: '/live', label: 'Live' },
 ] as const;
 
 function DataStrip() {

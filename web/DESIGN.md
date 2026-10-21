@@ -304,7 +304,7 @@ Quiet, pill-shaped, ink on ground; never filled with a data colour.
 - **Type inside buttons:** the global `button, input { font: inherit }` rule is unlayered, so it beats Tailwind's text-size utilities on those elements. Put type styles on an inner span (or a component class).
 
 ### Navigation
-- **Style:** one top bar with a bottom hairline: serif wordmark at left, five pill tabs (13px), and a right-aligned mono data strip in ink-3 (flight count in ink · date range · stats build date).
+- **Style:** one top bar with a bottom hairline: serif wordmark at left, six pill tabs (13px; Live is the sixth, added in Phase 8), and a right-aligned mono data strip in ink-3 (flight count in ink · date range · stats build date).
 - **States:** inactive tabs ink-2, hover ink; the active tab fills with rule-strong and turns ink.
 - **Mobile:** the bar wraps; tabs scroll horizontally on their own line and the data strip takes a full-width line. A skip-to-content link appears on focus.
 
@@ -328,6 +328,24 @@ The glass panel holds the form; the result sits beside it on the ground. The pan
 - **Airline**, below a hairline.
 - **Date and departure hour** side by side from sm.
 - **Submit**, with a one-line reminder that only pre-departure inputs are used. The gauge is a 180-degree arc (12px stroke, rounded caps) filling amber or blue by label, with a white tick and mono label at the decision threshold and the probability set in the serif at 44px; the arc fill transitions over 900ms. Factor bars diverge from a centre hairline: amber raises, blue lowers, values in mono percentage points.
+
+### Live page (Phase 8)
+The Live page (`pages/Live.tsx`) polls `/api/stream/status` every 5 s and reuses the board vocabulary rather than adding a new one.
+- **Status line:** a strong-hairline-framed row holding:
+  - a 9px **state beacon**: live is a solid ink dot with an ink ring that breathes outward (2.4s, ease-out-expo); idle is a hollow ink-3 ring; degraded is a Signal Red dot;
+  - the state in the serif at 1.75rem (Signal Red when degraded);
+  - the API's reason in ink-2, with ISO timestamps shown as local date and time;
+  - a right-aligned mono "updated N s ago · polls every 5 s".
+- **When a poll fails:** the last answer stays on screen. The beacon goes hollow, the state word dims to ink-3 with "last known", and a Signal Red "Could not refresh" line explains it. Ages, such as the heartbeat age, keep counting from the browser clock.
+- **Pipeline row:** the KPI rule row (flights stored, consumer throughput, consumer lag, dead-letter queue), all in ink: none of these is a delay figure.
+- **Metric board:** one row per metric, with two value columns (last N, whole replay) that have fixed widths, so the rate board and the verdict-count board line up.
+  - Each column head carries its sample size (`n 2,000`), plus an ink-2 "low sample (under 200)" when it applies. This is not amber, because it is not a delay figure.
+  - Each value carries its own denominator beneath it in 11px ink-3: precision "of 1,797 flagged", recall "of 316 delayed", the others "n 2,000".
+  - Accuracy always sits next to the majority-baseline row.
+  - Only the delayed share is amber (the Lit Column Rule).
+- **Changed-value lamp:** a value that changes between polls holds the board's amber lamp (`.lit-value`, the same 1.2s fade). Nothing lights under reduced motion, so a changed value gets no visual cue there; the new number is simply shown. The breathing beacon stops too.
+- **Stale values:** while polls fail, the pipeline row dims to 50% and is labelled "last known" for screen readers.
+- **Side column (420px at lg):** the Kafka partition board (committed, end, lag) or a Signal Red "Kafka unreachable" block with the reason, then the consumer facts.
 
 ### Charts
 Recharts on the ground: horizontal grid lines only (rule), axis ticks 11px ink-3, tooltips on Tooltip Black with a strong-hairline border and 8px radius, no entry animation. Every chart has a `role="img"` label and its numbers also appear in an adjacent table or list.
