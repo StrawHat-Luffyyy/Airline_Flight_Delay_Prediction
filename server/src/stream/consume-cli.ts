@@ -2,12 +2,14 @@
  * `npm run stream:consume -- [--idle-exit SECONDS]`: runs the speed-layer consumer until Ctrl+C
  * (or SIGTERM), then shuts down gracefully: the in-flight batch finishes and commits, the group is
  * left cleanly and MongoDB is closed. `--idle-exit` stops on its own once no batch has arrived for
- * that long, for scripted measurement runs.
+ * that long after the first batch (see idle-exit.ts), for scripted measurement runs.
  */
 import { hostname } from 'node:os';
+import { env } from '../config/env.js';
 import { closeMongo, connectToMongo, getDb } from '../db/client.js';
 import { logger } from '../logger.js';
 import { startConsumer } from './consumer.js';
+import { shouldIdleExit } from './idle-exit.js';
 import { consumerGroup, createKafka, topicNames } from './kafka.js';
 import { createPredictor } from './predictor.js';
 
@@ -47,6 +49,7 @@ async function main(): Promise<void> {
       groupId,
       instanceId,
       logger,
+      sessionTimeoutMs: env.KAFKA_SESSION_TIMEOUT_MS,
     });
     logger.info(
       { groupId, instanceId, topics: topicNames(), idleExitMs },
@@ -61,9 +64,14 @@ async function main(): Promise<void> {
           resolve();
         };
         if (idleExitMs !== undefined) {
-          // Idle time counts from the start too, so pick a value longer than the first rebalance.
           timer = setInterval(() => {
-            if (Date.now() - running.lastBatchAt() >= idleExitMs) {
+            const idle = shouldIdleExit({
+              batches: running.counters.batches,
+              lastBatchAt: running.lastBatchAt(),
+              now: Date.now(),
+              idleExitMs,
+            });
+            if (idle) {
               clearInterval(timer);
               logger.info({ idleExitMs }, 'stream:consume idle, stopping');
               resolve();

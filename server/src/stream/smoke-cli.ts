@@ -134,6 +134,7 @@ async function main(): Promise<void> {
       instanceId: 'smoke',
       logger,
       predict,
+      sessionTimeoutMs: env.KAFKA_SESSION_TIMEOUT_MS,
     });
     const running = consumer;
     await waitFor(() => running.counters.consumed >= EXPECTED_EVENTS + 1, 'the first consume');

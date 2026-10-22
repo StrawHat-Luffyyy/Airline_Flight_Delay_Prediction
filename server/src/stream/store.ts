@@ -64,6 +64,11 @@ export interface StreamConsumerDoc {
   batches: number;
   /** Messages per second over the last heartbeat interval. */
   throughput: number;
+  /**
+   * When this process last finished a batch; the process start until the first one, so a consumer
+   * that cannot start on a backlog is reported as stalled too. Progress, not liveness.
+   */
+  lastBatchAt?: Date;
   error?: string;
 }
 

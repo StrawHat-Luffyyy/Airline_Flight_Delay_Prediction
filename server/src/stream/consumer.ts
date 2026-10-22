@@ -36,6 +36,8 @@ export interface ConsumerOptions {
   logger: Logger;
   /** Live scoring: predictDelay bound to the loaded model (§15.7). */
   predict: Predictor;
+  /** Group session timeout in ms (KAFKA_SESSION_TIMEOUT_MS); absent = the client's default (30 s). */
+  sessionTimeoutMs?: number;
 }
 
 export interface ConsumerCounters {
@@ -55,7 +57,7 @@ export interface RunningConsumer {
 }
 
 export async function startConsumer(options: ConsumerOptions): Promise<RunningConsumer> {
-  const { kafka, db, topics, groupId, instanceId, logger, predict } = options;
+  const { kafka, db, topics, groupId, instanceId, logger, predict, sessionTimeoutMs } = options;
   await ensureStreamIndexes(db);
   const flights = streamFlights(db);
   const stats = streamConsumers(db);
@@ -74,7 +76,12 @@ export async function startConsumer(options: ConsumerOptions): Promise<RunningCo
     kafkaJS: { idempotent: true, acks: -1, maxInFlightRequests: 5 },
   });
   const consumer = kafka.consumer({
-    kafkaJS: { groupId, fromBeginning: true, autoCommit: false },
+    kafkaJS: {
+      groupId,
+      fromBeginning: true,
+      autoCommit: false,
+      ...(sessionTimeoutMs === undefined ? {} : { sessionTimeout: sessionTimeoutMs }),
+    },
     'js.consumer.max.batch.size': MAX_BATCH,
   });
 
@@ -90,6 +97,7 @@ export async function startConsumer(options: ConsumerOptions): Promise<RunningCo
     status,
     startedAt,
     lastSeenAt: new Date(),
+    lastBatchAt: new Date(lastBatchAt),
     ...counters,
     throughput,
     ...(error === undefined ? {} : { error }),

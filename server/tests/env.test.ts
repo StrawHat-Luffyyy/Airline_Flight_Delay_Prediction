@@ -22,6 +22,7 @@ describe('parseEnv', () => {
       KAFKA_TOPIC_RAW: 'flights.raw',
       KAFKA_TOPIC_DLQ: 'flights.dlq',
       STREAM_WINDOW_SIZE: 2000,
+      KAFKA_SESSION_TIMEOUT_MS: 10000,
     });
   });
 
@@ -37,6 +38,17 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ ...valid, KAFKA_BROKERS: 'a:70000' })).toThrow(/KAFKA_BROKERS/);
     expect(parseEnv({ ...valid, KAFKA_BROKERS: 'a:9092,' }).KAFKA_BROKERS).toEqual(['a:9092']);
     expect(() => parseEnv({ ...valid, KAFKA_TOPIC_RAW: 'bad topic' })).toThrow(/KAFKA_TOPIC_RAW/);
+  });
+
+  it('defaults the consumer session timeout to 10 s, within broker limits', () => {
+    expect(parseEnv(valid).KAFKA_SESSION_TIMEOUT_MS).toBe(10000);
+    expect(parseEnv({ ...valid, KAFKA_SESSION_TIMEOUT_MS: '10000' }).KAFKA_SESSION_TIMEOUT_MS).toBe(
+      10000,
+    );
+    // The broker's default group.min.session.timeout.ms is 6 s.
+    expect(() => parseEnv({ ...valid, KAFKA_SESSION_TIMEOUT_MS: '1000' })).toThrow(
+      /KAFKA_SESSION_TIMEOUT_MS/,
+    );
   });
 
   it('names every missing variable in the error', () => {
