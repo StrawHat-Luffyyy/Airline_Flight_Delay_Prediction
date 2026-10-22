@@ -1,0 +1,13 @@
+{
+  "note": "Run H2 (two consumers, same group): flights.raw offsets per partition read with kafka-get-offsets.sh right after the run (start = --time -2, end = --time -1), and each consumer process's final heartbeat counters (host and pid removed). Host load right after the run: 51% CPU, 1.2 GB free memory.",
+  "partitions": [
+    { "partition": 0, "start": 713593, "end": 768495, "messages": 54902 },
+    { "partition": 1, "start": 743015, "end": 799399, "messages": 56384 },
+    { "partition": 2, "start": 505052, "end": 543766, "messages": 38714 }
+  ],
+  "consumers": [
+    { "startedAt": "2026-10-22T15:29:28.057Z", "consumed": 56384, "inserted": 56384, "redelivered": 0, "batches": 115, "partitions": "1 (inferred: 56,384 = partition 1)" },
+    { "startedAt": "2026-10-22T15:29:29.460Z", "consumed": 93616, "inserted": 93616, "redelivered": 0, "batches": 215, "partitions": "0 and 2 (inferred: 54,902 + 38,714 = 93,616)" }
+  ],
+  "hostAfterRun": { "cpuLoadPercent": 51, "freeMemoryGB": 1.2 }
+}
