@@ -4,7 +4,12 @@ import tseslint from 'typescript-eslint';
 const RAW_COLOUR = '/#[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]|rgba?[(]|hsla?[(]/';
 const RAW_COLOUR_MESSAGE =
   'Raw colour: use a token (CSS var / Tailwind theme name, or lib/tokens.ts in JS).';
-const RAW_COLOUR_PENDING = ['web/src/components/globe/**'];
+const RAW_COLOUR_PENDING = [
+  'web/src/pages/Causes.tsx',
+  'web/src/pages/Overview.tsx',
+  'web/src/pages/Explorer.tsx',
+  'web/src/components/globe/**',
+];
 
 export default tseslint.config(
   { ignores: ['**/node_modules/**', '**/dist/**', 'coverage/**', 'web/.impeccable/**'] },

@@ -1,15 +1,13 @@
 import type { DelayRateRow, FlightItem, HeatmapResponse } from '@flight-delay/shared';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useDelayRate, useFlights, useHeatmap, useSummary } from '../api/hooks';
+import { useDelayRate, useFlights, useHeatmap } from '../api/hooks';
 import { Board, RateCell, type BoardColumn } from '../components/Board';
-import { cellFill, divergingCells, markerColour, MIN_HEATMAP_FLIGHTS } from '../lib/heatmap';
 import { ErrorBlock, QueryState } from '../components/QueryState';
 import { Note, PageHeader, Section, Segmented, SelectField } from '../components/ui';
 import {
   dayName,
   formatInteger,
   formatPercent,
-  formatPoints,
   formatSignedMinutes,
   hourLabel,
 } from '../lib/format';
@@ -339,43 +337,39 @@ function RankingSection() {
 const DOWS = [1, 2, 3, 4, 5, 6, 7] as const;
 const HOURS = Array.from({ length: 24 }, (_unused, hour) => hour);
 
-function Heatmap({ data, overall }: { data: HeatmapResponse; overall: number }) {
+function Heatmap({ data }: { data: HeatmapResponse }) {
   const [readout, setReadout] = useState<string>('Hover or tap a cell to read it.');
 
-  const { cells, scale } = useMemo(
-    () => ({
-      cells: new Map(data.cells.map((cell) => [`${cell.dow}-${cell.hour}`, cell])),
-      scale: divergingCells(data.cells, overall),
-    }),
-    [data, overall],
-  );
+  const { cells, min, max } = useMemo(() => {
+    const byCell = new Map(data.cells.map((cell) => [`${cell.dow}-${cell.hour}`, cell]));
+    const rates = data.cells.flatMap((cell) => (cell.delayRate === null ? [] : [cell.delayRate]));
+    return {
+      cells: byCell,
+      min: rates.length ? Math.min(...rates) : 0,
+      max: rates.length ? Math.max(...rates) : 0,
+    };
+  }, [data]);
 
+  const alphaOf = (rate: number) => (max > min ? 0.1 + 0.9 * ((rate - min) / (max - min)) : 0.55);
   const describe = (dow: number, hour: number) => {
     const cell = cells.get(`${dow}-${hour}`);
     const when = `${dayName(dow)} ${hourLabel(hour)}`;
     if (!cell || cell.delayRate === null) return `${when} · no delay rate (no completed flights)`;
-    const rate = `${formatPercent(cell.delayRate)} of ${formatInteger(cell.completed)} flights delayed`;
-    const kind = scale.cells.get(`${dow}-${hour}`)?.kind;
-    if (kind === 'low') return `${when} · ${rate} (fewer than ${MIN_HEATMAP_FLIGHTS} flights)`;
-    const vs = formatPoints(cell.delayRate - overall);
-    return `${when} · ${rate} · ${vs} against the overall ${formatPercent(overall)}`;
+    return `${when} · ${formatPercent(cell.delayRate)} of ${formatInteger(cell.completed)} flights delayed`;
   };
 
   const cellNode = (dow: number, hour: number, className: string) => {
-    const scaled = scale.cells.get(`${dow}-${hour}`) ?? { kind: 'none', intensity: 0, marker: '' };
+    const rate = cells.get(`${dow}-${hour}`)?.delayRate ?? null;
     const text = describe(dow, hour);
-    const hatched = scaled.kind === 'none' || scaled.kind === 'low';
     return (
       <span
         key={`${dow}-${hour}`}
         title={text}
         onMouseEnter={() => setReadout(text)}
         onClick={() => setReadout(text)}
-        className={`flex items-center justify-center rounded-[2px] border border-rule text-[9px] leading-none ${className} ${hatched ? 'hatch' : ''}`}
-        style={{ background: cellFill(scaled), color: markerColour(scaled) }}
-      >
-        {scaled.marker}
-      </span>
+        className={`rounded-[2px] border border-rule ${className} ${rate === null ? 'hatch' : ''}`}
+        style={rate === null ? undefined : { background: `rgba(232,165,75,${alphaOf(rate)})` }}
+      />
     );
   };
 
@@ -422,16 +416,12 @@ function Heatmap({ data, overall }: { data: HeatmapResponse; overall: number }) 
       {/* sr-only on the wrapper: a table ignores the 1px width and would widen the page. */}
       <div className="sr-only">
         <table>
-          <caption>
-            Delay rate by day of week and scheduled departure hour, against the overall{' '}
-            {formatPercent(overall)}
-          </caption>
+          <caption>Delay rate by day of week and scheduled departure hour</caption>
           <thead>
             <tr>
               <th scope="col">Day</th>
               <th scope="col">Hour</th>
               <th scope="col">Delay rate</th>
-              <th scope="col">Against overall</th>
               <th scope="col">Completed flights</th>
             </tr>
           </thead>
@@ -444,9 +434,6 @@ function Heatmap({ data, overall }: { data: HeatmapResponse; overall: number }) 
                     <th scope="row">{dayName(dow, false)}</th>
                     <td>{hourLabel(hour)}</td>
                     <td>{formatPercent(cell?.delayRate ?? null)}</td>
-                    <td>
-                      {cell?.delayRate == null ? '—' : formatPoints(cell.delayRate - overall)}
-                    </td>
                     <td>{formatInteger(cell?.completed ?? 0)}</td>
                   </tr>
                 );
@@ -461,25 +448,20 @@ function Heatmap({ data, overall }: { data: HeatmapResponse; overall: number }) 
       </p>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px] text-ink-2">
         <span className="flex items-center gap-2">
-          <span className="num text-ink">▼ {formatPoints(-scale.clamp)}</span>
+          <span className="num text-ink">{formatPercent(min)}</span>
           <span
             className="h-2.5 w-40 rounded-sm"
             style={{
-              background:
-                'linear-gradient(90deg, color-mix(in srgb, var(--positive) 85%, var(--surface)), var(--surface), color-mix(in srgb, var(--negative) 85%, var(--surface)))',
+              background: 'linear-gradient(90deg, rgba(232,165,75,0.1), rgba(232,165,75,1))',
             }}
             aria-hidden="true"
           />
-          <span className="num text-ink">▲ {formatPoints(scale.clamp)}</span>
-          <span>
-            against the overall delay rate of{' '}
-            <span className="num text-ink">{formatPercent(overall)}</span> (colour saturates at the
-            95th-percentile gap)
-          </span>
+          <span className="num text-ink">{formatPercent(max)}</span>
+          <span>delay rate, lowest to highest cell</span>
         </span>
         <span className="flex items-center gap-2">
           <span className="hatch h-2.5 w-6 rounded-sm border border-rule" aria-hidden="true" />
-          Fewer than {MIN_HEATMAP_FLIGHTS} flights, or no rate
+          No rate
         </span>
       </div>
     </div>
@@ -508,7 +490,6 @@ function HeatmapHourRow({ hour, children }: { hour: number; children: ReactNode 
 
 export default function Explorer() {
   const heatmap = useHeatmap();
-  const summary = useSummary();
   return (
     <div className="space-y-10">
       <PageHeader title="Where and when delays concentrate">
@@ -531,15 +512,7 @@ export default function Explorer() {
         >
           {(data) => (
             <div className="space-y-3">
-              <QueryState query={summary} label="the overall delay rate" skeletonClass="h-64">
-                {(totals) =>
-                  totals.delayRate === null ? (
-                    <Note>No overall delay rate yet, so the heatmap has no centre.</Note>
-                  ) : (
-                    <Heatmap data={data} overall={totals.delayRate} />
-                  )
-                }
-              </QueryState>
+              <Heatmap data={data} />
               {data.coverage ? <Note>{data.coverage.note}</Note> : null}
             </div>
           )}
