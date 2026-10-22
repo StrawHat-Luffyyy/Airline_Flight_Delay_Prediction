@@ -1,0 +1,7 @@
+{
+  "note": "Run R1 (isolated database flight_delay_reliability_test, group reliability-test, topics reliability.*; 60,000 events at 1,000/s; broker stopped 18:29:13 and started 18:29:47 UTC, from docker inspect). The first consumer kept storing already-fetched messages until 18:29:25 (32,800 stored) and exited on its 60 s idle limit at 18:30:25 without having resumed. A second consumer (--idle-exit 20) then drained the topic. Counters from that consumer's own log; deliveries breakdown from stream_flights afterwards. Printed to the console during the run and saved here.",
+  "firstConsumer": { "stored": 32800, "lastWrite": "2026-10-22T18:29:25Z", "idleExitAt": "2026-10-22T18:30:25.723Z" },
+  "drainConsumer": { "consumed": 43200, "inserted": 27200, "redelivered": 16000, "dlq": 0 },
+  "streamFlightsAfter": { "flights": 60000, "byDeliveries": { "1": 44000, "2": 16000 } },
+  "reading": "Of the 32,800 flights stored by the first consumer only 16,800 had committed offsets: the 16,000 stored while the broker was down could not commit, were redelivered to the drain consumer and absorbed by the upsert (deliveries = 2, no duplicate documents). The consumer logged no warning for the failed commits."
+}
