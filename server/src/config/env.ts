@@ -48,6 +48,11 @@ const envSchema = z.object({
     .default('flights.dlq'),
   // Rolling window of GET /api/stream/status: the newest N judged flights in replay order.
   STREAM_WINDOW_SIZE: z.coerce.number().int().min(100).max(20_000).default(2_000),
+  // Consumer group session timeout (ms), bounded by the broker's group.min/max.session.timeout.ms
+  // defaults (6 s to 30 min). 10 s, not the client's 30 s: after a broker restart the consumer
+  // resumed 36.9 s later with 30 s and 17.2 s later with 10 s (runs R2 and R3, docs/STREAMING.md).
+  // librdkafka heartbeats from its own thread, so slow batches do not count against it.
+  KAFKA_SESSION_TIMEOUT_MS: z.coerce.number().int().min(6_000).max(1_800_000).default(10_000),
 });
 
 export type Env = z.infer<typeof envSchema>;
