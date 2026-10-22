@@ -187,6 +187,23 @@ Final counts (`run-g-kafka-restart.json`): 150,000 sent = 150,000 on `flights.ra
   The consumer with scoring (2,442/s) sits just under scoring alone, and far under unscored inserts. This is one consumer process; scaling out (more consumer processes in the group, up to one per partition) was not measured.
 - **Producer, whole run C:** 109,673 ms including reading January to November to reach December, at a peak RSS of 298 MB (`run-c-unthrottled.json`, `producer.elapsedMs` and `producer.peakRssMb`, read from the same producer-run record). Reading January to November took about 71 s in this run (109.7 s minus the 38.2 s send phase); 8b measured 93 to 95 s for the same read, so this figure varies between runs on this machine.
 
+### Scaling out: two consumers against one (runs H1 and H2)
+
+Two back-to-back runs under the same host conditions, each from an empty speed layer, replaying 150,000 events unthrottled so the consumers are saturated:
+
+| Run | Consumers in `flight-stream` | Consumer rate (stored and scored) | Span, first to last write | All checks | Source |
+|---|---|---|---|---|---|
+| H1 | 1 | **1,736/s** | 86,419 ms | pass | `run-h1-one-consumer.json` |
+| H2 | 2 | **2,155/s** (1.24x) | 69,610 ms | pass | `run-h2-two-consumers.json` |
+
+Why only 1.24x, from the data (`run-h2-partitions.json`):
+
+- **Partitions, not consumers, are the unit of parallelism.** `flights.raw` has 3 partitions, so two consumers split them 1 + 2. One consumer read partition 1 (56,384 messages); the other read partitions 0 and 2 (54,902 + 38,714 = 93,616, 62.4% of the run). The run lasts as long as the consumer with two partitions.
+- **That bounds the ideal at 1.60x.** At H1's single-process rate, 93,616 messages take 53.9 s, which would be 2,782/s overall. The partitions are also uneven because the key is the origin airport.
+- **The rest is contention.** The two-partition consumer took the whole 69.6 s, about 1,345/s, 23% slower than one consumer alone. Both processes score with ONNX on the CPU and write to the same MongoDB, on a laptop already at 51% CPU with 1.2 GB free memory after the run.
+- **Three consumers** (one per partition) would be bounded by the largest partition (37.6% of this run, at most 2.66x) and by the same contention. This was not measured.
+- **H1 against run C.** H1's 1,736/s is lower than run C's 2,442/s. The host load differed between the morning and the evening, so only H1 and H2 are compared with each other.
+
 ### 6. End-to-end latency
 
 Latency is `firstWrittenAt − producedAt`, in milliseconds.
@@ -281,6 +298,8 @@ The batch collections were counted before the runs (speed layer empty) and after
 | `docs/measurements/run-c-rereplay-5000.json` | the 5,000-event re-replay after run C (`timing` is null: it stored nothing new) |
 | `docs/measurements/run-d-crash-before-restart.json` | run D after the hard kill, before the restart |
 | `docs/measurements/run-d-crash-after-restart.json` | run D after the restart |
+| `docs/measurements/run-h1-one-consumer.json`, `run-h2-two-consumers.json` | runs H1 and H2: one against two consumers, 150,000 events unthrottled |
+| `docs/measurements/run-h2-partitions.json` | run H2: messages per partition and per consumer |
 | `docs/measurements/run-g-kafka-restart.json` | run G (Kafka stopped about 28 s under load): checks and counts after recovery |
 | `docs/measurements/run-g-kafka-restart-status.json` | run G: `GET /api/stream/status` every 2 s through the outage (`stream:watch`) |
 | `docs/measurements/run-f-kill-attempt-1.json`, `run-f-kill-attempt-2.json` | run F: `stream:measure` right after each hard kill (written vs committed) |
@@ -296,7 +315,7 @@ The batch collections were counted before the runs (speed layer empty) and after
 
 - **Simulated velocity.** The events are a replay of 2015 flights at a chosen rate, not a live feed. Each event carries its outcome, which in reality would arrive hours later.
 - **No fault tolerance.** One broker with replication factor 1: losing the broker or its volume loses every event not yet consumed. Production would need at least 3 brokers, `min.insync.replicas=2` and monitoring.
-- **One consumer process, one machine.** Throughput with live scoring is bounded at about 2.4k/s by scoring in a single process. Scaling out across partitions, or onto other machines, was not measured.
+- **One machine.** Throughput with live scoring is bounded by scoring: about 2.4k/s in one process (run C). Two consumers gave 1.24x (runs H1 and H2), limited by the 3-partition split and by sharing one laptop. More partitions, three consumers and other machines were not measured.
 - **One run per rate.** Each figure is a single run on a laptop with Docker Desktop, not a mean of repeated runs.
 - **Latency resolution.** Batch-level timestamps and approximate percentiles (see item 6). Unthrottled latency is queueing time.
 - **Slow resume after a broker restart, and "live" while stalled.** In run G the consumer took about 42 s after the broker came back to store again, and the status endpoint said `live` meanwhile (see the run G section).
