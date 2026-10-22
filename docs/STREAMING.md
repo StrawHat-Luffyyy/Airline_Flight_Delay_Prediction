@@ -58,7 +58,7 @@ The runs, in the order they were made:
 | 1 | Conservation | **PASS** | Run C: 479,230 month rows = 479,230 sent + 0 producer DLQ; 479,230 on `flights.raw` = 479,230 upserts + 0 consumer DLQ. Runs A and B pass the same checks. | `run-c-unthrottled.json`, `run-a-500.json`, `run-b-2000.json` |
 | 2 | Unique keys | **PASS** | Run C: 479,230 stored = 479,230 distinct keys | `run-c-unthrottled.json` |
 | 3 | Idempotent replay | **PASS** | `stream_flights` stays 479,230; deliveries 479,230 → 484,230 | `run-c-rereplay-5000.json` |
-| 4 | Crash recovery | **PASS** | Hard kill at 58,530 stored; after restart 100,000 stored = 100,000 distinct keys, lag 0 | `run-d-crash-*.json` |
+| 4 | Crash recovery | **PASS** | Run F: a hard kill landed mid-batch (500 flights written but not committed); after restart those 500 were redelivered (`deliveries` = 2), 200,000 stored = 200,000 distinct keys, 0 duplicates, lag 0. Run D: a kill between batches, nothing redelivered | `run-f-*.json`, `run-d-crash-*.json` |
 | 5 | Throughput at three rates | **PASS** (measured) | Consumer 506/s, 1,190/s, 2,018/s and 2,442/s at 500/s, 1,200/s, 2,000/s and unthrottled | `run-a-500.json`, `run-b-2000.json`, `run-c-unthrottled.json` |
 | 6 | Latency p50 / p95 | **PASS** (measured) | **Headline, 1,200/s (about 49% of capacity), steady state: 423 / 2,238 ms**; whole run including start-up 1,098 / 9,424 ms. Also 63 / 906 ms at 500/s and 138 / 2,236 ms at 2,000/s; unthrottled is queueing delay under overload (below) | `run-e-1200-steady.json`, `run-e-1200.json`, `run-a-500.json`, `run-b-2000.json`, `run-c-unthrottled.json` |
 | 7 | Status metrics match a recomputation | **PASS** | 35 of 35 checks match | `verify-status.json` |
@@ -115,6 +115,38 @@ Sources: `run-d-crash-before-restart.json`, `run-d-crash-after-restart.json`.
 - **Redelivery inside the write-to-commit window** was exercised in the 8c crash test instead (`docs/DECISIONS.md`, Phase 8c; `docs/PHASE8_STATUS.md`): killed at 316,598 stored with 318,598 offsets committed, the restart consumed 167,832 and inserted 162,632, giving 479,230 flights with no duplicates. That test ran without live scoring (8c predates it), in the separate database `flight_delay_crash_test`.
 - **A killed consumer leaves `status: "running"` behind.** After the kill, its heartbeat document still said `running`, last seen at 14:13:27.602 UTC with 52,002 messages consumed (`run-d-crash-consumer.json`, printed by mongosh right after the kill). This is why the status endpoint judges liveness by the age of `lastSeenAt` (stale after 10 s), not by the stored status (`docs/DECISIONS.md`, Phase 8e).
 - **Run D is not a latency or throughput figure.** Its timings include the deliberate downtime (p50 15,686 ms after restart), so they are left out of items 5 and 6.
+
+#### Run F: a kill inside the write-to-commit window
+
+Run D's kill landed between batches, so it could not show redelivery. Run F set out to land one inside a batch: after its MongoDB write, before its offset commit. That is the only window where at-least-once delivery produces a duplicate delivery.
+
+- **Setup:** from an empty speed layer, replay 200,000 events at 1,000/s (`--rate 1000 --limit 200000`), a pace the consumer handles continuously, so a kill at a random moment has a fair chance of landing mid-batch.
+- **How a hit is detected:** right after each hard kill (`Stop-Process -Force`), `stream:measure` compared the flights stored with the messages committed (messages on the topic minus the group's lag).
+  - Committed offsets are final once the process is dead.
+  - Every key in the run is new, so stored = written.
+  - Written > committed means a batch was written and not committed, so Kafka must redeliver it.
+
+| Attempt | Flights written | Messages committed | Written but not committed | Source |
+|---|---|---|---|---|
+| 1 | 18,000 | 18,000 | 0 (between batches) | `run-f-kill-attempt-1.json` |
+| 2 | 31,554 | 31,054 | **500** (one full batch, mid-batch) | `run-f-kill-attempt-2.json` |
+
+After attempt 2 a third consumer was started and ran to the end:
+
+| Measure | Value | Source |
+|---|---|---|
+| Produced (sent to `flights.raw`) | 200,000 | `run-f-midbatch-final.json` |
+| Upserts (messages processed, summed `deliveries`) | 200,500 = 200,000 + **500 redelivered** | `run-f-midbatch-final.json` |
+| Flights with `deliveries` = 1 / = 2 | 199,500 / **500** | `run-f-midbatch-deliveries.json` |
+| Restarted consumer's own counters | 168,946 consumed, 168,446 inserted, **500 redelivered**, 0 DLQ | `run-f-midbatch-deliveries.json` |
+| Consumer DLQ | 0 | `run-f-midbatch-final.json` |
+| Distinct keys stored | 200,000 for 200,000 keys sent | `run-f-midbatch-final.json` |
+| Duplicates | **0** (`_id` is the flight key; 200,000 documents) | `run-f-midbatch-final.json` |
+| Lag at the end | 0 | `run-f-midbatch-final.json` |
+
+- **What this shows:** the redelivered batch is exactly the 500 written-but-uncommitted messages. Kafka delivered them again, the upsert turned each into an update of `deliveries`, and no second document was created. This is the at-least-once + idempotent-write guarantee working under a real crash, with live scoring on (redeliveries are not re-scored).
+- **Heartbeat counters lag the truth.** The killed consumers' last heartbeats said 16,300 and 11,554 consumed, against 18,000 and 13,554 actually written (heartbeats are written every 2 s). This is why the totals come from `stream_flights` and Kafka offsets, not from heartbeats.
+- **Size of the gap:** 500, exactly one consumer batch at its maximum size (`MAX_BATCH` in `server/src/stream/consumer.ts`), consistent with one partition's batch having been written and not yet committed.
 
 ### 5. Throughput (with live scoring)
 
@@ -232,6 +264,8 @@ The batch collections were counted before the runs (speed layer empty) and after
 | `docs/measurements/run-c-rereplay-5000.json` | the 5,000-event re-replay after run C (`timing` is null: it stored nothing new) |
 | `docs/measurements/run-d-crash-before-restart.json` | run D after the hard kill, before the restart |
 | `docs/measurements/run-d-crash-after-restart.json` | run D after the restart |
+| `docs/measurements/run-f-kill-attempt-1.json`, `run-f-kill-attempt-2.json` | run F: `stream:measure` right after each hard kill (written vs committed) |
+| `docs/measurements/run-f-midbatch-final.json`, `run-f-midbatch-deliveries.json` | run F after recovery: checks, and flights grouped by `deliveries` with each consumer's heartbeat |
 | `docs/measurements/run-e-1200.json`, `run-e-1200-steady.json` | run E at 1,200/s: the whole run, and only the flights produced after the start-up backlog drained (`stream:measure --from`) |
 | `docs/measurements/run-e-1200-lag.json` | run E: consumer lag, flights stored and throughput every 2 s (`stream:watch`) |
 | `docs/measurements/run-e-host-load.json` | host load right after run E |

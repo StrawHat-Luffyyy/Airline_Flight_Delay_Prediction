@@ -1,0 +1,85 @@
+{
+  "report": {
+    "runId": "replay-20261022150739-943805ad",
+    "producer": {
+      "status": "completed",
+      "rate": 1000,
+      "limit": 200000,
+      "monthRows": 200000,
+      "sentRaw": 200000,
+      "sentDlq": 0,
+      "malformedCsv": 0,
+      "sendElapsedMs": 199941,
+      "achievedRate": 1000,
+      "elapsedMs": 293556,
+      "peakRssMb": 198
+    },
+    "kafka": {
+      "rawRetained": 200000,
+      "dlqRetained": 0,
+      "lag": 0
+    },
+    "stored": {
+      "flights": 200000,
+      "flightsOfRun": 200000,
+      "deliveries": 200500,
+      "scored": 200000,
+      "refused": 0
+    },
+    "timing": {
+      "firstProducedAt": "2026-10-22T15:09:13.460Z",
+      "lastProducedAt": "2026-10-22T15:12:33.368Z",
+      "firstWrittenAt": "2026-10-22T15:09:13.951Z",
+      "lastWrittenAt": "2026-10-22T15:12:33.447Z",
+      "consumerSpanMs": 199496,
+      "consumerRate": 1003,
+      "endToEndMs": 199987,
+      "latencyMs": {
+        "p50": 22690,
+        "p95": 78022,
+        "p99": 96345,
+        "min": 36,
+        "max": 102260,
+        "mean": 26541
+      }
+    },
+    "sinceReset": {
+      "producerRuns": 1,
+      "sentRaw": 200000,
+      "sentDlq": 0,
+      "largestRun": 200000
+    }
+  },
+  "checks": [
+    {
+      "name": "month rows = sent to raw + producer DLQ",
+      "ok": true,
+      "detail": "200,000 = 200,000 + 0"
+    },
+    {
+      "name": "raw topic holds exactly what was sent",
+      "ok": true,
+      "detail": "200,000 on flights.raw, 200,000 sent in 1 run(s)"
+    },
+    {
+      "name": "raw messages = upserts + consumer DLQ",
+      "ok": true,
+      "detail": "200,000 messages; 200,500 upserts + 0 consumer DLQ"
+    },
+    {
+      "name": "stored flights = distinct keys produced",
+      "ok": true,
+      "detail": "200,000 stored, 200,000 distinct keys sent, 0 dead-lettered"
+    },
+    {
+      "name": "consumer lag = 0",
+      "ok": true,
+      "detail": "0 messages behind"
+    },
+    {
+      "name": "redeliveries (information)",
+      "ok": true,
+      "detail": "500 upserts beyond the messages on the topic"
+    }
+  ]
+}

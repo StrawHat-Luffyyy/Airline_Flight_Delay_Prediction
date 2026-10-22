@@ -1,0 +1,67 @@
+{
+  "note": "Run F after recovery: stream_flights grouped by deliveries, and each consumer process heartbeat (host and pid removed). Heartbeats are written every 2 s, so a hard-killed process heartbeat lags what it actually processed; the authoritative totals are stream_flights and Kafka offsets.",
+  "flights": 200000,
+  "byDeliveries": [
+    {
+      "_id": 1,
+      "flights": 199500
+    },
+    {
+      "_id": 2,
+      "flights": 500
+    }
+  ],
+  "consumerHeartbeats": [
+    {
+      "kind": "consumer",
+      "groupId": "flight-stream",
+      "status": "running",
+      "startedAt": {
+        "$date": "2026-10-22T15:07:39.145Z"
+      },
+      "lastSeenAt": {
+        "$date": "2026-10-22T15:09:29.759Z"
+      },
+      "consumed": 16300,
+      "inserted": 16300,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 386,
+      "throughput": 1047
+    },
+    {
+      "kind": "consumer",
+      "groupId": "flight-stream",
+      "status": "running",
+      "startedAt": {
+        "$date": "2026-10-22T15:09:49.202Z"
+      },
+      "lastSeenAt": {
+        "$date": "2026-10-22T15:10:15.418Z"
+      },
+      "consumed": 11554,
+      "inserted": 11554,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 26,
+      "throughput": 774
+    },
+    {
+      "kind": "consumer",
+      "groupId": "flight-stream",
+      "status": "running",
+      "startedAt": {
+        "$date": "2026-10-22T15:10:39.701Z"
+      },
+      "lastSeenAt": {
+        "$date": "2026-10-22T15:13:06.709Z"
+      },
+      "consumed": 168946,
+      "inserted": 168446,
+      "redelivered": 500,
+      "dlq": 0,
+      "batches": 1014,
+      "throughput": 0
+    }
+  ]
+}
