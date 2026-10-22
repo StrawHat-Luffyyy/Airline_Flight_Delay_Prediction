@@ -117,10 +117,16 @@ Check the endpoint's metrics against an independent recomputation from `stream_f
 npm run stream:verify-status
 ```
 
-Measure the newest replay run (conservation, unique keys, lag, throughput, latency). It is read-only; `--out FILE` also saves the report as JSON.
+Measure the newest replay run (conservation, unique keys, lag, throughput, latency). It is read-only; `--out FILE` also saves the report as JSON, and `--from ISO_TIME` limits latency to flights produced from that instant.
 
 ```bash
 npm run stream:measure
+```
+
+Sample consumer lag over time through the API (every 2 s for 5 minutes):
+
+```bash
+npm run stream:watch -- --duration 300 --url http://127.0.0.1:3001 --out lag.json
 ```
 
 **Warning: this empties the speed layer.** `stream:reset` deletes every document in `stream_flights` and `stream_stats`, the consumer group's offsets and the messages on `flights.raw` and `flights.dlq`. It never touches the batch collections. It refuses unless `--db` names the configured `MONGODB_DB` and `--yes` is given, and while a consumer is running.

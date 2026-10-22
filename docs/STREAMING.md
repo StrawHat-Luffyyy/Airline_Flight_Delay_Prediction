@@ -59,8 +59,8 @@ The runs, in the order they were made:
 | 2 | Unique keys | **PASS** | Run C: 479,230 stored = 479,230 distinct keys | `run-c-unthrottled.json` |
 | 3 | Idempotent replay | **PASS** | `stream_flights` stays 479,230; deliveries 479,230 → 484,230 | `run-c-rereplay-5000.json` |
 | 4 | Crash recovery | **PASS** | Hard kill at 58,530 stored; after restart 100,000 stored = 100,000 distinct keys, lag 0 | `run-d-crash-*.json` |
-| 5 | Throughput at three rates | **PASS** (measured) | Consumer 506/s, 2,018/s and 2,442/s at 500/s, 2,000/s and unthrottled | `run-a-500.json`, `run-b-2000.json`, `run-c-unthrottled.json` |
-| 6 | Latency p50 / p95 | **PASS** (measured) | 63 / 906 ms at 500/s; 138 / 2,236 ms at 2,000/s; unthrottled is queueing time (below) | same three files |
+| 5 | Throughput at three rates | **PASS** (measured) | Consumer 506/s, 1,190/s, 2,018/s and 2,442/s at 500/s, 1,200/s, 2,000/s and unthrottled | `run-a-500.json`, `run-b-2000.json`, `run-c-unthrottled.json` |
+| 6 | Latency p50 / p95 | **PASS** (measured) | **Headline, 1,200/s (about 49% of capacity), steady state: 423 / 2,238 ms**; whole run including start-up 1,098 / 9,424 ms. Also 63 / 906 ms at 500/s and 138 / 2,236 ms at 2,000/s; unthrottled is queueing delay under overload (below) | `run-e-1200-steady.json`, `run-e-1200.json`, `run-a-500.json`, `run-b-2000.json`, `run-c-unthrottled.json` |
 | 7 | Status metrics match a recomputation | **PASS** | 35 of 35 checks match | `verify-status.json` |
 
 ### 1 and 2. Conservation and unique keys
@@ -121,6 +121,7 @@ Sources: `run-d-crash-before-restart.json`, `run-d-crash-after-restart.json`.
 | Replay rate | Flights | Producer achieved | Send phase | Consumer rate | Consumer span (first to last write) | Source |
 |---|---|---|---|---|---|---|
 | 500/s | 30,000 | 500/s | 59,953 ms | 506/s | 59,328 ms | `run-a-500.json` |
+| 1,200/s (run E) | 120,000 | 1,200/s | 100,037 ms | 1,190/s | 100,867 ms | `run-e-1200.json` |
 | 2,000/s | 120,000 | 2,002/s | 59,951 ms | 2,018/s | 59,472 ms | `run-b-2000.json` |
 | Unthrottled (`--rate 0`) | 479,230 | 12,542/s | 38,210 ms | **2,442/s** | 196,258 ms | `run-c-unthrottled.json` |
 
@@ -141,15 +142,56 @@ Sources: `run-d-crash-before-restart.json`, `run-d-crash-after-restart.json`.
 
 Latency is `firstWrittenAt − producedAt`, in milliseconds.
 
+**Headline: a sustainable rate.** Run E replayed 120,000 flights at **1,200/s, about 49% of the measured consumer capacity with live scoring (2,442/s, run C)**, from an empty speed layer.
+
+| Run E, 1,200/s | p50 | p95 | p99 | Min | Max | Mean | Flights | Source |
+|---|---|---|---|---|---|---|---|---|
+| **Steady state** (flights produced after the start-up backlog drained) | **423** | **2,238** | 2,686 | 44 | 3,060 | 691 | produced 14:58:51.9 to 14:59:52.9 UTC | `run-e-1200-steady.json` |
+| Whole run, including start-up | 1,098 | 9,424 | 10,199 | 44 | 10,873 | 2,773 | 120,000 | `run-e-1200.json` |
+
+**Consumer lag over time**, sampled every 2 s from `GET /api/stream/status` by `npm run stream:watch` (`run-e-1200-lag.json`; resolution limited by the endpoint's 2 to 3 s caches). Time is seconds after lag first rose above 0, every third sample until the run was fully stored:
+
+| t (s) | Lag (messages) | Flights stored | Consumer throughput (/s) |
+|---|---|---|---|
+| 0 | 3,296 | 2 | 0 |
+| 6 | 8,158 | 2 | 0 |
+| 12 | 10,258 | 7,502 | 1319 |
+| 18 | 11,687 | 10,873 | 935 |
+| 24 | 8,158 | 24,002 | 2242 |
+| 30 | 5,578 | 31,502 | 1481 |
+| 36 | 120 | 46,569 | 2546 |
+| 42 | 332 | 51,240 | 997 |
+| 48 | 1,080 | 60,000 | 1082 |
+| 54 | 720 | 65,398 | 1466 |
+| 60 | 1,200 | 74,400 | 1004 |
+| 66 | 2,283 | 78,180 | 741 |
+| 72 | 0 | 90,006 | 1923 |
+| 78 | 333 | 94,795 | 1136 |
+| 84 | 74 | 104,483 | 1355 |
+| 90 | 76 | 109,320 | 1217 |
+| 96 | 2,880 | 116,211 | 714 |
+| 100 | 0 | 120,000 | 1240 |
+
+- **Why the steady state is the headline.** In the first samples after December started arriving the consumer had stored 2 flights; by t = 12 s it was storing at full speed. Its reference-data cache starts empty, so the first batches do several MongoDB reads per flight (`docs/DECISIONS.md`, Phase 8d), on top of process warm-up. Lag built to 11,687 at t = 18 s and was back near zero (120) at t = 36 s. From then on (cut at the first sample with lag at or below 1,200, one second of input, after the peak) lag stayed between 0 and 2,880 messages (median 720 over 32 samples), and the whole-run tail is that start-up backlog.
+- **Host load.** Run E ran while the laptop was busy with other desktop applications: 62% host CPU and 2.2 GB of free memory right after the run, with MongoDB at 4.2 GiB and Kafka at 627 MiB (`run-e-host-load.json`). The read of January to November took 122.7 s against 71 s in run C. Host load was not recorded for runs A to D, so their latencies (below) are not directly comparable with run E.
+- **A first attempt at run E failed.** The consumer was started with `--idle-exit 120`, which counts from its start. The read phase took longer than 120 s, so the consumer exited before the first event arrived and consumed nothing. That attempt was discarded, the speed layer reset, and run E repeated with `--idle-exit 400`.
+
+**Other paced runs** (host load not recorded):
+
 | Replay rate | p50 | p95 | p99 | Min | Max | Mean | Source |
 |---|---|---|---|---|---|---|---|
 | 500/s | 63 | 906 | 1,778 | 32 | 2,281 | 155 | `run-a-500.json` |
 | 2,000/s | 138 | 2,236 | 2,586 | 40 | 2,788 | 441 | `run-b-2000.json` |
+
+**Unthrottled: queueing delay under overload, not processing time.**
+
+| Replay rate | p50 | p95 | p99 | Min | Max | Mean | Source |
+|---|---|---|---|---|---|---|---|
 | Unthrottled | 72,641 | 152,105 | 157,307 | 515 | 158,623 | 74,641 | `run-c-unthrottled.json` |
 
-- **Unthrottled latency is queueing time, not processing time.** The producer outran the consumer by about 5x (12,542/s against 2,442/s), so events waited in Kafka for up to 158.6 s before being consumed. It measures the backlog, not the pipeline's speed.
+The producer sent at 12,542/s, about 5 times what the consumer can store and score (2,442/s), so events waited in Kafka for up to 158.6 s before being consumed. This measures how long the backlog took to drain, not the pipeline's speed; Kafka absorbing that burst without loss (lag 0 at the end) is the point of the log.
+
 - **Granularity.** All events in one producer send batch share one `producedAt` (batches of `rate/10`, 1 to 500 events), and all flights in one consumer batch share one `firstWrittenAt`. Latency is therefore measured per batch pair, not per event.
-- **Tails.** At the paced rates p95 is 14 to 16 times p50 (906 / 63 and 2,236 / 138). The cause of the tail was not investigated.
 - **Approximate percentiles.** p50, p95 and p99 come from MongoDB's t-digest `$percentile`; min, max and mean are exact.
 
 ### 7. Status metrics against an independent recomputation
@@ -190,6 +232,9 @@ The batch collections were counted before the runs (speed layer empty) and after
 | `docs/measurements/run-c-rereplay-5000.json` | the 5,000-event re-replay after run C (`timing` is null: it stored nothing new) |
 | `docs/measurements/run-d-crash-before-restart.json` | run D after the hard kill, before the restart |
 | `docs/measurements/run-d-crash-after-restart.json` | run D after the restart |
+| `docs/measurements/run-e-1200.json`, `run-e-1200-steady.json` | run E at 1,200/s: the whole run, and only the flights produced after the start-up backlog drained (`stream:measure --from`) |
+| `docs/measurements/run-e-1200-lag.json` | run E: consumer lag, flights stored and throughput every 2 s (`stream:watch`) |
+| `docs/measurements/run-e-host-load.json` | host load right after run E |
 | `docs/measurements/run-d-crash-consumer.json` | run D: the state printed at the kill, the restarted consumer's final counters, and each run's `--idle-exit` |
 | `docs/measurements/verify-status.json` | `stream:verify-status`: 35 checks with endpoint and recomputed values |
 | `docs/measurements/batch-collections-before.txt`, `-after.txt` | collection counts in `flight_delay` before and after |
@@ -201,6 +246,7 @@ The batch collections were counted before the runs (speed layer empty) and after
 - **One consumer process, one machine.** Throughput with live scoring is bounded at about 2.4k/s by scoring in a single process. Scaling out across partitions, or onto other machines, was not measured.
 - **One run per rate.** Each figure is a single run on a laptop with Docker Desktop, not a mean of repeated runs.
 - **Latency resolution.** Batch-level timestamps and approximate percentiles (see item 6). Unthrottled latency is queueing time.
+- **Shared laptop.** Runs were made on a laptop also in desktop use; run E's host load was recorded (62% CPU), the others' was not, so latencies across runs are only loosely comparable.
 - **Not measured in 8g:**
   - consumer memory use;
   - a consumer under load through a broker restart (8f saw one restart survived with no messages flowing; the librdkafka native crash on broker restart is contained for the API in a forked probe process, `docs/DECISIONS.md`, Phase 8e);

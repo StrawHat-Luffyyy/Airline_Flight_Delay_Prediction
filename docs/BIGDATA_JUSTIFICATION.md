@@ -109,7 +109,7 @@ All seven §15.9 items passed (source: `docs/STREAMING.md`):
 | Idempotent replay of 5,000 events | `stream_flights` stays 479,230; only `deliveries` grows (+5,000) |
 | Hard kill of the consumer at 58,530 of 100,000 | after restart 100,000 stored, 100,000 distinct, lag 0 |
 | Consumer throughput with live scoring | 506/s at a 500/s replay, 2,018/s at 2,000/s, 2,442/s unthrottled |
-| Latency p50 / p95 (`firstWrittenAt − producedAt`) | 63 / 906 ms at 500/s; 138 / 2,236 ms at 2,000/s |
+| Latency p50 / p95 (`firstWrittenAt − producedAt`) | 423 / 2,238 ms in steady state at 1,200/s (about 49% of capacity; 1,098 / 9,424 ms including the cold start); 63 / 906 ms at 500/s; 138 / 2,236 ms at 2,000/s |
 | `/api/stream/status` vs an independent recomputation | 35 of 35 checks match |
 
 Unthrottled, the producer sent December at 12,542/s while the consumer stored and scored at 2,442/s. Kafka buffered the difference and the backlog drained after the producer had finished, so latency there (p50 72.6 s) is queueing time in Kafka, not processing time. That buffering is the point of putting a log between producer and consumer.

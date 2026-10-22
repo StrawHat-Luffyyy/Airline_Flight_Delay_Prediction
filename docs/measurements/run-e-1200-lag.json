@@ -1,0 +1,1491 @@
+{
+  "url": "http://127.0.0.1:3001",
+  "everySeconds": 2,
+  "samples": [
+    {
+      "t": 0,
+      "at": "2026-10-22T14:56:07.220Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 2,
+      "at": "2026-10-22T14:56:09.227Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 4,
+      "at": "2026-10-22T14:56:11.240Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 6,
+      "at": "2026-10-22T14:56:13.250Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 8,
+      "at": "2026-10-22T14:56:15.254Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 10,
+      "at": "2026-10-22T14:56:17.256Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 12.1,
+      "at": "2026-10-22T14:56:19.271Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 14.1,
+      "at": "2026-10-22T14:56:21.279Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 16.1,
+      "at": "2026-10-22T14:56:23.290Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 18.1,
+      "at": "2026-10-22T14:56:25.292Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 20.1,
+      "at": "2026-10-22T14:56:27.301Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 22.1,
+      "at": "2026-10-22T14:56:29.307Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 24.1,
+      "at": "2026-10-22T14:56:31.308Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 26.1,
+      "at": "2026-10-22T14:56:33.319Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 28.1,
+      "at": "2026-10-22T14:56:35.330Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 30.1,
+      "at": "2026-10-22T14:56:37.334Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 32.1,
+      "at": "2026-10-22T14:56:39.348Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 34.1,
+      "at": "2026-10-22T14:56:41.361Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 36.1,
+      "at": "2026-10-22T14:56:43.366Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 38.2,
+      "at": "2026-10-22T14:56:45.371Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 40.2,
+      "at": "2026-10-22T14:56:47.378Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 42.2,
+      "at": "2026-10-22T14:56:49.379Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 44.2,
+      "at": "2026-10-22T14:56:51.378Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 46.2,
+      "at": "2026-10-22T14:56:53.383Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 48.2,
+      "at": "2026-10-22T14:56:55.388Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 50.2,
+      "at": "2026-10-22T14:56:57.393Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 52.2,
+      "at": "2026-10-22T14:56:59.402Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 54.2,
+      "at": "2026-10-22T14:57:01.401Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 56.2,
+      "at": "2026-10-22T14:57:03.411Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 58.2,
+      "at": "2026-10-22T14:57:05.412Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 60.2,
+      "at": "2026-10-22T14:57:07.420Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 62.2,
+      "at": "2026-10-22T14:57:09.422Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 64.2,
+      "at": "2026-10-22T14:57:11.437Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 66.2,
+      "at": "2026-10-22T14:57:13.452Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 68.2,
+      "at": "2026-10-22T14:57:15.460Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 70.3,
+      "at": "2026-10-22T14:57:17.476Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 72.3,
+      "at": "2026-10-22T14:57:19.480Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 74.3,
+      "at": "2026-10-22T14:57:21.494Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 76.3,
+      "at": "2026-10-22T14:57:23.498Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 78.3,
+      "at": "2026-10-22T14:57:25.508Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 80.3,
+      "at": "2026-10-22T14:57:27.516Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 82.3,
+      "at": "2026-10-22T14:57:29.520Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 84.3,
+      "at": "2026-10-22T14:57:31.522Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 86.3,
+      "at": "2026-10-22T14:57:33.537Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 88.3,
+      "at": "2026-10-22T14:57:35.554Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 90.3,
+      "at": "2026-10-22T14:57:37.560Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 92.3,
+      "at": "2026-10-22T14:57:39.563Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 94.3,
+      "at": "2026-10-22T14:57:41.568Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 96.4,
+      "at": "2026-10-22T14:57:43.587Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 98.4,
+      "at": "2026-10-22T14:57:45.589Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 100.4,
+      "at": "2026-10-22T14:57:47.598Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 102.4,
+      "at": "2026-10-22T14:57:49.603Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 104.4,
+      "at": "2026-10-22T14:57:51.607Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 106.4,
+      "at": "2026-10-22T14:57:53.618Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 108.4,
+      "at": "2026-10-22T14:57:55.622Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 110.4,
+      "at": "2026-10-22T14:57:57.625Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 112.4,
+      "at": "2026-10-22T14:57:59.629Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 114.4,
+      "at": "2026-10-22T14:58:01.637Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 116.4,
+      "at": "2026-10-22T14:58:03.647Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 118.4,
+      "at": "2026-10-22T14:58:05.655Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 120.4,
+      "at": "2026-10-22T14:58:07.668Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 122.5,
+      "at": "2026-10-22T14:58:09.671Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 124.5,
+      "at": "2026-10-22T14:58:11.685Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 126.5,
+      "at": "2026-10-22T14:58:13.698Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 128.5,
+      "at": "2026-10-22T14:58:15.715Z",
+      "state": "live",
+      "reason": null,
+      "lag": 3296,
+      "stored": 2,
+      "throughput": 0
+    },
+    {
+      "t": 130.5,
+      "at": "2026-10-22T14:58:17.731Z",
+      "state": "live",
+      "reason": null,
+      "lag": 3296,
+      "stored": 2,
+      "throughput": 0
+    },
+    {
+      "t": 132.5,
+      "at": "2026-10-22T14:58:19.739Z",
+      "state": "live",
+      "reason": null,
+      "lag": 8158,
+      "stored": 2,
+      "throughput": 0
+    },
+    {
+      "t": 134.5,
+      "at": "2026-10-22T14:58:21.739Z",
+      "state": "live",
+      "reason": null,
+      "lag": 8158,
+      "stored": 2,
+      "throughput": 0
+    },
+    {
+      "t": 136.5,
+      "at": "2026-10-22T14:58:23.739Z",
+      "state": "live",
+      "reason": null,
+      "lag": 9958,
+      "stored": 3280,
+      "throughput": 733
+    },
+    {
+      "t": 138.5,
+      "at": "2026-10-22T14:58:25.745Z",
+      "state": "live",
+      "reason": null,
+      "lag": 9958,
+      "stored": 3280,
+      "throughput": 916
+    },
+    {
+      "t": 140.5,
+      "at": "2026-10-22T14:58:27.756Z",
+      "state": "live",
+      "reason": null,
+      "lag": 10258,
+      "stored": 7502,
+      "throughput": 1319
+    },
+    {
+      "t": 142.6,
+      "at": "2026-10-22T14:58:29.771Z",
+      "state": "live",
+      "reason": null,
+      "lag": 10258,
+      "stored": 7502,
+      "throughput": 739
+    },
+    {
+      "t": 144.6,
+      "at": "2026-10-22T14:58:31.779Z",
+      "state": "live",
+      "reason": null,
+      "lag": 11687,
+      "stored": 10873,
+      "throughput": 733
+    },
+    {
+      "t": 146.6,
+      "at": "2026-10-22T14:58:33.787Z",
+      "state": "live",
+      "reason": null,
+      "lag": 11687,
+      "stored": 10873,
+      "throughput": 935
+    },
+    {
+      "t": 148.6,
+      "at": "2026-10-22T14:58:35.787Z",
+      "state": "live",
+      "reason": null,
+      "lag": 11445,
+      "stored": 16363,
+      "throughput": 563
+    },
+    {
+      "t": 150.6,
+      "at": "2026-10-22T14:58:37.795Z",
+      "state": "live",
+      "reason": null,
+      "lag": 11445,
+      "stored": 16363,
+      "throughput": 2229
+    },
+    {
+      "t": 152.6,
+      "at": "2026-10-22T14:58:39.800Z",
+      "state": "live",
+      "reason": null,
+      "lag": 8158,
+      "stored": 24002,
+      "throughput": 2242
+    },
+    {
+      "t": 154.6,
+      "at": "2026-10-22T14:58:41.814Z",
+      "state": "live",
+      "reason": null,
+      "lag": 8158,
+      "stored": 24002,
+      "throughput": 1497
+    },
+    {
+      "t": 156.6,
+      "at": "2026-10-22T14:58:43.821Z",
+      "state": "live",
+      "reason": null,
+      "lag": 5578,
+      "stored": 31502,
+      "throughput": 2229
+    },
+    {
+      "t": 158.6,
+      "at": "2026-10-22T14:58:45.835Z",
+      "state": "live",
+      "reason": null,
+      "lag": 5578,
+      "stored": 31502,
+      "throughput": 1481
+    },
+    {
+      "t": 160.6,
+      "at": "2026-10-22T14:58:47.841Z",
+      "state": "live",
+      "reason": null,
+      "lag": 4298,
+      "stored": 37582,
+      "throughput": 1463
+    },
+    {
+      "t": 162.6,
+      "at": "2026-10-22T14:58:49.855Z",
+      "state": "live",
+      "reason": null,
+      "lag": 4298,
+      "stored": 37582,
+      "throughput": 1801
+    },
+    {
+      "t": 164.7,
+      "at": "2026-10-22T14:58:51.869Z",
+      "state": "live",
+      "reason": null,
+      "lag": 120,
+      "stored": 46569,
+      "throughput": 2546
+    },
+    {
+      "t": 166.7,
+      "at": "2026-10-22T14:58:53.869Z",
+      "state": "live",
+      "reason": null,
+      "lag": 120,
+      "stored": 46569,
+      "throughput": 1765
+    },
+    {
+      "t": 168.7,
+      "at": "2026-10-22T14:58:55.883Z",
+      "state": "live",
+      "reason": null,
+      "lag": 332,
+      "stored": 51240,
+      "throughput": 1193
+    },
+    {
+      "t": 170.7,
+      "at": "2026-10-22T14:58:57.888Z",
+      "state": "live",
+      "reason": null,
+      "lag": 332,
+      "stored": 51240,
+      "throughput": 997
+    },
+    {
+      "t": 172.7,
+      "at": "2026-10-22T14:58:59.897Z",
+      "state": "live",
+      "reason": null,
+      "lag": 888,
+      "stored": 55465,
+      "throughput": 1238
+    },
+    {
+      "t": 174.7,
+      "at": "2026-10-22T14:59:01.903Z",
+      "state": "live",
+      "reason": null,
+      "lag": 888,
+      "stored": 55465,
+      "throughput": 841
+    },
+    {
+      "t": 176.7,
+      "at": "2026-10-22T14:59:03.906Z",
+      "state": "live",
+      "reason": null,
+      "lag": 1080,
+      "stored": 60000,
+      "throughput": 1082
+    },
+    {
+      "t": 178.7,
+      "at": "2026-10-22T14:59:05.911Z",
+      "state": "live",
+      "reason": null,
+      "lag": 1080,
+      "stored": 60000,
+      "throughput": 1540
+    },
+    {
+      "t": 180.7,
+      "at": "2026-10-22T14:59:07.918Z",
+      "state": "live",
+      "reason": null,
+      "lag": 720,
+      "stored": 65398,
+      "throughput": 1143
+    },
+    {
+      "t": 182.7,
+      "at": "2026-10-22T14:59:09.923Z",
+      "state": "live",
+      "reason": null,
+      "lag": 720,
+      "stored": 65398,
+      "throughput": 1466
+    },
+    {
+      "t": 184.7,
+      "at": "2026-10-22T14:59:11.938Z",
+      "state": "live",
+      "reason": null,
+      "lag": 120,
+      "stored": 70680,
+      "throughput": 1312
+    },
+    {
+      "t": 186.7,
+      "at": "2026-10-22T14:59:13.942Z",
+      "state": "live",
+      "reason": null,
+      "lag": 120,
+      "stored": 70680,
+      "throughput": 1193
+    },
+    {
+      "t": 188.7,
+      "at": "2026-10-22T14:59:15.954Z",
+      "state": "live",
+      "reason": null,
+      "lag": 1200,
+      "stored": 74400,
+      "throughput": 1004
+    },
+    {
+      "t": 190.8,
+      "at": "2026-10-22T14:59:17.969Z",
+      "state": "live",
+      "reason": null,
+      "lag": 1200,
+      "stored": 74400,
+      "throughput": 655
+    },
+    {
+      "t": 192.8,
+      "at": "2026-10-22T14:59:19.982Z",
+      "state": "live",
+      "reason": null,
+      "lag": 2283,
+      "stored": 78180,
+      "throughput": 1112
+    },
+    {
+      "t": 194.8,
+      "at": "2026-10-22T14:59:21.996Z",
+      "state": "live",
+      "reason": null,
+      "lag": 2283,
+      "stored": 78180,
+      "throughput": 741
+    },
+    {
+      "t": 196.8,
+      "at": "2026-10-22T14:59:24.008Z",
+      "state": "live",
+      "reason": null,
+      "lag": 1680,
+      "stored": 83520,
+      "throughput": 1306
+    },
+    {
+      "t": 198.8,
+      "at": "2026-10-22T14:59:26.017Z",
+      "state": "live",
+      "reason": null,
+      "lag": 1680,
+      "stored": 83520,
+      "throughput": 1516
+    },
+    {
+      "t": 200.8,
+      "at": "2026-10-22T14:59:28.023Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 90006,
+      "throughput": 1923
+    },
+    {
+      "t": 202.8,
+      "at": "2026-10-22T14:59:30.039Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 90006,
+      "throughput": 1310
+    },
+    {
+      "t": 204.8,
+      "at": "2026-10-22T14:59:32.056Z",
+      "state": "live",
+      "reason": null,
+      "lag": 333,
+      "stored": 94795,
+      "throughput": 1244
+    },
+    {
+      "t": 206.8,
+      "at": "2026-10-22T14:59:34.068Z",
+      "state": "live",
+      "reason": null,
+      "lag": 333,
+      "stored": 94795,
+      "throughput": 1136
+    },
+    {
+      "t": 208.9,
+      "at": "2026-10-22T14:59:36.078Z",
+      "state": "live",
+      "reason": null,
+      "lag": 1320,
+      "stored": 98403,
+      "throughput": 975
+    },
+    {
+      "t": 210.9,
+      "at": "2026-10-22T14:59:38.088Z",
+      "state": "live",
+      "reason": null,
+      "lag": 1320,
+      "stored": 98403,
+      "throughput": 988
+    },
+    {
+      "t": 212.9,
+      "at": "2026-10-22T14:59:40.097Z",
+      "state": "live",
+      "reason": null,
+      "lag": 74,
+      "stored": 104483,
+      "throughput": 1355
+    },
+    {
+      "t": 214.9,
+      "at": "2026-10-22T14:59:42.111Z",
+      "state": "live",
+      "reason": null,
+      "lag": 74,
+      "stored": 104483,
+      "throughput": 1542
+    },
+    {
+      "t": 216.9,
+      "at": "2026-10-22T14:59:44.114Z",
+      "state": "live",
+      "reason": null,
+      "lag": 76,
+      "stored": 109320,
+      "throughput": 1191
+    },
+    {
+      "t": 218.9,
+      "at": "2026-10-22T14:59:46.127Z",
+      "state": "live",
+      "reason": null,
+      "lag": 76,
+      "stored": 109320,
+      "throughput": 1217
+    },
+    {
+      "t": 220.9,
+      "at": "2026-10-22T14:59:48.137Z",
+      "state": "live",
+      "reason": null,
+      "lag": 600,
+      "stored": 113707,
+      "throughput": 1181
+    },
+    {
+      "t": 222.9,
+      "at": "2026-10-22T14:59:50.148Z",
+      "state": "live",
+      "reason": null,
+      "lag": 600,
+      "stored": 113707,
+      "throughput": 869
+    },
+    {
+      "t": 224.9,
+      "at": "2026-10-22T14:59:52.163Z",
+      "state": "live",
+      "reason": null,
+      "lag": 2880,
+      "stored": 116211,
+      "throughput": 714
+    },
+    {
+      "t": 226.9,
+      "at": "2026-10-22T14:59:54.168Z",
+      "state": "live",
+      "reason": null,
+      "lag": 2880,
+      "stored": 116211,
+      "throughput": 553
+    },
+    {
+      "t": 229,
+      "at": "2026-10-22T14:59:56.176Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 1240
+    },
+    {
+      "t": 231,
+      "at": "2026-10-22T14:59:58.182Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 448
+    },
+    {
+      "t": 233,
+      "at": "2026-10-22T15:00:00.198Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 235,
+      "at": "2026-10-22T15:00:02.207Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 237,
+      "at": "2026-10-22T15:00:04.221Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 239,
+      "at": "2026-10-22T15:00:06.231Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 241,
+      "at": "2026-10-22T15:00:08.238Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 243,
+      "at": "2026-10-22T15:00:10.248Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 245,
+      "at": "2026-10-22T15:00:12.253Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 247,
+      "at": "2026-10-22T15:00:14.256Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 249,
+      "at": "2026-10-22T15:00:16.264Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 251.1,
+      "at": "2026-10-22T15:00:18.278Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 253.1,
+      "at": "2026-10-22T15:00:20.290Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 255.1,
+      "at": "2026-10-22T15:00:22.291Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 257.1,
+      "at": "2026-10-22T15:00:24.298Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 259.1,
+      "at": "2026-10-22T15:00:26.311Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 261.1,
+      "at": "2026-10-22T15:00:28.316Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 263.1,
+      "at": "2026-10-22T15:00:30.327Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 265.1,
+      "at": "2026-10-22T15:00:32.339Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 267.1,
+      "at": "2026-10-22T15:00:34.347Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 269.1,
+      "at": "2026-10-22T15:00:36.354Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 271.1,
+      "at": "2026-10-22T15:00:38.355Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 273.1,
+      "at": "2026-10-22T15:00:40.355Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 275.1,
+      "at": "2026-10-22T15:00:42.367Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 277.2,
+      "at": "2026-10-22T15:00:44.381Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 279.2,
+      "at": "2026-10-22T15:00:46.383Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 281.2,
+      "at": "2026-10-22T15:00:48.385Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 283.2,
+      "at": "2026-10-22T15:00:50.395Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 285.2,
+      "at": "2026-10-22T15:00:52.408Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 287.2,
+      "at": "2026-10-22T15:00:54.411Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 289.2,
+      "at": "2026-10-22T15:00:56.434Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 291.2,
+      "at": "2026-10-22T15:00:58.442Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 293.2,
+      "at": "2026-10-22T15:01:00.443Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 295.2,
+      "at": "2026-10-22T15:01:02.458Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 297.2,
+      "at": "2026-10-22T15:01:04.459Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 299.3,
+      "at": "2026-10-22T15:01:06.475Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 301.3,
+      "at": "2026-10-22T15:01:08.484Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 303.3,
+      "at": "2026-10-22T15:01:10.499Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 305.3,
+      "at": "2026-10-22T15:01:12.499Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 307.3,
+      "at": "2026-10-22T15:01:14.513Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 309.3,
+      "at": "2026-10-22T15:01:16.531Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 311.3,
+      "at": "2026-10-22T15:01:18.544Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 313.3,
+      "at": "2026-10-22T15:01:20.546Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 315.3,
+      "at": "2026-10-22T15:01:22.553Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 317.3,
+      "at": "2026-10-22T15:01:24.559Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 319.3,
+      "at": "2026-10-22T15:01:26.561Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 321.4,
+      "at": "2026-10-22T15:01:28.573Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 323.4,
+      "at": "2026-10-22T15:01:30.582Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 325.4,
+      "at": "2026-10-22T15:01:32.584Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 327.4,
+      "at": "2026-10-22T15:01:34.591Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    },
+    {
+      "t": 329.4,
+      "at": "2026-10-22T15:01:36.603Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 120000,
+      "throughput": 0
+    }
+  ]
+}
