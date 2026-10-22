@@ -1,0 +1,543 @@
+{
+  "measuredAt": {
+    "$date": "2026-10-22T14:47:42.515Z"
+  },
+  "statsRuns": [
+    {
+      "startedAt": {
+        "$date": "2026-10-12T13:01:26.992Z"
+      },
+      "totalMs": 117900,
+      "peakRssMb": 106,
+      "collections": [
+        {
+          "collection": "stats_daily",
+          "ms": 24548
+        },
+        {
+          "collection": "stats_daily_origin",
+          "ms": 19252
+        },
+        {
+          "collection": "stats_route",
+          "ms": 18538
+        },
+        {
+          "collection": "stats_airport_hour",
+          "ms": 21925
+        },
+        {
+          "collection": "stats_cause_monthly",
+          "ms": 10718
+        },
+        {
+          "collection": "stats_cancellation",
+          "ms": 6784
+        },
+        {
+          "collection": "stats_delay_buckets",
+          "ms": 16060
+        }
+      ]
+    },
+    {
+      "startedAt": {
+        "$date": "2026-10-12T13:20:53.778Z"
+      },
+      "totalMs": 110208,
+      "peakRssMb": 106,
+      "collections": [
+        {
+          "collection": "stats_daily",
+          "ms": 22060
+        },
+        {
+          "collection": "stats_daily_origin",
+          "ms": 19441
+        },
+        {
+          "collection": "stats_route",
+          "ms": 18065
+        },
+        {
+          "collection": "stats_airport_hour",
+          "ms": 21215
+        },
+        {
+          "collection": "stats_cause_monthly",
+          "ms": 8395
+        },
+        {
+          "collection": "stats_cancellation",
+          "ms": 6099
+        },
+        {
+          "collection": "stats_delay_buckets",
+          "ms": 14862
+        }
+      ]
+    },
+    {
+      "startedAt": {
+        "$date": "2026-10-12T13:48:11.145Z"
+      },
+      "totalMs": 127346,
+      "peakRssMb": 102,
+      "collections": [
+        {
+          "collection": "stats_daily",
+          "ms": 22032
+        },
+        {
+          "collection": "stats_daily_origin",
+          "ms": 33634
+        },
+        {
+          "collection": "stats_route",
+          "ms": 18616
+        },
+        {
+          "collection": "stats_airport_hour",
+          "ms": 20891
+        },
+        {
+          "collection": "stats_cause_monthly",
+          "ms": 9768
+        },
+        {
+          "collection": "stats_cancellation",
+          "ms": 5815
+        },
+        {
+          "collection": "stats_delay_buckets",
+          "ms": 16038
+        }
+      ]
+    },
+    {
+      "startedAt": {
+        "$date": "2026-10-13T15:31:45.479Z"
+      },
+      "totalMs": 129472,
+      "peakRssMb": 106,
+      "collections": [
+        {
+          "collection": "stats_daily",
+          "ms": 24648
+        },
+        {
+          "collection": "stats_daily_origin",
+          "ms": 30993
+        },
+        {
+          "collection": "stats_route",
+          "ms": 23543
+        },
+        {
+          "collection": "stats_airport_hour",
+          "ms": 19960
+        },
+        {
+          "collection": "stats_cause_monthly",
+          "ms": 9015
+        },
+        {
+          "collection": "stats_cancellation",
+          "ms": 5898
+        },
+        {
+          "collection": "stats_delay_buckets",
+          "ms": 14855
+        }
+      ]
+    },
+    {
+      "startedAt": {
+        "$date": "2026-10-15T13:15:54.264Z"
+      },
+      "totalMs": 137878,
+      "peakRssMb": 106,
+      "collections": [
+        {
+          "collection": "stats_daily",
+          "ms": 22965
+        },
+        {
+          "collection": "stats_daily_origin",
+          "ms": 33784
+        },
+        {
+          "collection": "stats_route",
+          "ms": 20782
+        },
+        {
+          "collection": "stats_airport_hour",
+          "ms": 19269
+        },
+        {
+          "collection": "stats_cause_monthly",
+          "ms": 8278
+        },
+        {
+          "collection": "stats_cancellation",
+          "ms": 5666
+        },
+        {
+          "collection": "stats_delay_buckets",
+          "ms": 13542
+        },
+        {
+          "collection": "stats_dow_hour",
+          "ms": 12980
+        }
+      ]
+    },
+    {
+      "startedAt": {
+        "$date": "2026-10-16T12:45:46.774Z"
+      },
+      "totalMs": 214872,
+      "peakRssMb": 91,
+      "collections": [
+        {
+          "collection": "stats_daily",
+          "ms": 33492
+        },
+        {
+          "collection": "stats_daily_origin",
+          "ms": 49195
+        },
+        {
+          "collection": "stats_route",
+          "ms": 38320
+        },
+        {
+          "collection": "stats_airport_hour",
+          "ms": 27492
+        },
+        {
+          "collection": "stats_cause_monthly",
+          "ms": 13308
+        },
+        {
+          "collection": "stats_cancellation",
+          "ms": 10537
+        },
+        {
+          "collection": "stats_delay_buckets",
+          "ms": 22748
+        },
+        {
+          "collection": "stats_dow_hour",
+          "ms": 18891
+        }
+      ]
+    },
+    {
+      "startedAt": {
+        "$date": "2026-10-22T14:39:58.908Z"
+      },
+      "totalMs": 370757,
+      "peakRssMb": 106,
+      "collections": [
+        {
+          "collection": "stats_daily",
+          "ms": 91794
+        },
+        {
+          "collection": "stats_daily_origin",
+          "ms": 82645
+        },
+        {
+          "collection": "stats_route",
+          "ms": 67367
+        },
+        {
+          "collection": "stats_airport_hour",
+          "ms": 43062
+        },
+        {
+          "collection": "stats_cause_monthly",
+          "ms": 16047
+        },
+        {
+          "collection": "stats_cancellation",
+          "ms": 12045
+        },
+        {
+          "collection": "stats_delay_buckets",
+          "ms": 25534
+        },
+        {
+          "collection": "stats_dow_hour",
+          "ms": 30023
+        }
+      ]
+    }
+  ],
+  "lookupRuns": [
+    {
+      "startedAt": {
+        "$date": "2026-10-13T08:52:22.787Z"
+      },
+      "finishedAt": {
+        "$date": "2026-10-13T08:52:55.468Z"
+      },
+      "status": "completed",
+      "m": 50,
+      "cellsMs": 26063,
+      "cellsDocs": 249130,
+      "lookupDocs": 36420
+    },
+    {
+      "startedAt": {
+        "$date": "2026-10-16T12:49:25.907Z"
+      },
+      "finishedAt": {
+        "$date": "2026-10-16T12:50:30.587Z"
+      },
+      "status": "completed",
+      "m": 50,
+      "cellsMs": 47441,
+      "cellsDocs": 249130,
+      "lookupDocs": 36420
+    },
+    {
+      "startedAt": {
+        "$date": "2026-10-22T14:46:14.850Z"
+      },
+      "finishedAt": {
+        "$date": "2026-10-22T14:47:20.051Z"
+      },
+      "status": "completed",
+      "m": 50,
+      "cellsMs": 52868,
+      "cellsDocs": 249130,
+      "lookupDocs": 36420
+    }
+  ],
+  "latestIngest": {
+    "startedAt": {
+      "$date": "2026-10-16T12:33:57.282Z"
+    },
+    "finishedAt": {
+      "$date": "2026-10-16T12:40:57.840Z"
+    },
+    "file": "flights.csv",
+    "status": "completed",
+    "mode": "drop",
+    "rowsRead": 5819079,
+    "rowsInserted": 5819079,
+    "rowsRejected": 0,
+    "rejectReasons": {},
+    "peakRssMb": 362
+  },
+  "latestResolve": {
+    "startedAt": {
+      "$date": "2026-10-16T12:41:03.402Z"
+    },
+    "mode": "apply",
+    "thresholds": {
+      "minVotes": 20,
+      "minTopShare": 0.99
+    },
+    "referenceMonths": [
+      9,
+      11
+    ],
+    "referenceRows": 932918,
+    "referenceKeys": 127099,
+    "ambiguousKeys": 32,
+    "rowsWithNumericIds": 486165,
+    "rowsMatched": 357575,
+    "distinctIds": 307,
+    "mappedIds": 282,
+    "unmappedIds": [
+      "10141",
+      "10146",
+      "10165",
+      "10333",
+      "10577",
+      "10581",
+      "10666",
+      "10731",
+      "11013",
+      "11150",
+      "11315",
+      "11503",
+      "11587",
+      "11898",
+      "12129",
+      "12335",
+      "12343",
+      "13360",
+      "13502",
+      "13795",
+      "14098",
+      "14150",
+      "14222",
+      "14520",
+      "15323"
+    ],
+    "rowsFullyResolved": 483018,
+    "rowsOriginResolved": 484533,
+    "rowsDestResolved": 484535,
+    "rowsUpdated": 486050,
+    "status": "completed",
+    "finishedAt": {
+      "$date": "2026-10-16T12:43:05.839Z"
+    },
+    "peakRssMb": 443
+  },
+  "latestExport": {
+    "startedAt": {
+      "$date": "2026-10-13T09:25:05.901Z"
+    },
+    "finishedAt": {
+      "$date": "2026-10-13T09:28:47.555Z"
+    },
+    "status": "completed",
+    "dir": "D:\\Projects\\2015 Flight Delays and Cancellations\\data\\export",
+    "trainRows": 4299046,
+    "testRows": 1411835,
+    "nullScheduledTime": 0,
+    "excludedUnresolvedAirport": 3127,
+    "excludedNoOutcome": 105071,
+    "peakRssMb": 284
+  },
+  "database": {
+    "collections": 21,
+    "objects": 6985597,
+    "dataMB": 4382.46,
+    "storageMB": 1009.31,
+    "indexesMB": 429.83
+  },
+  "collections": {
+    "airlines": {
+      "count": 14,
+      "dataMB": 0,
+      "storageMB": 0.02,
+      "indexesMB": 0.02
+    },
+    "airports": {
+      "count": 322,
+      "dataMB": 0.05,
+      "storageMB": 0.07,
+      "indexesMB": 0.02
+    },
+    "delay_lookup": {
+      "count": 36420,
+      "dataMB": 6.49,
+      "storageMB": 2.83,
+      "indexesMB": 1.15
+    },
+    "delay_lookup_cells": {
+      "count": 249130,
+      "dataMB": 56.55,
+      "storageMB": 20.25,
+      "indexesMB": 5.39
+    },
+    "export_runs": {
+      "count": 2,
+      "dataMB": 0,
+      "storageMB": 0.04,
+      "indexesMB": 0.04
+    },
+    "flights": {
+      "count": 5819079,
+      "dataMB": 3924.36,
+      "storageMB": 903.32,
+      "indexesMB": 368.55
+    },
+    "ingest_runs": {
+      "count": 17,
+      "dataMB": 0,
+      "storageMB": 0.04,
+      "indexesMB": 0.04
+    },
+    "lookup_runs": {
+      "count": 3,
+      "dataMB": 0,
+      "storageMB": 0.04,
+      "indexesMB": 0.04
+    },
+    "model_runs": {
+      "count": 2,
+      "dataMB": 0.01,
+      "storageMB": 0.04,
+      "indexesMB": 0.11
+    },
+    "resolve_runs": {
+      "count": 5,
+      "dataMB": 0,
+      "storageMB": 0.04,
+      "indexesMB": 0.04
+    },
+    "stats_airport_hour": {
+      "count": 4259,
+      "dataMB": 1.6,
+      "storageMB": 1.08,
+      "indexesMB": 0.09
+    },
+    "stats_cancellation": {
+      "count": 440,
+      "dataMB": 0.07,
+      "storageMB": 0.05,
+      "indexesMB": 0.02
+    },
+    "stats_cause_monthly": {
+      "count": 162,
+      "dataMB": 0.03,
+      "storageMB": 0.05,
+      "indexesMB": 0.02
+    },
+    "stats_daily": {
+      "count": 4926,
+      "dataMB": 2.19,
+      "storageMB": 1.55,
+      "indexesMB": 0.17
+    },
+    "stats_daily_origin": {
+      "count": 386704,
+      "dataMB": 117.53,
+      "storageMB": 39.91,
+      "indexesMB": 23.27
+    },
+    "stats_delay_buckets": {
+      "count": 8,
+      "dataMB": 0,
+      "storageMB": 0.04,
+      "indexesMB": 0.02
+    },
+    "stats_dow_hour": {
+      "count": 168,
+      "dataMB": 0.04,
+      "storageMB": 0.06,
+      "indexesMB": 0.02
+    },
+    "stats_route": {
+      "count": 4695,
+      "dataMB": 1.43,
+      "storageMB": 1.03,
+      "indexesMB": 0.14
+    },
+    "stats_runs": {
+      "count": 7,
+      "dataMB": 0.01,
+      "storageMB": 0.04,
+      "indexesMB": 0.04
+    },
+    "stream_flights": {
+      "count": 479230,
+      "dataMB": 272.09,
+      "storageMB": 38.79,
+      "indexesMB": 30.58
+    },
+    "stream_stats": {
+      "count": 4,
+      "dataMB": 0,
+      "storageMB": 0.04,
+      "indexesMB": 0.07
+    }
+  }
+}

@@ -39,7 +39,7 @@ Then build the database. The steps must run in this order:
 | 5 | `npm run build:lookup` | Builds `delay_lookup`, the historical delay rates used as model features (train split only) | 62 s |
 | 6 | `npm run ml:register` | Stores `ml/artifacts/metrics.json` in `model_runs`, which the Model page reads | 4 s |
 
-Times are from the final clean-clone audit (2026-10-18): a fresh `git clone`, a new empty MongoDB volume, and only these README steps, on an i5-12450H laptop with an NVMe SSD. All six steps took 779 s in total. Earlier runs are logged in `docs/DECISIONS.md` (for example 1,007 s while other jobs shared the machine, Phase 7).
+Times are from the final clean-clone audit (2026-10-18): a fresh `git clone`, a new empty MongoDB volume, and only these README steps, on an i5-12450H laptop with an NVMe SSD. All six steps took 779 s in total. Earlier runs are logged in `docs/DECISIONS.md` (for example 1,007 s while other jobs shared the machine, Phase 7). The audit's console output was not saved to a file. The latest saved runs in the working database are in `docs/measurements/batch-runs-2026-10-22.json`: `build:stats` took 370.8 s and `build:lookup` 65.2 s on 2026-10-22, with the Kafka broker and the 479,230-document `stream_flights` collection loaded. Timings on this laptop vary that much with what else is running.
 
 Start the API and the dashboard:
 

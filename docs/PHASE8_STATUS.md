@@ -292,7 +292,7 @@ MSYS_NO_PATHCONV=1 docker compose exec kafka /opt/kafka/bin/kafka-consumer-group
 ## 5. Open items
 
 ### Leftover data
-- **Stale figure (found in 8g):** `docs/BIGDATA_JUSTIFICATION.md` (Volume and schema trade-offs) still quotes 137.9 s for `build:stats`, from the 2026-10-15 `stats_runs` record. The newest record (2026-10-16) took 214,872 ms. This predates Phase 8 and was left unchanged.
+- **Stale figures (fixed after 8g):** `build:stats` and `build:lookup` were re-measured on 2026-10-22 (370.8 s and 65.2 s); SCHEMA.md and BIGDATA_JUSTIFICATION.md now cite `docs/measurements/batch-runs-2026-10-22.json` with the full range of saved runs.
 - **`flight_delay_crash_test`** (MongoDB) is still present: 479,230 unscored `stream_flights` documents plus `stream_stats`, left from the 8c crash test. The bash guard hook blocked dropping it from Claude. The user can drop it from a terminal: `docker compose exec mongo mongosh flight_delay_crash_test --eval "db.dropDatabase()"`. Its Kafka group `crash-test` was already deleted.
 - **`flights.raw`** holds 484,230 messages after the 8g runs: run C (all of December) plus the 5,000-event re-replay. Retention is 168 hours.
 - **`stream_stats`** in `flight_delay` holds the two producer runs since the last `stream:reset` (run C and the re-replay) plus consumer heartbeats, which expire after 6 h. The 8b to 8d run records, including the pre-fix `achievedRate: 11`, were cleared by the 8g resets.
