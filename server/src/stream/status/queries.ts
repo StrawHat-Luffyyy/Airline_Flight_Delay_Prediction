@@ -89,6 +89,24 @@ export const REFUSED: Filter<StreamFlightDoc> = {
   scoreError: { $type: 'string' },
 };
 
+/**
+ * Flights without a prediction, and how many of those were refused, in one read. Two separate
+ * counts raced a consumer inserting refused flights: `refused` overtook the total, `unscored` went
+ * negative and the status response failed validation (found in reliability run R1).
+ */
+export function noPredictionPipeline(): Document[] {
+  return [
+    { $match: NO_PREDICTION },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: 1 },
+        refused: { $sum: { $cond: [{ $eq: [{ $type: '$scoreError' }, 'string'] }, 1, 0] } },
+      },
+    },
+  ];
+}
+
 export interface ModelKey {
   modelVersion: string;
   threshold: number;
@@ -160,7 +178,7 @@ async function loadTotals(db: Db): Promise<Pick<StreamMetrics, 'stored' | 'total
     )
   ).flat();
 
-  const [groups, noPrediction, refused] = await Promise.all([
+  const [groups, withoutPrediction] = await Promise.all([
     Promise.all(
       keys.map(async (key): Promise<TotalsGroup> => {
         const f = confusionFilters(key.modelVersion, key.threshold);
@@ -177,16 +195,18 @@ async function loadTotals(db: Db): Promise<Pick<StreamMetrics, 'stored' | 'total
         return { ...key, ...metrics, scored: metrics.n + noOutcome, noOutcome };
       }),
     ),
-    count(NO_PREDICTION),
-    count(REFUSED),
+    flights
+      .aggregate<{ total: number; refused: number }>(noPredictionPipeline(), options)
+      .toArray()
+      .then(([row]) => row ?? { total: 0, refused: 0 }),
   ]);
   const scored = groups.reduce((sum, group) => sum + group.scored, 0);
   return {
     stored: {
-      flights: scored + noPrediction,
+      flights: scored + withoutPrediction.total,
       scored,
-      refused,
-      unscored: noPrediction - refused,
+      refused: withoutPrediction.refused,
+      unscored: withoutPrediction.total - withoutPrediction.refused,
     },
     totals: { groups },
   };
@@ -235,6 +255,7 @@ export async function loadHeartbeat(db: Db, groupId: string): Promise<Heartbeat 
     lastSeenAt: doc.lastSeenAt,
     instanceId: doc.instanceId,
     throughput: doc.throughput,
+    ...(doc.lastBatchAt === undefined ? {} : { lastBatchAt: doc.lastBatchAt }),
     ...(doc.error === undefined ? {} : { error: doc.error }),
   };
 }

@@ -78,6 +78,8 @@ export const StreamStatusResponseSchema = z.object({
     fresh: z.boolean(),
     /** Messages per second over the newest heartbeat's interval; null unless fresh. */
     throughput: z.number().nullable(),
+    /** Seconds since the consumer last finished a batch (progress, not liveness); null if unknown. */
+    lastBatchAgeSeconds: z.number().nullable(),
     error: z.string().nullable(),
     heartbeatIntervalSeconds: z.number().positive(),
     staleAfterSeconds: z.number().positive(),

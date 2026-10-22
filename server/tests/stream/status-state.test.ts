@@ -4,6 +4,7 @@ import {
   HEARTBEAT_INTERVAL_MS,
   HEARTBEAT_TTL_SECONDS,
   STALE_AFTER_MS,
+  STALL_AFTER_MS,
   describeConsumer,
   decideState,
 } from '../../src/stream/status/state.js';
@@ -158,5 +159,109 @@ describe('computeLag', () => {
       { partition: 2, committed: 5, end: 50, lag: 30 },
     ]);
     expect(lag.total).toBe(70);
+  });
+});
+
+describe('stalled consumer (alive but not progressing)', () => {
+  const heartbeat = (lastBatchMsAgo: number) =>
+    describeConsumer(
+      {
+        status: 'running',
+        lastSeenAt: ago(1_000),
+        instanceId: 'h-1',
+        throughput: 0,
+        lastBatchAt: ago(lastBatchMsAgo),
+      },
+      NOW,
+    );
+  /** `waitingSeconds`: how long the API has seen lag above 0 without a break. */
+  const kafkaWithLag = (total: number, waitingSeconds: number | null = 60) => ({
+    reachable: true,
+    reason: null,
+    lag: { total, waitingSeconds },
+  });
+
+  it('reports how long ago the consumer last stored a batch', () => {
+    expect(heartbeat(20_000)).toMatchObject({ fresh: true, lastBatchAgeSeconds: 20 });
+  });
+
+  it('is degraded when messages are waiting and nothing was stored for too long', () => {
+    const result = decideState({
+      metricsError: null,
+      kafka: kafkaWithLag(28_000),
+      consumer: heartbeat(STALL_AFTER_MS + 1_000),
+    });
+    expect(result.state).toBe('degraded');
+    expect(result.reason).toContain('not making progress');
+    expect(result.reason).toContain('28000 messages waiting');
+  });
+
+  it('is degraded when a new consumer has stored nothing from a backlog since it started', () => {
+    // Before the first batch, lastBatchAt is the process start.
+    const result = decideState({
+      metricsError: null,
+      kafka: kafkaWithLag(5_000),
+      consumer: heartbeat(STALL_AFTER_MS + 5_000),
+    });
+    expect(result.state).toBe('degraded');
+  });
+
+  it('stays live when the backlog is empty, however long since the last batch', () => {
+    const result = decideState({
+      metricsError: null,
+      kafka: kafkaWithLag(0),
+      consumer: heartbeat(600_000),
+    });
+    expect(result.state).toBe('live');
+  });
+
+  it('stays live during a short pause with messages waiting', () => {
+    const result = decideState({
+      metricsError: null,
+      kafka: kafkaWithLag(500),
+      consumer: heartbeat(STALL_AFTER_MS - 1_000),
+    });
+    expect(result.state).toBe('live');
+  });
+
+  it('cannot judge progress without a lag reading or a lastBatchAt, so it does not guess', () => {
+    const noLag = decideState({
+      metricsError: null,
+      kafka: { reachable: true, reason: null, lag: null },
+      consumer: heartbeat(STALL_AFTER_MS + 60_000),
+    });
+    expect(noLag.state).toBe('live');
+    const oldHeartbeat = describeConsumer(
+      { status: 'running', lastSeenAt: ago(1_000), instanceId: 'h-1', throughput: 0 },
+      NOW,
+    );
+    expect(oldHeartbeat.lastBatchAgeSeconds).toBeNull();
+    expect(
+      decideState({ metricsError: null, kafka: kafkaWithLag(9_000), consumer: oldHeartbeat }).state,
+    ).toBe('live');
+  });
+
+  it('is not a stall when messages have only just started waiting after an idle spell', () => {
+    // Regression (run R2): a consumer idle for 128 s while the producer read Jan-Nov; the first
+    // December messages showed lag 700 before the first batch and were reported as a stall.
+    const result = decideState({
+      metricsError: null,
+      kafka: kafkaWithLag(700, 2),
+      consumer: heartbeat(128_000),
+    });
+    expect(result.state).toBe('live');
+  });
+
+  it('does not call a stall before it knows how long messages have waited', () => {
+    const result = decideState({
+      metricsError: null,
+      kafka: kafkaWithLag(28_000, null),
+      consumer: heartbeat(STALL_AFTER_MS + 60_000),
+    });
+    expect(result.state).toBe('live');
+  });
+
+  it('allows several heartbeats of slack before calling a stall', () => {
+    expect(STALL_AFTER_MS).toBeGreaterThanOrEqual(5 * HEARTBEAT_INTERVAL_MS);
   });
 });

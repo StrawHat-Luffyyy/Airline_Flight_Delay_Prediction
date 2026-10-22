@@ -66,6 +66,10 @@ export function createStreamStatus(options: StreamStatusOptions): StreamStatus {
   const metricsTimeoutMs = options.metricsTimeoutMs ?? METRICS_TIMEOUT_MS;
   const now = options.now ?? (() => new Date());
   const cache = new TtlCache<StreamMetrics>({ ttlMs: options.metricsCacheMs ?? METRICS_CACHE_MS });
+  /** When this API first saw lag above 0 in the current unbroken run of readings (epoch ms). */
+  let lagSince: number | null = null;
+  /** Start time of the newest read applied to lagSince, so an overlapping older read is ignored. */
+  let lagReadAt = -Infinity;
 
   const group = <T extends ModelKey & DerivedMetrics>(metrics: T): T & StreamMetricGroup => ({
     ...metrics,
@@ -88,16 +92,39 @@ export function createStreamStatus(options: StreamStatusOptions): StreamStatus {
 
   return {
     async get() {
+      const readAt = now().getTime();
       const [metricsResult, heartbeatResult, snapshot] = await Promise.all([
         settle(cache.getOrLoad('metrics', loadMetrics), 'MongoDB metrics'),
         settle(loadHeartbeat(), 'MongoDB heartbeat'),
         kafka.read(),
       ]);
       const at = now();
+      // Track how long messages have been waiting. A reading with lag 0 resets it; an unreachable
+      // Kafka leaves it unknown, so the next positive reading starts a new window. Overlapping
+      // requests can finish out of order; a read that started before the last applied one is
+      // stale and must not reset the window. The window is per API process.
+      if (readAt >= lagReadAt) {
+        lagReadAt = readAt;
+        if (snapshot.lag === null || snapshot.lag.total === 0) lagSince = null;
+        else lagSince ??= readAt;
+      }
+      const lagWaitingSeconds =
+        lagSince === null ? null : Math.max(0, at.getTime() - lagSince) / 1000;
       const metrics = metricsResult.value;
       const metricsError = metricsResult.error ?? heartbeatResult.error;
       const consumer = describeConsumer(heartbeatResult.value, at);
-      const { state, reason } = decideState({ metricsError, kafka: snapshot, consumer });
+      const { state, reason } = decideState({
+        metricsError,
+        kafka: {
+          reachable: snapshot.reachable,
+          reason: snapshot.reason,
+          lag:
+            snapshot.lag === null
+              ? null
+              : { total: snapshot.lag.total, waitingSeconds: lagWaitingSeconds },
+        },
+        consumer,
+      });
 
       const body: StreamStatusResponse = {
         generatedAt: at.toISOString(),

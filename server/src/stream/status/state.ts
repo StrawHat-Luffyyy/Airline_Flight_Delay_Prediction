@@ -13,6 +13,12 @@ export const STALE_AFTER_MS = 10_000;
  * reads never rely on old heartbeats being gone: they take the newest heartbeat per group.
  */
 export const HEARTBEAT_TTL_SECONDS = 6 * 60 * 60;
+/**
+ * A fresh consumer with messages waiting that has stored nothing for this long is stalled: alive,
+ * but not progressing (measured: 32 s after a broker restart, run G). A batch of 500 normally takes
+ * well under a second, so this leaves room for start-up and a rebalance.
+ */
+export const STALL_AFTER_MS = 15_000;
 
 export type ConsumerStatus = 'running' | 'stopped' | 'failed';
 
@@ -23,6 +29,8 @@ export interface Heartbeat {
   instanceId: string;
   /** Messages per second over the heartbeat's last interval. */
   throughput: number;
+  /** When the consumer last finished a batch (its start until then); absent in older heartbeats. */
+  lastBatchAt?: Date;
   error?: string;
 }
 
@@ -34,6 +42,8 @@ export interface ConsumerView {
   fresh: boolean;
   /** Only reported while the heartbeat is fresh; a stale rate describes the past. */
   throughput: number | null;
+  /** Seconds since the consumer last finished a batch; null when unknown or not fresh. */
+  lastBatchAgeSeconds: number | null;
   error: string | null;
 }
 
@@ -46,6 +56,7 @@ export function describeConsumer(heartbeat: Heartbeat | null, now: Date): Consum
       ageSeconds: null,
       fresh: false,
       throughput: null,
+      lastBatchAgeSeconds: null,
       error: null,
     };
   }
@@ -58,6 +69,10 @@ export function describeConsumer(heartbeat: Heartbeat | null, now: Date): Consum
     ageSeconds: Math.round(ageMs / 1000),
     fresh,
     throughput: fresh ? heartbeat.throughput : null,
+    lastBatchAgeSeconds:
+      fresh && heartbeat.lastBatchAt !== undefined
+        ? Math.round(Math.max(0, now.getTime() - heartbeat.lastBatchAt.getTime()) / 1000)
+        : null,
     error: heartbeat.error ?? null,
   };
 }
@@ -67,7 +82,15 @@ export type StreamState = 'live' | 'idle' | 'degraded';
 export interface StateInput {
   /** Why the MongoDB metrics could not be read; null when they were. */
   metricsError: string | null;
-  kafka: { reachable: boolean; reason: string | null };
+  /**
+   * `lag.total`: messages behind; `lag.waitingSeconds`: how long lag has been above 0 without a
+   * break, as seen by this API (null = not known yet). Without both, a stall is never called.
+   */
+  kafka: {
+    reachable: boolean;
+    reason: string | null;
+    lag?: { total: number; waitingSeconds: number | null } | null;
+  };
   consumer: ConsumerView;
 }
 
@@ -100,6 +123,24 @@ export function decideState({ metricsError, kafka, consumer }: StateInput): {
     return {
       state: 'degraded',
       reason: `Consumer batches are failing: ${consumer.error ?? 'unknown error'}`,
+    };
+  }
+  // Alive is not the same as progressing: a fresh heartbeat, messages waiting for STALL_AFTER_MS
+  // and no batch for as long (e.g. still rejoining the group after a broker restart). Both
+  // windows are needed: an idle consumer's last batch is old the moment new messages arrive.
+  // lastBatchAgeSeconds is rounded to whole seconds, so the batch side trips from 15.5 s.
+  const waiting = kafka.lag?.total ?? 0;
+  const waitingSeconds = kafka.lag?.waitingSeconds ?? null;
+  if (
+    waiting > 0 &&
+    waitingSeconds !== null &&
+    waitingSeconds * 1000 > STALL_AFTER_MS &&
+    consumer.lastBatchAgeSeconds !== null &&
+    consumer.lastBatchAgeSeconds * 1000 > STALL_AFTER_MS
+  ) {
+    return {
+      state: 'degraded',
+      reason: `Consumer is alive but not making progress: no batch for ${consumer.lastBatchAgeSeconds} s with ${waiting} messages waiting`,
     };
   }
   return { state: 'live', reason: null };
