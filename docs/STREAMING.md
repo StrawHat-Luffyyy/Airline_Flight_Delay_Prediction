@@ -148,6 +148,23 @@ After attempt 2 a third consumer was started and ran to the end:
 - **Heartbeat counters lag the truth.** The killed consumers' last heartbeats said 16,300 and 11,554 consumed, against 18,000 and 13,554 actually written (heartbeats are written every 2 s). This is why the totals come from `stream_flights` and Kafka offsets, not from heartbeats.
 - **Size of the gap:** 500, exactly one consumer batch at its maximum size (`MAX_BATCH` in `server/src/stream/consumer.ts`), consistent with one partition's batch having been written and not yet committed.
 
+### Kafka restart under load (run G)
+
+From an empty speed layer, 150,000 events were replayed at 1,000/s with one consumer running and the API up. When about 41,500 flights were stored, the broker was stopped with `docker compose stop kafka` (issued 15:17:25 UTC, stopped 15:17:29) and started again with `docker compose start kafka` at 15:17:56 to 15:17:57: **about 28 s down**. Nothing else was restarted.
+
+| Component | What it did | Evidence |
+|---|---|---|
+| Producer (`stream:replay`) | Blocked while the broker was down, then resumed at its paced rate; finished all 150,000 sends with no warning or error and exit code 0. Its send phase stretched to 191,009 ms (785/s achieved against 1,000/s) | `run-g-kafka-restart.json` (`producer`), replay log |
+| Consumer (`stream:consume`) | Logged no warning or error and was **not restarted**. It stored nothing from 15:17:29 until **15:18:39, about 42 s after the broker started**, then caught up: all 150,000 stored by 15:19:55 | `run-g-kafka-restart-status.json`, `run-g-kafka-restart.json` |
+| `GET /api/stream/status` | Answered **200** throughout (every request in at most 1.02 s while the broker was down). `degraded` with "Kafka unreachable: Kafka admin request timed out after 1000 ms" in all 19 samples from 15:17:29 to 15:18:05; `live` again from 15:18:07 | `run-g-kafka-restart-status.json` |
+| API Kafka probe process | Crashed once with exit code 3221225477 (0xC0000005) at 15:18:07, as the broker came back; the API logged it, kept serving and started a new probe process (`docs/DECISIONS.md`, Phase 8e) | API log |
+
+Final counts (`run-g-kafka-restart.json`): 150,000 sent = 150,000 on `flights.raw` = 150,000 upserts = 150,000 flights for 150,000 keys; `deliveries` 1 for every flight (no redelivery); 0 DLQ; lag 0. All checks pass. Latency for this run (p50 214 ms, p95 32,068 ms, max 87,139 ms) includes the outage and the consumer's 42 s resume, so it is not a latency figure.
+
+- **Recovers without restarting anything.** Producer, consumer and API all continued on their own; nothing was lost or duplicated.
+- **The consumer resumes slowly.** About 42 s passed between the broker starting and the consumer storing again. The cause (broker start-up, group coordinator recovery, session and rebalance timing in librdkafka) was not isolated.
+- **Limitation: "live" while stalled.** From 15:18:07 to 15:18:39 the endpoint reported `live`, because the consumer's heartbeat was fresh, while throughput was 0 and lag grew to 28,000 (16 samples). Liveness is judged by heartbeat age only; a consumer that is alive but not progressing is visible only through lag and throughput, not through `state`.
+
 ### 5. Throughput (with live scoring)
 
 | Replay rate | Flights | Producer achieved | Send phase | Consumer rate | Consumer span (first to last write) | Source |
@@ -264,6 +281,8 @@ The batch collections were counted before the runs (speed layer empty) and after
 | `docs/measurements/run-c-rereplay-5000.json` | the 5,000-event re-replay after run C (`timing` is null: it stored nothing new) |
 | `docs/measurements/run-d-crash-before-restart.json` | run D after the hard kill, before the restart |
 | `docs/measurements/run-d-crash-after-restart.json` | run D after the restart |
+| `docs/measurements/run-g-kafka-restart.json` | run G (Kafka stopped about 28 s under load): checks and counts after recovery |
+| `docs/measurements/run-g-kafka-restart-status.json` | run G: `GET /api/stream/status` every 2 s through the outage (`stream:watch`) |
 | `docs/measurements/run-f-kill-attempt-1.json`, `run-f-kill-attempt-2.json` | run F: `stream:measure` right after each hard kill (written vs committed) |
 | `docs/measurements/run-f-midbatch-final.json`, `run-f-midbatch-deliveries.json` | run F after recovery: checks, and flights grouped by `deliveries` with each consumer's heartbeat |
 | `docs/measurements/run-e-1200.json`, `run-e-1200-steady.json` | run E at 1,200/s: the whole run, and only the flights produced after the start-up backlog drained (`stream:measure --from`) |
@@ -280,9 +299,9 @@ The batch collections were counted before the runs (speed layer empty) and after
 - **One consumer process, one machine.** Throughput with live scoring is bounded at about 2.4k/s by scoring in a single process. Scaling out across partitions, or onto other machines, was not measured.
 - **One run per rate.** Each figure is a single run on a laptop with Docker Desktop, not a mean of repeated runs.
 - **Latency resolution.** Batch-level timestamps and approximate percentiles (see item 6). Unthrottled latency is queueing time.
+- **Slow resume after a broker restart, and "live" while stalled.** In run G the consumer took about 42 s after the broker came back to store again, and the status endpoint said `live` meanwhile (see the run G section).
 - **Shared laptop.** Runs were made on a laptop also in desktop use; run E's host load was recorded (62% CPU), the others' was not, so latencies across runs are only loosely comparable.
 - **Not measured in 8g:**
   - consumer memory use;
-  - a consumer under load through a broker restart (8f saw one restart survived with no messages flowing; the librdkafka native crash on broker restart is contained for the API in a forked probe process, `docs/DECISIONS.md`, Phase 8e);
   - a graceful stop by a real Ctrl+C (Windows cannot send SIGINT programmatically; the same stop path ran through `--idle-exit`);
   - the DLQ path with real data (December has no rejects).
