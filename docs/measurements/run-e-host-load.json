@@ -1,0 +1,17 @@
+{
+  "note": "Host load sampled right after run E (2026-10-22, about 15:02 UTC) with `docker stats --no-stream`, Windows Win32_OperatingSystem / Win32_Processor and a 3 s per-process CPU sample. Nothing from the speed layer was processing at the time. The busiest processes were desktop applications (a web browser, the Claude desktop app, a live-wallpaper engine), not project processes. Load was not recorded during runs A to D, so their host conditions are unknown.",
+  "hostCpuLoadPercent": 62,
+  "hostMemoryGB": { "total": 15.7, "free": 2.2 },
+  "containers": {
+    "mongo": { "cpuPercent": 1.3, "memory": "4.185GiB / 7.614GiB" },
+    "kafka": { "cpuPercent": 4.36, "memory": "626.8MiB / 7.614GiB" }
+  },
+  "topProcessesByCpuSecondsOver3s": [
+    { "name": "brave", "cpuSeconds": 2.55 },
+    { "name": "claude", "cpuSeconds": 2.55 },
+    { "name": "brave", "cpuSeconds": 1.11 },
+    { "name": "claude", "cpuSeconds": 1.02 },
+    { "name": "wallpaper64", "cpuSeconds": 0.86 }
+  ],
+  "readPhaseOfJanToNovSeconds": { "run_C_morning": 71, "run_E": 122.7 }
+}

@@ -55,7 +55,7 @@ async function main(): Promise<void> {
   if (run === undefined) throw new Error('No producer run found. Run npm run stream:replay first.');
 
   const flights = streamFlights(db);
-  const [statsRow] = await flights.aggregate(runStatsPipeline(run.runId)).toArray();
+  const [statsRow] = await flights.aggregate(runStatsPipeline(run.runId, args.from)).toArray();
   const stats = statsRow === undefined ? undefined : RunStatsSchema.parse(statsRow);
   const [totalsRow] = await flights
     .aggregate([
@@ -94,6 +94,7 @@ async function main(): Promise<void> {
 
   const report: RunReport = {
     runId: run.runId,
+    ...(args.from === undefined ? {} : { producedFrom: args.from.toISOString() }),
     producer: {
       status: run.status,
       rate: run.rate,

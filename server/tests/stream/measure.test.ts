@@ -22,6 +22,15 @@ describe('runStatsPipeline', () => {
   });
 });
 
+describe('runStatsPipeline with a start time', () => {
+  it('restricts the run to flights produced from that instant (steady state after start-up)', () => {
+    const from = new Date('2026-10-22T14:58:52Z');
+    expect(runStatsPipeline('run-7', from)[0]).toEqual({
+      $match: { runId: 'run-7', producedAt: { $gte: from } },
+    });
+  });
+});
+
 /** A clean completed run: 1,000 rows of the month, all sent and all stored once. */
 function report(overrides: Partial<RunReport> = {}): RunReport {
   return {
@@ -145,6 +154,10 @@ describe('parseMeasureArgs', () => {
       out: 'x.json',
     });
     expect(parseMeasureArgs([])).toEqual({});
+    expect(parseMeasureArgs(['--from', '2026-10-22T14:58:52Z'])).toEqual({
+      from: new Date('2026-10-22T14:58:52Z'),
+    });
+    expect(() => parseMeasureArgs(['--from', 'yesterday'])).toThrow('--from');
   });
 
   it('rejects unknown flags and a flag where a value belongs', () => {

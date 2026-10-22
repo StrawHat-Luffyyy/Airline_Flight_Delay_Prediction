@@ -7,11 +7,17 @@
 import { parseArgs } from 'node:util';
 import type { Document } from 'mongodb';
 
-/** One run's flights, through the runId index: counts, time span and latency percentiles. */
-export function runStatsPipeline(runId: string): Document[] {
+/**
+ * One run's flights, through the runId index. With `producedFrom`, only flights produced from that
+ * instant on: the steady state after a start-up backlog, as identified from a stream:watch series.
+ */
+export function runStatsPipeline(runId: string, producedFrom?: Date): Document[] {
   const latency = { $subtract: ['$firstWrittenAt', '$producedAt'] };
   return [
-    { $match: { runId } },
+    {
+      $match:
+        producedFrom === undefined ? { runId } : { runId, producedAt: { $gte: producedFrom } },
+    },
     {
       $group: {
         _id: null,
@@ -32,6 +38,8 @@ export function runStatsPipeline(runId: string): Document[] {
 
 export interface RunReport {
   runId: string;
+  /** Set when timing covers only flights produced from this instant (see runStatsPipeline). */
+  producedFrom?: string;
   producer: {
     status: string;
     rate: number;
@@ -155,20 +163,30 @@ function uniqueKeys({ stored, sinceReset }: RunReport, consumerDlq: number): Che
   };
 }
 
-const MEASURE_USAGE = 'Usage: npm run stream:measure -- [--run RUN_ID] [--out FILE]';
+const MEASURE_USAGE =
+  'Usage: npm run stream:measure -- [--run RUN_ID] [--from ISO_TIME] [--out FILE]';
 
 /** Strict: unknown flags, and a flag where a value belongs, are errors. */
-export function parseMeasureArgs(argv: readonly string[]): { runId?: string; out?: string } {
+export function parseMeasureArgs(argv: readonly string[]): {
+  runId?: string;
+  out?: string;
+  from?: Date;
+} {
   try {
     const { values } = parseArgs({
       args: [...argv],
-      options: { run: { type: 'string' }, out: { type: 'string' } },
+      options: { run: { type: 'string' }, out: { type: 'string' }, from: { type: 'string' } },
       strict: true,
       allowPositionals: false,
     });
+    const from = values.from === undefined ? undefined : new Date(values.from);
+    if (from !== undefined && Number.isNaN(from.getTime())) {
+      throw new Error(`--from needs an ISO date-time, got "${values.from}"`);
+    }
     return {
       ...(values.run === undefined ? {} : { runId: values.run }),
       ...(values.out === undefined ? {} : { out: values.out }),
+      ...(from === undefined ? {} : { from }),
     };
   } catch (error) {
     throw new Error(`${error instanceof Error ? error.message : String(error)}. ${MEASURE_USAGE}`);
