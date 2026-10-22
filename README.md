@@ -93,7 +93,7 @@ Create the topics (idempotent):
 npm run kafka:init
 ```
 
-Start the consumer in its own terminal. It runs until Ctrl+C; `--idle-exit SECONDS` stops it once no batch has arrived for that long.
+Start the consumer in its own terminal. It runs until Ctrl+C; `--idle-exit SECONDS` stops it once no batch has arrived for that long after its first batch.
 
 ```bash
 npm run stream:consume
@@ -203,6 +203,7 @@ All settings come from `.env`, validated with zod at startup. See `.env.example`
 | `KAFKA_CLIENT_ID` | `flight-delay` | Kafka client id |
 | `KAFKA_CONSUMER_GROUP` | `flight-stream` | Consumer group of `stream:consume` |
 | `KAFKA_TOPIC_RAW` / `KAFKA_TOPIC_DLQ` | `flights.raw` / `flights.dlq` | Replayed events and the dead-letter queue |
+| `KAFKA_SESSION_TIMEOUT_MS` | `10000` | Consumer group session timeout; 10 s lets the consumer rejoin about 20 s sooner after a broker restart than the client's 30 s (docs/STREAMING.md) |
 | `STREAM_WINDOW_SIZE` | `2000` | Flights in the Live page's rolling window (100 to 20,000) |
 
 ## Development

@@ -1,0 +1,2157 @@
+{
+  "url": "http://127.0.0.1:3002",
+  "everySeconds": 2,
+  "samples": [
+    {
+      "t": 0,
+      "at": "2026-10-22T18:25:51.957Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 2,
+      "at": "2026-10-22T18:25:53.969Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 4,
+      "at": "2026-10-22T18:25:55.983Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 6,
+      "at": "2026-10-22T18:25:57.998Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 8,
+      "at": "2026-10-22T18:26:00.002Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 10.1,
+      "at": "2026-10-22T18:26:02.007Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 12.1,
+      "at": "2026-10-22T18:26:04.013Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 14.1,
+      "at": "2026-10-22T18:26:06.029Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 16.1,
+      "at": "2026-10-22T18:26:08.032Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 18.1,
+      "at": "2026-10-22T18:26:10.054Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 20.1,
+      "at": "2026-10-22T18:26:12.069Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 22.1,
+      "at": "2026-10-22T18:26:14.085Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 24.1,
+      "at": "2026-10-22T18:26:16.095Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 26.2,
+      "at": "2026-10-22T18:26:18.113Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 28.2,
+      "at": "2026-10-22T18:26:20.121Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 30.2,
+      "at": "2026-10-22T18:26:22.126Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 32.2,
+      "at": "2026-10-22T18:26:24.135Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 34.2,
+      "at": "2026-10-22T18:26:26.147Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 36.2,
+      "at": "2026-10-22T18:26:28.157Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 38.2,
+      "at": "2026-10-22T18:26:30.177Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 40.2,
+      "at": "2026-10-22T18:26:32.192Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 42.3,
+      "at": "2026-10-22T18:26:34.210Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 44.3,
+      "at": "2026-10-22T18:26:36.213Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 46.3,
+      "at": "2026-10-22T18:26:38.214Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 48.3,
+      "at": "2026-10-22T18:26:40.218Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 50.3,
+      "at": "2026-10-22T18:26:42.230Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 52.3,
+      "at": "2026-10-22T18:26:44.241Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 54.3,
+      "at": "2026-10-22T18:26:46.253Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 56.3,
+      "at": "2026-10-22T18:26:48.253Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 58.3,
+      "at": "2026-10-22T18:26:50.267Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 60.3,
+      "at": "2026-10-22T18:26:52.269Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 62.3,
+      "at": "2026-10-22T18:26:54.278Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 64.3,
+      "at": "2026-10-22T18:26:56.282Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 66.3,
+      "at": "2026-10-22T18:26:58.292Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 68.4,
+      "at": "2026-10-22T18:27:00.307Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 70.4,
+      "at": "2026-10-22T18:27:02.316Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 72.4,
+      "at": "2026-10-22T18:27:04.323Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 74.4,
+      "at": "2026-10-22T18:27:06.327Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 76.4,
+      "at": "2026-10-22T18:27:08.327Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 78.4,
+      "at": "2026-10-22T18:27:10.341Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 80.4,
+      "at": "2026-10-22T18:27:12.355Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 82.4,
+      "at": "2026-10-22T18:27:14.359Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 84.4,
+      "at": "2026-10-22T18:27:16.370Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 86.4,
+      "at": "2026-10-22T18:27:18.384Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 88.4,
+      "at": "2026-10-22T18:27:20.393Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 90.4,
+      "at": "2026-10-22T18:27:22.402Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 92.4,
+      "at": "2026-10-22T18:27:24.404Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 94.5,
+      "at": "2026-10-22T18:27:26.414Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 96.5,
+      "at": "2026-10-22T18:27:28.422Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 98.5,
+      "at": "2026-10-22T18:27:30.433Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 100.5,
+      "at": "2026-10-22T18:27:32.443Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 102.5,
+      "at": "2026-10-22T18:27:34.454Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 104.5,
+      "at": "2026-10-22T18:27:36.456Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 106.5,
+      "at": "2026-10-22T18:27:38.457Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 108.5,
+      "at": "2026-10-22T18:27:40.474Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 110.5,
+      "at": "2026-10-22T18:27:42.479Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 112.5,
+      "at": "2026-10-22T18:27:44.484Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 114.5,
+      "at": "2026-10-22T18:27:46.491Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 116.5,
+      "at": "2026-10-22T18:27:48.492Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 118.5,
+      "at": "2026-10-22T18:27:50.504Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 120.6,
+      "at": "2026-10-22T18:27:52.513Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 122.6,
+      "at": "2026-10-22T18:27:54.528Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 124.6,
+      "at": "2026-10-22T18:27:56.532Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 126.6,
+      "at": "2026-10-22T18:27:58.544Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 128.6,
+      "at": "2026-10-22T18:28:00.551Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 130.6,
+      "at": "2026-10-22T18:28:02.558Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 132.6,
+      "at": "2026-10-22T18:28:04.569Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 134.6,
+      "at": "2026-10-22T18:28:06.582Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 136.6,
+      "at": "2026-10-22T18:28:08.591Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 138.6,
+      "at": "2026-10-22T18:28:10.602Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 140.6,
+      "at": "2026-10-22T18:28:12.605Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 142.7,
+      "at": "2026-10-22T18:28:14.614Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 144.7,
+      "at": "2026-10-22T18:28:16.623Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 146.7,
+      "at": "2026-10-22T18:28:18.633Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 148.7,
+      "at": "2026-10-22T18:28:20.644Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 150.7,
+      "at": "2026-10-22T18:28:22.659Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 152.7,
+      "at": "2026-10-22T18:28:24.673Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 154.7,
+      "at": "2026-10-22T18:28:26.676Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 156.7,
+      "at": "2026-10-22T18:28:28.683Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 158.7,
+      "at": "2026-10-22T18:28:30.696Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 160.7,
+      "at": "2026-10-22T18:28:32.704Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 162.8,
+      "at": "2026-10-22T18:28:34.719Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 164.8,
+      "at": "2026-10-22T18:28:36.720Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 166.8,
+      "at": "2026-10-22T18:28:38.722Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 0,
+      "throughput": 0
+    },
+    {
+      "t": 168.8,
+      "at": "2026-10-22T18:28:40.735Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 300,
+      "throughput": 1
+    },
+    {
+      "t": 170.8,
+      "at": "2026-10-22T18:28:42.748Z",
+      "state": "live",
+      "reason": null,
+      "lag": 3700,
+      "stored": 300,
+      "throughput": 145
+    },
+    {
+      "t": 172.8,
+      "at": "2026-10-22T18:28:44.766Z",
+      "state": "live",
+      "reason": null,
+      "lag": 3700,
+      "stored": 1800,
+      "throughput": 0
+    },
+    {
+      "t": 174.8,
+      "at": "2026-10-22T18:28:46.782Z",
+      "state": "live",
+      "reason": null,
+      "lag": 5811,
+      "stored": 1800,
+      "throughput": 736
+    },
+    {
+      "t": 176.8,
+      "at": "2026-10-22T18:28:48.796Z",
+      "state": "live",
+      "reason": null,
+      "lag": 5811,
+      "stored": 3300,
+      "throughput": 749
+    },
+    {
+      "t": 178.9,
+      "at": "2026-10-22T18:28:50.808Z",
+      "state": "live",
+      "reason": null,
+      "lag": 8730,
+      "stored": 3300,
+      "throughput": 0
+    },
+    {
+      "t": 180.9,
+      "at": "2026-10-22T18:28:52.828Z",
+      "state": "live",
+      "reason": null,
+      "lag": 8730,
+      "stored": 4800,
+      "throughput": 708
+    },
+    {
+      "t": 182.9,
+      "at": "2026-10-22T18:28:54.832Z",
+      "state": "live",
+      "reason": null,
+      "lag": 10800,
+      "stored": 4800,
+      "throughput": 40
+    },
+    {
+      "t": 184.9,
+      "at": "2026-10-22T18:28:56.846Z",
+      "state": "live",
+      "reason": null,
+      "lag": 10800,
+      "stored": 6300,
+      "throughput": 729
+    },
+    {
+      "t": 186.9,
+      "at": "2026-10-22T18:28:58.853Z",
+      "state": "live",
+      "reason": null,
+      "lag": 12300,
+      "stored": 6300,
+      "throughput": 709
+    },
+    {
+      "t": 188.9,
+      "at": "2026-10-22T18:29:00.867Z",
+      "state": "degraded",
+      "reason": "Status data failed validation (see API log)",
+      "lag": null,
+      "stored": null,
+      "throughput": 470
+    },
+    {
+      "t": 190.9,
+      "at": "2026-10-22T18:29:02.875Z",
+      "state": "degraded",
+      "reason": "Status data failed validation (see API log)",
+      "lag": null,
+      "stored": null,
+      "throughput": 289
+    },
+    {
+      "t": 192.9,
+      "at": "2026-10-22T18:29:04.888Z",
+      "state": "live",
+      "reason": null,
+      "lag": 13922,
+      "stored": 12300,
+      "throughput": 745
+    },
+    {
+      "t": 194.9,
+      "at": "2026-10-22T18:29:06.903Z",
+      "state": "live",
+      "reason": null,
+      "lag": 14400,
+      "stored": 12300,
+      "throughput": 918
+    },
+    {
+      "t": 197,
+      "at": "2026-10-22T18:29:08.915Z",
+      "state": "degraded",
+      "reason": "Status data failed validation (see API log)",
+      "lag": null,
+      "stored": null,
+      "throughput": 550
+    },
+    {
+      "t": 199,
+      "at": "2026-10-22T18:29:10.921Z",
+      "state": "degraded",
+      "reason": "Status data failed validation (see API log)",
+      "lag": null,
+      "stored": null,
+      "throughput": 731
+    },
+    {
+      "t": 201,
+      "at": "2026-10-22T18:29:12.930Z",
+      "state": "degraded",
+      "reason": "Status data failed validation (see API log)",
+      "lag": null,
+      "stored": null,
+      "throughput": 905
+    },
+    {
+      "t": 203,
+      "at": "2026-10-22T18:29:14.932Z",
+      "state": "degraded",
+      "reason": "Status data failed validation (see API log)",
+      "lag": null,
+      "stored": null,
+      "throughput": 801
+    },
+    {
+      "t": 205,
+      "at": "2026-10-22T18:29:16.938Z",
+      "state": "degraded",
+      "reason": "Status data failed validation (see API log)",
+      "lag": null,
+      "stored": null,
+      "throughput": 1245
+    },
+    {
+      "t": 207,
+      "at": "2026-10-22T18:29:18.953Z",
+      "state": "degraded",
+      "reason": "Status data failed validation (see API log)",
+      "lag": null,
+      "stored": null,
+      "throughput": 1244
+    },
+    {
+      "t": 209,
+      "at": "2026-10-22T18:29:20.956Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 25800,
+      "throughput": 923
+    },
+    {
+      "t": 211,
+      "at": "2026-10-22T18:29:22.968Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 25800,
+      "throughput": 1432
+    },
+    {
+      "t": 213,
+      "at": "2026-10-22T18:29:24.978Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 31800,
+      "throughput": 1472
+    },
+    {
+      "t": 215,
+      "at": "2026-10-22T18:29:26.988Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 31800,
+      "throughput": 496
+    },
+    {
+      "t": 217,
+      "at": "2026-10-22T18:29:28.996Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 219,
+      "at": "2026-10-22T18:29:31.003Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 221.1,
+      "at": "2026-10-22T18:29:33.011Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 223.1,
+      "at": "2026-10-22T18:29:35.021Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 225.1,
+      "at": "2026-10-22T18:29:37.026Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 227.1,
+      "at": "2026-10-22T18:29:39.037Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 229.1,
+      "at": "2026-10-22T18:29:41.041Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 231.1,
+      "at": "2026-10-22T18:29:43.051Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 233.1,
+      "at": "2026-10-22T18:29:45.063Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 235.1,
+      "at": "2026-10-22T18:29:47.067Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 237.1,
+      "at": "2026-10-22T18:29:49.074Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 239.1,
+      "at": "2026-10-22T18:29:51.079Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 241.1,
+      "at": "2026-10-22T18:29:53.081Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 243.1,
+      "at": "2026-10-22T18:29:55.090Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 245.1,
+      "at": "2026-10-22T18:29:57.099Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 247.2,
+      "at": "2026-10-22T18:29:59.113Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 249.2,
+      "at": "2026-10-22T18:30:01.123Z",
+      "state": "degraded",
+      "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+      "lag": null,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 251.2,
+      "at": "2026-10-22T18:30:03.125Z",
+      "state": "degraded",
+      "reason": "Consumer is alive but not making progress: no batch for 38 s with 16000 messages waiting",
+      "lag": 16000,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 253.2,
+      "at": "2026-10-22T18:30:05.137Z",
+      "state": "degraded",
+      "reason": "Consumer is alive but not making progress: no batch for 40 s with 16000 messages waiting",
+      "lag": 16000,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 255.2,
+      "at": "2026-10-22T18:30:07.148Z",
+      "state": "degraded",
+      "reason": "Consumer is alive but not making progress: no batch for 42 s with 16000 messages waiting",
+      "lag": 16000,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 257.2,
+      "at": "2026-10-22T18:30:09.163Z",
+      "state": "degraded",
+      "reason": "Consumer is alive but not making progress: no batch for 44 s with 16000 messages waiting",
+      "lag": 16000,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 259.2,
+      "at": "2026-10-22T18:30:11.164Z",
+      "state": "degraded",
+      "reason": "Consumer is alive but not making progress: no batch for 46 s with 17725 messages waiting",
+      "lag": 17725,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 261.2,
+      "at": "2026-10-22T18:30:13.175Z",
+      "state": "degraded",
+      "reason": "Consumer is alive but not making progress: no batch for 48 s with 17725 messages waiting",
+      "lag": 17725,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 263.2,
+      "at": "2026-10-22T18:30:15.193Z",
+      "state": "degraded",
+      "reason": "Consumer is alive but not making progress: no batch for 50 s with 21800 messages waiting",
+      "lag": 21800,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 265.2,
+      "at": "2026-10-22T18:30:17.205Z",
+      "state": "degraded",
+      "reason": "Consumer is alive but not making progress: no batch for 52 s with 21800 messages waiting",
+      "lag": 21800,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 267.3,
+      "at": "2026-10-22T18:30:19.209Z",
+      "state": "degraded",
+      "reason": "Consumer is alive but not making progress: no batch for 54 s with 25800 messages waiting",
+      "lag": 25800,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 269.3,
+      "at": "2026-10-22T18:30:21.212Z",
+      "state": "degraded",
+      "reason": "Consumer is alive but not making progress: no batch for 56 s with 25800 messages waiting",
+      "lag": 25800,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 271.3,
+      "at": "2026-10-22T18:30:23.225Z",
+      "state": "degraded",
+      "reason": "Consumer is alive but not making progress: no batch for 58 s with 29800 messages waiting",
+      "lag": 29800,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 273.3,
+      "at": "2026-10-22T18:30:25.242Z",
+      "state": "degraded",
+      "reason": "Consumer is alive but not making progress: no batch for 60 s with 29800 messages waiting",
+      "lag": 29800,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 275.3,
+      "at": "2026-10-22T18:30:27.250Z",
+      "state": "degraded",
+      "reason": "Consumer is alive but not making progress: no batch for 62 s with 33800 messages waiting",
+      "lag": 33800,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 277.3,
+      "at": "2026-10-22T18:30:29.267Z",
+      "state": "degraded",
+      "reason": "Consumer is alive but not making progress: no batch for 64 s with 33800 messages waiting",
+      "lag": 33800,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 279.3,
+      "at": "2026-10-22T18:30:31.284Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 37751,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 281.3,
+      "at": "2026-10-22T18:30:33.299Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 37751,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 283.4,
+      "at": "2026-10-22T18:30:35.313Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 41900,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 285.4,
+      "at": "2026-10-22T18:30:37.320Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 41900,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 287.4,
+      "at": "2026-10-22T18:30:39.347Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 289.4,
+      "at": "2026-10-22T18:30:41.356Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 291.4,
+      "at": "2026-10-22T18:30:43.361Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 293.4,
+      "at": "2026-10-22T18:30:45.368Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 295.4,
+      "at": "2026-10-22T18:30:47.374Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 297.4,
+      "at": "2026-10-22T18:30:49.387Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 299.4,
+      "at": "2026-10-22T18:30:51.397Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 301.4,
+      "at": "2026-10-22T18:30:53.401Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 303.4,
+      "at": "2026-10-22T18:30:55.406Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 305.5,
+      "at": "2026-10-22T18:30:57.410Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 307.5,
+      "at": "2026-10-22T18:30:59.429Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 309.5,
+      "at": "2026-10-22T18:31:01.436Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 311.5,
+      "at": "2026-10-22T18:31:03.439Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 313.5,
+      "at": "2026-10-22T18:31:05.448Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 315.5,
+      "at": "2026-10-22T18:31:07.457Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 317.5,
+      "at": "2026-10-22T18:31:09.461Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 319.5,
+      "at": "2026-10-22T18:31:11.466Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 321.5,
+      "at": "2026-10-22T18:31:13.470Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 323.5,
+      "at": "2026-10-22T18:31:15.481Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 325.5,
+      "at": "2026-10-22T18:31:17.489Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 327.5,
+      "at": "2026-10-22T18:31:19.499Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 329.6,
+      "at": "2026-10-22T18:31:21.512Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 331.6,
+      "at": "2026-10-22T18:31:23.517Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 333.6,
+      "at": "2026-10-22T18:31:25.519Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 335.6,
+      "at": "2026-10-22T18:31:27.522Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 337.6,
+      "at": "2026-10-22T18:31:29.540Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 339.6,
+      "at": "2026-10-22T18:31:31.549Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 341.6,
+      "at": "2026-10-22T18:31:33.565Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 343.6,
+      "at": "2026-10-22T18:31:35.565Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 345.6,
+      "at": "2026-10-22T18:31:37.575Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 347.6,
+      "at": "2026-10-22T18:31:39.588Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 349.6,
+      "at": "2026-10-22T18:31:41.596Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 351.6,
+      "at": "2026-10-22T18:31:43.599Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 353.7,
+      "at": "2026-10-22T18:31:45.613Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 355.7,
+      "at": "2026-10-22T18:31:47.622Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 357.7,
+      "at": "2026-10-22T18:31:49.631Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 359.7,
+      "at": "2026-10-22T18:31:51.637Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 361.7,
+      "at": "2026-10-22T18:31:53.637Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 363.7,
+      "at": "2026-10-22T18:31:55.665Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 365.7,
+      "at": "2026-10-22T18:31:57.678Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 367.7,
+      "at": "2026-10-22T18:31:59.688Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 369.7,
+      "at": "2026-10-22T18:32:01.699Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 371.8,
+      "at": "2026-10-22T18:32:03.709Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 373.8,
+      "at": "2026-10-22T18:32:05.714Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 375.8,
+      "at": "2026-10-22T18:32:07.719Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:30:30.793Z",
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": null
+    },
+    {
+      "t": 377.8,
+      "at": "2026-10-22T18:32:09.736Z",
+      "state": "live",
+      "reason": null,
+      "lag": 43200,
+      "stored": 32800,
+      "throughput": 0
+    },
+    {
+      "t": 379.8,
+      "at": "2026-10-22T18:32:11.751Z",
+      "state": "live",
+      "reason": null,
+      "lag": 40198,
+      "stored": 32800,
+      "throughput": 488
+    },
+    {
+      "t": 381.8,
+      "at": "2026-10-22T18:32:13.775Z",
+      "state": "live",
+      "reason": null,
+      "lag": 40198,
+      "stored": 32800,
+      "throughput": 2000
+    },
+    {
+      "t": 383.8,
+      "at": "2026-10-22T18:32:15.784Z",
+      "state": "live",
+      "reason": null,
+      "lag": 36198,
+      "stored": 32800,
+      "throughput": 499
+    },
+    {
+      "t": 385.8,
+      "at": "2026-10-22T18:32:17.796Z",
+      "state": "live",
+      "reason": null,
+      "lag": 36198,
+      "stored": 35414,
+      "throughput": 744
+    },
+    {
+      "t": 387.8,
+      "at": "2026-10-22T18:32:19.801Z",
+      "state": "live",
+      "reason": null,
+      "lag": 32698,
+      "stored": 35414,
+      "throughput": 721
+    },
+    {
+      "t": 389.9,
+      "at": "2026-10-22T18:32:21.814Z",
+      "state": "live",
+      "reason": null,
+      "lag": 32698,
+      "stored": 36914,
+      "throughput": 1702
+    },
+    {
+      "t": 391.9,
+      "at": "2026-10-22T18:32:23.829Z",
+      "state": "live",
+      "reason": null,
+      "lag": 26569,
+      "stored": 36914,
+      "throughput": 1558
+    },
+    {
+      "t": 393.9,
+      "at": "2026-10-22T18:32:25.830Z",
+      "state": "live",
+      "reason": null,
+      "lag": 26569,
+      "stored": 39914,
+      "throughput": 746
+    },
+    {
+      "t": 395.9,
+      "at": "2026-10-22T18:32:27.847Z",
+      "state": "live",
+      "reason": null,
+      "lag": 24069,
+      "stored": 39914,
+      "throughput": 747
+    },
+    {
+      "t": 397.9,
+      "at": "2026-10-22T18:32:29.862Z",
+      "state": "live",
+      "reason": null,
+      "lag": 24069,
+      "stored": 42414,
+      "throughput": 497
+    },
+    {
+      "t": 399.9,
+      "at": "2026-10-22T18:32:31.870Z",
+      "state": "live",
+      "reason": null,
+      "lag": 21198,
+      "stored": 42414,
+      "throughput": 684
+    },
+    {
+      "t": 401.9,
+      "at": "2026-10-22T18:32:33.875Z",
+      "state": "degraded",
+      "reason": "Status data failed validation (see API log)",
+      "lag": null,
+      "stored": null,
+      "throughput": 999
+    },
+    {
+      "t": 403.9,
+      "at": "2026-10-22T18:32:35.893Z",
+      "state": "degraded",
+      "reason": "Status data failed validation (see API log)",
+      "lag": null,
+      "stored": null,
+      "throughput": 1249
+    },
+    {
+      "t": 405.9,
+      "at": "2026-10-22T18:32:37.895Z",
+      "state": "live",
+      "reason": null,
+      "lag": 16698,
+      "stored": 49919,
+      "throughput": 1249
+    },
+    {
+      "t": 408,
+      "at": "2026-10-22T18:32:39.907Z",
+      "state": "live",
+      "reason": null,
+      "lag": 8821,
+      "stored": 49919,
+      "throughput": 2439
+    },
+    {
+      "t": 410,
+      "at": "2026-10-22T18:32:41.921Z",
+      "state": "degraded",
+      "reason": "Status data failed validation (see API log)",
+      "lag": null,
+      "stored": null,
+      "throughput": 1808
+    },
+    {
+      "t": 412,
+      "at": "2026-10-22T18:32:43.924Z",
+      "state": "degraded",
+      "reason": "Status data failed validation (see API log)",
+      "lag": null,
+      "stored": null,
+      "throughput": 1494
+    },
+    {
+      "t": 414,
+      "at": "2026-10-22T18:32:45.933Z",
+      "state": "live",
+      "reason": null,
+      "lag": 2698,
+      "stored": 60000,
+      "throughput": 1249
+    },
+    {
+      "t": 416,
+      "at": "2026-10-22T18:32:47.934Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 60000,
+      "throughput": 596
+    },
+    {
+      "t": 418,
+      "at": "2026-10-22T18:32:49.938Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 60000,
+      "throughput": 0
+    },
+    {
+      "t": 420,
+      "at": "2026-10-22T18:32:51.951Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 60000,
+      "throughput": 0
+    },
+    {
+      "t": 422,
+      "at": "2026-10-22T18:32:53.963Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 60000,
+      "throughput": 0
+    },
+    {
+      "t": 424,
+      "at": "2026-10-22T18:32:55.977Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 60000,
+      "throughput": 0
+    },
+    {
+      "t": 426,
+      "at": "2026-10-22T18:32:57.983Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 60000,
+      "throughput": 0
+    },
+    {
+      "t": 428,
+      "at": "2026-10-22T18:32:59.991Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 60000,
+      "throughput": 0
+    },
+    {
+      "t": 430,
+      "at": "2026-10-22T18:33:02.000Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 60000,
+      "throughput": 0
+    },
+    {
+      "t": 432.1,
+      "at": "2026-10-22T18:33:04.010Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 60000,
+      "throughput": 0
+    },
+    {
+      "t": 434.1,
+      "at": "2026-10-22T18:33:06.012Z",
+      "state": "live",
+      "reason": null,
+      "lag": 0,
+      "stored": 60000,
+      "throughput": 0
+    },
+    {
+      "t": 436.1,
+      "at": "2026-10-22T18:33:08.014Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": 0
+    },
+    {
+      "t": 438.1,
+      "at": "2026-10-22T18:33:10.021Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": 0
+    },
+    {
+      "t": 440.1,
+      "at": "2026-10-22T18:33:12.027Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": 0
+    },
+    {
+      "t": 442.1,
+      "at": "2026-10-22T18:33:14.039Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": 0
+    },
+    {
+      "t": 444.1,
+      "at": "2026-10-22T18:33:16.046Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 446.1,
+      "at": "2026-10-22T18:33:18.053Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 448.1,
+      "at": "2026-10-22T18:33:20.067Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 450.1,
+      "at": "2026-10-22T18:33:22.075Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 452.1,
+      "at": "2026-10-22T18:33:24.082Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 454.1,
+      "at": "2026-10-22T18:33:26.092Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 456.1,
+      "at": "2026-10-22T18:33:28.093Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 458.1,
+      "at": "2026-10-22T18:33:30.105Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 460.2,
+      "at": "2026-10-22T18:33:32.108Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 462.2,
+      "at": "2026-10-22T18:33:34.121Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 464.2,
+      "at": "2026-10-22T18:33:36.131Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 466.2,
+      "at": "2026-10-22T18:33:38.133Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 468.2,
+      "at": "2026-10-22T18:33:40.147Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 470.2,
+      "at": "2026-10-22T18:33:42.163Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 472.2,
+      "at": "2026-10-22T18:33:44.175Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 474.2,
+      "at": "2026-10-22T18:33:46.186Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 476.2,
+      "at": "2026-10-22T18:33:48.199Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    },
+    {
+      "t": 478.2,
+      "at": "2026-10-22T18:33:50.200Z",
+      "state": "idle",
+      "reason": "Consumer stopped cleanly at 2026-10-22T18:33:06.053Z",
+      "lag": 0,
+      "stored": 60000,
+      "throughput": null
+    }
+  ]
+}

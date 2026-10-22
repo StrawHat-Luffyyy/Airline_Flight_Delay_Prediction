@@ -163,7 +163,7 @@ Final counts (`run-g-kafka-restart.json`): 150,000 sent = 150,000 on `flights.ra
 
 - **Recovers without restarting anything.** Producer, consumer and API all continued on their own; nothing was lost or duplicated.
 - **The consumer resumes slowly.** About 42 s passed between the broker starting and the consumer storing again. The cause (broker start-up, group coordinator recovery, session and rebalance timing in librdkafka) was not isolated.
-- **Limitation: "live" while stalled.** From 15:18:07 to 15:18:39 the endpoint reported `live`, because the consumer's heartbeat was fresh, while throughput was 0 and lag grew to 28,000 (16 samples). Liveness is judged by heartbeat age only; a consumer that is alive but not progressing is visible only through lag and throughput, not through `state`.
+- **Limitation, since fixed: "live" while stalled.** From 15:18:07 to 15:18:39 the endpoint reported `live`, because the consumer's heartbeat was fresh, while throughput was 0 and lag grew to 28,000 (16 samples). Liveness is judged by heartbeat age only; a consumer that is alive but not progressing is visible only through lag and throughput, not through `state`.
 
 ### 5. Throughput (with live scoring)
 
@@ -288,6 +288,45 @@ The producer sent at 12,542/s, about 5 times what the consumer can store and sco
 
 The batch collections were counted before the runs (speed layer empty) and after them (source: `batch-collections-before.txt`, `batch-collections-after.txt`). Every non-stream count is identical, for example `flights` 5,819,079, `delay_lookup` 36,420, `delay_lookup_cells` 249,130, `model_runs` 2 and `stats_route` 4,695. Only `stream_flights` (0 → 479,230) and `stream_stats` (0 → 4) changed.
 
+## Reliability fixes after acceptance (2026-10-22 to 23)
+
+Four broker-restart experiments (R1 to R4) ran in an **isolated environment**, so the accepted full-December state was not touched:
+- database `flight_delay_reliability_test`, consumer group `reliability-test`, topics `reliability.raw` and `reliability.dlq`;
+- a second API on port 3002;
+- only the airline and airport reference data copied in.
+
+Every flight was refused by the scorer there (no route statistics), which does not affect Kafka behaviour. Each run replayed 60,000 events at 1,000/s, and once about 15,000 were stored, stopped the broker for 28 s (`docker compose stop kafka`, then `start`). The main database (`flight_delay`: 479,230 stream flights) and `flights.raw` were checked unchanged afterwards.
+
+### Findings and fixes
+
+| # | Finding (evidence) | Fix | Verified |
+|---|---|---|---|
+| 1 | **"live" while stalled.** After a broker restart the consumer was alive (fresh heartbeat) but stored nothing, and the endpoint said `live` (run G: 32 s). | The heartbeat records `lastBatchAt`. The state is `degraded` ("Consumer is alive but not making progress: no batch for N s with M messages waiting") when the heartbeat is fresh, lag is above 0, messages have been waiting more than 15 s **and** no batch has been stored for more than 15 s (`STALL_AFTER_MS`). The waiting window avoids a false alarm when new messages reach a consumer that has been idle: the first version flagged a stall once at start-up in R2. | R4 (`reliability-r4-status.json`): `degraded` with that reason in all 8 samples from 19:00:51 to 19:01:05, while the consumer was stalled (lag 16,478 to 30,078). `live` again at 19:01:07, the first sample after it resumed. No stall reported anywhere else in R3 or R4. Unit and service tests. |
+| 2 | **Negative `unscored` failed the response schema.** `refused` and "no prediction" were two separate counts; with a consumer inserting refused flights, `refused` overtook the total, `unscored` went negative and the endpoint answered with its validation fallback (R1: 12 samples). | Both now come from one aggregation over the flights without a prediction (`noPredictionPipeline`, IXSCAN on `stream_totals`), so refused can never exceed the total. | R3 and R4: 0 validation fallbacks. Integration test. |
+| 3 | **Slow resume after a broker restart.** The consumer resumed 36.9 s (R2) and 39.1 s (R4) after the broker started, with the client's default 30 s session timeout. Run G: about 42 s. | New `KAFKA_SESSION_TIMEOUT_MS`, **default 10 s**. librdkafka sends group heartbeats from its own thread, so slow batches do not count against it; slow processing is still governed by the separate 5-minute poll interval. | R3 with 10 s: resumed **17.2 s** after the broker started, about 20 s sooner, matching the 20 s cut. R2 and R4 with 30 s: 36.9 s and 39.1 s. One run per setting. |
+| 4 | **`--idle-exit` counted from the process start.** A consumer started before a replay exits during the producer's read of January to November (71 to 123 s measured; run E's first attempt). | It now counts from the first batch (`idle-exit.ts`), and the consumer waits as long as needed for the first one. | Unit tests; R2 to R4 consumers waited through the read phase. |
+
+| Run | Session timeout | Resumed after broker start | Stored / keys | Redelivered (`deliveries` = 2) | Evidence |
+|---|---|---|---|---|---|
+| R2 | 30 s (client default) | 36.9 s | 60,000 / 60,000 | 75 | `reliability-r2-outage.json` |
+| R3 | 10 s | 17.2 s | 60,000 / 60,000 | 75 | `reliability-r3-outage.json`, `reliability-r3-status.json` |
+| R4 | 30 s (explicit) | 39.1 s | 60,000 / 60,000 | 78 | `reliability-r4-outage.json`, `reliability-r4-status.json` |
+
+### What else the runs showed
+
+- **At-least-once through an outage, at scale (R1).** The consumer kept storing messages it had already fetched for 12 s after the broker stopped, 32,800 flights in all, but only 16,800 had committed offsets. The other 16,000 could not commit.
+  - When the topic was drained, exactly those 16,000 were redelivered: 16,000 flights with `deliveries` = 2, 60,000 flights for 60,000 messages, no duplicate documents (`reliability-r1-redelivery.json`).
+  - The consumer logged **no warning** for the failed commits.
+- **No errors logged** by the producer or consumer in R2 to R4; every producer run completed its 60,000 sends (exit 0).
+- **The API's probe process crashed once per broker restart** (0xC0000005) and was replaced, so status showed Kafka reachable again within about 5 to 8 s of the broker starting (R3, R4).
+
+### Remaining Kafka risks
+
+- **Failed commits are silent.** During an outage, commits of batches already being processed fail without a log line. Delivery stays correct (redelivery plus idempotent upsert), but the redelivery is only visible afterwards in `deliveries` and the consumer's `redelivered` counter.
+- **The probe could not restart from a detached process.** An API process whose launching console had been closed (an orphan of these tests) could no longer start probe children: every respawn failed with 0xC0000142, so its status said "Kafka unreachable" indefinitely. A freshly started API recovered normally after the same kind of restart. The cause (the lost console) is a hypothesis, not proven; the API kept serving everything else.
+- **Single runs.** Each resume time is one run; 10 s against 30 s was consistent across three runs, but there is no spread.
+- **Unchanged from before:** single broker with replication factor 1 (no fault tolerance); the native `fetchOffsets` crash in the Kafka client (contained in the probe process); the consumer was never tested in a crash of the client itself.
+
 ## Raw evidence
 
 | File | What it holds |
@@ -298,6 +337,8 @@ The batch collections were counted before the runs (speed layer empty) and after
 | `docs/measurements/run-c-rereplay-5000.json` | the 5,000-event re-replay after run C (`timing` is null: it stored nothing new) |
 | `docs/measurements/run-d-crash-before-restart.json` | run D after the hard kill, before the restart |
 | `docs/measurements/run-d-crash-after-restart.json` | run D after the restart |
+| `docs/measurements/reliability-r1-redelivery.json`, `reliability-r1-status.json` | R1 (isolated): 16,000 redelivered after an outage, and the status series that showed the validation fallbacks and the first stall detection |
+| `docs/measurements/reliability-r2-outage.json`, `reliability-r3-*.json`, `reliability-r4-*.json` | R2 to R4 (isolated): resume times by session timeout, and the status series verifying the stall state |
 | `docs/measurements/run-h1-one-consumer.json`, `run-h2-two-consumers.json` | runs H1 and H2: one against two consumers, 150,000 events unthrottled |
 | `docs/measurements/run-h2-partitions.json` | run H2: messages per partition and per consumer |
 | `docs/measurements/run-g-kafka-restart.json` | run G (Kafka stopped about 28 s under load): checks and counts after recovery |
@@ -318,7 +359,7 @@ The batch collections were counted before the runs (speed layer empty) and after
 - **One machine.** Throughput with live scoring is bounded by scoring: about 2.4k/s in one process (run C). Two consumers gave 1.24x (runs H1 and H2), limited by the 3-partition split and by sharing one laptop. More partitions, three consumers and other machines were not measured.
 - **One run per rate.** Each figure is a single run on a laptop with Docker Desktop, not a mean of repeated runs.
 - **Latency resolution.** Batch-level timestamps and approximate percentiles (see item 6). Unthrottled latency is queueing time.
-- **Slow resume after a broker restart, and "live" while stalled.** In run G the consumer took about 42 s after the broker came back to store again, and the status endpoint said `live` meanwhile (see the run G section).
+- **Resume after a broker restart.** About 42 s in run G with the client's 30 s session timeout; 17.2 s with the new 10 s default (R3). The endpoint now reports the stall instead of `live` (see Reliability fixes).
 - **Shared laptop.** Runs were made on a laptop also in desktop use; run E's host load was recorded (62% CPU), the others' was not, so latencies across runs are only loosely comparable.
 - **Not measured in 8g:**
   - consumer memory use;
