@@ -178,10 +178,10 @@ Each was committed separately; details and evidence are in `docs/STREAMING.md` a
 | `6f9b0f0` | Two consumers against one | Runs H1 and H2: 1,736/s against 2,155/s (1.24x). The 3 partitions split 1 + 2 (62.4% to one consumer) and both shared one busy laptop. |
 | `cfcc44b` | Frontend colour scheme (your request) | Reverted the rose / cerulean retheme (`9c41f26`, `b5c3734`), so `web/` is back to the departure-board palette in `web/DESIGN.md`. |
 
-**Current state:**
-- `stream_flights` holds the 150,000 flights of run H2, not all of December, so the Live page shows that subset.
-- `flights.raw` holds those 150,000 messages, and lag is 0.
-- To restore all of December, run `stream:reset`, a consumer, then `stream:replay -- --rate 0` (as for run C).
+**Current state** (restored on 2026-10-22 after the follow-ups):
+- `stream_flights` holds all 479,230 December flights again: `stream:reset`, then one consumer and `stream:replay -- --month 12 --rate 0`.
+- Every `stream:measure` check passes: 479,230 sent = on `flights.raw` = upserts = stored, 0 DLQ, 0 redeliveries, lag 0.
+- `/api/stream/status` reports `live`, with whole-replay n 469,717 and precision 0.278, the same as the earlier full-December runs.
 
 **Tests at the 8g commit:** 49 test files and 412 tests pass; lint, typecheck and Prettier are clean.
 
