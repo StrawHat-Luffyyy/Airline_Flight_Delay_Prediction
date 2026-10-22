@@ -107,7 +107,7 @@ All seven §15.9 items passed (source: `docs/STREAMING.md`):
 |---|---|
 | Conservation and unique keys, all of December | 479,230 rows = 479,230 sent = 479,230 upserts; 479,230 stored = 479,230 distinct keys; lag 0 |
 | Idempotent replay of 5,000 events | `stream_flights` stays 479,230; only `deliveries` grows (+5,000) |
-| Hard kill of the consumer at 58,530 of 100,000 | after restart 100,000 stored, 100,000 distinct, lag 0 |
+| Hard kill of the consumer inside a batch (500 written, not committed) | after restart those 500 were redelivered (`deliveries` = 2); 200,000 stored for 200,000 keys, 0 duplicates, lag 0 |
 | Consumer throughput with live scoring | 506/s at a 500/s replay, 2,018/s at 2,000/s, 2,442/s unthrottled |
 | Latency p50 / p95 (`firstWrittenAt − producedAt`) | 423 / 2,238 ms in steady state at 1,200/s (about 49% of capacity; 1,098 / 9,424 ms including the cold start); 63 / 906 ms at 500/s; 138 / 2,236 ms at 2,000/s |
 | `/api/stream/status` vs an independent recomputation | 35 of 35 checks match |
