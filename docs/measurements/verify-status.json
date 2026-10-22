@@ -1,0 +1,226 @@
+{
+  "summary": {
+    "checks": 35,
+    "failed": 0,
+    "recomputeMs": 57802,
+    "changedDuringRun": false
+  },
+  "checks": [
+    {
+      "name": "stored.flights",
+      "endpoint": 479230,
+      "recomputed": 479230,
+      "match": true
+    },
+    {
+      "name": "stored.scored",
+      "endpoint": 479230,
+      "recomputed": 479230,
+      "match": true
+    },
+    {
+      "name": "stored.refused",
+      "endpoint": 0,
+      "recomputed": 0,
+      "match": true
+    },
+    {
+      "name": "stored.unscored",
+      "endpoint": 0,
+      "recomputed": 0,
+      "match": true
+    },
+    {
+      "name": "totals groups",
+      "endpoint": 1,
+      "recomputed": 1,
+      "match": true
+    },
+    {
+      "name": "window groups",
+      "endpoint": 1,
+      "recomputed": 1,
+      "match": true
+    },
+    {
+      "name": "window n",
+      "endpoint": 2000,
+      "recomputed": 2000,
+      "match": true
+    },
+    {
+      "name": "windowStart",
+      "endpoint": "2015-12-31",
+      "recomputed": "2015-12-31",
+      "match": true
+    },
+    {
+      "name": "windowEnd",
+      "endpoint": "2015-12-31",
+      "recomputed": "2015-12-31",
+      "match": true
+    },
+    {
+      "name": "departureHours",
+      "endpoint": {
+        "min": 13,
+        "max": 23
+      },
+      "recomputed": {
+        "min": 13,
+        "max": 23
+      },
+      "match": true
+    },
+    {
+      "name": "totals[lightgbm-20261013093139-12f165c2|0.20697104012783935] TP",
+      "endpoint": 56479,
+      "recomputed": 56479,
+      "match": true
+    },
+    {
+      "name": "totals[lightgbm-20261013093139-12f165c2|0.20697104012783935] FP",
+      "endpoint": 146806,
+      "recomputed": 146806,
+      "match": true
+    },
+    {
+      "name": "totals[lightgbm-20261013093139-12f165c2|0.20697104012783935] FN",
+      "endpoint": 40293,
+      "recomputed": 40293,
+      "match": true
+    },
+    {
+      "name": "totals[lightgbm-20261013093139-12f165c2|0.20697104012783935] TN",
+      "endpoint": 226139,
+      "recomputed": 226139,
+      "match": true
+    },
+    {
+      "name": "totals[lightgbm-20261013093139-12f165c2|0.20697104012783935] n",
+      "endpoint": 469717,
+      "recomputed": 469717,
+      "match": true
+    },
+    {
+      "name": "totals[lightgbm-20261013093139-12f165c2|0.20697104012783935] precision",
+      "endpoint": 0.27783161571193155,
+      "recomputed": 0.27783161571193155,
+      "match": true
+    },
+    {
+      "name": "totals[lightgbm-20261013093139-12f165c2|0.20697104012783935] recall",
+      "endpoint": 0.5836295622700781,
+      "recomputed": 0.5836295622700781,
+      "match": true
+    },
+    {
+      "name": "totals[lightgbm-20261013093139-12f165c2|0.20697104012783935] F1",
+      "endpoint": 0.3764551401900306,
+      "recomputed": 0.3764551401900306,
+      "match": true
+    },
+    {
+      "name": "totals[lightgbm-20261013093139-12f165c2|0.20697104012783935] base rate",
+      "endpoint": 0.2060219238392479,
+      "recomputed": 0.2060219238392479,
+      "match": true
+    },
+    {
+      "name": "totals[lightgbm-20261013093139-12f165c2|0.20697104012783935] accuracy",
+      "endpoint": 0.6016771800892878,
+      "recomputed": 0.6016771800892878,
+      "match": true
+    },
+    {
+      "name": "totals[lightgbm-20261013093139-12f165c2|0.20697104012783935] majority baseline",
+      "endpoint": 0.7939780761607521,
+      "recomputed": 0.7939780761607521,
+      "match": true
+    },
+    {
+      "name": "totals[lightgbm-20261013093139-12f165c2|0.20697104012783935] noOutcome",
+      "endpoint": 9513,
+      "recomputed": 9513,
+      "match": true
+    },
+    {
+      "name": "totals[lightgbm-20261013093139-12f165c2|0.20697104012783935] scored",
+      "endpoint": 479230,
+      "recomputed": 479230,
+      "match": true
+    },
+    {
+      "name": "window[lightgbm-20261013093139-12f165c2|0.20697104012783935] TP",
+      "endpoint": 299,
+      "recomputed": 299,
+      "match": true
+    },
+    {
+      "name": "window[lightgbm-20261013093139-12f165c2|0.20697104012783935] FP",
+      "endpoint": 1509,
+      "recomputed": 1509,
+      "match": true
+    },
+    {
+      "name": "window[lightgbm-20261013093139-12f165c2|0.20697104012783935] FN",
+      "endpoint": 15,
+      "recomputed": 15,
+      "match": true
+    },
+    {
+      "name": "window[lightgbm-20261013093139-12f165c2|0.20697104012783935] TN",
+      "endpoint": 177,
+      "recomputed": 177,
+      "match": true
+    },
+    {
+      "name": "window[lightgbm-20261013093139-12f165c2|0.20697104012783935] n",
+      "endpoint": 2000,
+      "recomputed": 2000,
+      "match": true
+    },
+    {
+      "name": "window[lightgbm-20261013093139-12f165c2|0.20697104012783935] precision",
+      "endpoint": 0.16537610619469026,
+      "recomputed": 0.16537610619469026,
+      "match": true
+    },
+    {
+      "name": "window[lightgbm-20261013093139-12f165c2|0.20697104012783935] recall",
+      "endpoint": 0.9522292993630573,
+      "recomputed": 0.9522292993630573,
+      "match": true
+    },
+    {
+      "name": "window[lightgbm-20261013093139-12f165c2|0.20697104012783935] F1",
+      "endpoint": 0.28180961357210177,
+      "recomputed": 0.28180961357210177,
+      "match": true
+    },
+    {
+      "name": "window[lightgbm-20261013093139-12f165c2|0.20697104012783935] base rate",
+      "endpoint": 0.157,
+      "recomputed": 0.157,
+      "match": true
+    },
+    {
+      "name": "window[lightgbm-20261013093139-12f165c2|0.20697104012783935] accuracy",
+      "endpoint": 0.238,
+      "recomputed": 0.238,
+      "match": true
+    },
+    {
+      "name": "window[lightgbm-20261013093139-12f165c2|0.20697104012783935] majority baseline",
+      "endpoint": 0.843,
+      "recomputed": 0.843,
+      "match": true
+    },
+    {
+      "name": "window[lightgbm-20261013093139-12f165c2|0.20697104012783935] ROC-AUC",
+      "endpoint": 0.5845290175367016,
+      "recomputed": 0.5845290175367016,
+      "match": true
+    }
+  ]
+}

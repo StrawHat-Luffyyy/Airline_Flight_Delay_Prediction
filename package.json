@@ -30,6 +30,7 @@
     "stream:score-missing": "npm run stream:score-missing --workspace=@flight-delay/server --",
     "stream:indexes": "npm run stream:indexes --workspace=@flight-delay/server --",
     "stream:verify-status": "npm run stream:verify-status --workspace=@flight-delay/server --",
+    "stream:measure": "npm run stream:measure --workspace=@flight-delay/server --",
     "stream:reset": "npm run stream:reset --workspace=@flight-delay/server --"
   },
   "devDependencies": {

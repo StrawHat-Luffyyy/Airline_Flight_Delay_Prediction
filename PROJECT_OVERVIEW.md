@@ -396,8 +396,13 @@ Keeping `pre` and `outcome` in separate sub-objects makes the leakage boundary s
 - **Effectively-once results:** each event is an idempotent upsert keyed by `_id = key`, where `key = date|airline|flightNumber|origin|schedDepMin` (deterministic and pure, unit-tested). Re-delivered or re-replayed events never create a second document. A `deliveries` counter records re-deliveries as evidence.
 - **Dead-letter queue:** events that fail schema validation go to `flights.dlq` with `{source: "consumer", reason, topic, partition, offset, value}` *before* the offset is committed; nothing is dropped. A scoring failure on a valid event (such as an unknown route) is not malformed: the event is stored with `prediction: null` and `scoreError`, and counted as unscored.
 - **Graceful shutdown:** on SIGINT or SIGTERM it finishes the in-flight batch, commits, disconnects from Kafka and closes MongoDB.
-- **`stream_flights`:** one document per flight with `{_id: key, runId, pre, outcome, prediction: {probability, label, threshold, modelVersion} | null, scoreError, producedAt, firstWrittenAt, lastWrittenAt, deliveries}`. Indexes: `{firstWrittenAt: -1}` and `{runId: 1}`.
-- **`stream_stats`:** run and consumer bookkeeping: producer run summaries, a consumer heartbeat (last seen, events consumed, DLQ sent, throughput over the last interval). Live metrics are not stored as running counters, which at-least-once delivery could double-count; they are computed from `stream_flights` (15.8).
+- **`stream_flights`:** one document per flight with `{_id: key, runId, lastRunId, pre, outcome, prediction: {probability, label, threshold, modelVersion} | null, scoreError, correct, producedAt, firstWrittenAt, lastWrittenAt, deliveries}`. `runId` is the first run that delivered the flight and `lastRunId` the latest; `correct` is null when there is no prediction or no arrival outcome. Indexes: `{firstWrittenAt: -1, _id: -1}`, `{runId: 1}` and `stream_totals` `{prediction.modelVersion: 1, prediction.threshold: 1, prediction.label: 1, outcome.isDelayed: 1, scoreError: 1}`.
+- **`stream_stats`:** run and consumer bookkeeping:
+  - producer-run documents (`kind: "producer-run"`), one per replay;
+  - one heartbeat document per consumer process (`kind: "consumer"`, `_id: "consumer:<group>:<host>-<pid>"`): `groupId`, `instanceId`, `status`, `startedAt`, `lastSeenAt` (every 2 s), `consumed`, `inserted`, `redelivered`, `dlq`, `batches`, `throughput`, and `error` while batches are failing;
+  - a TTL index on `lastSeenAt` (6 h), so old heartbeats expire and producer runs (no `lastSeenAt`) are kept.
+
+  Live metrics are not stored as running counters, which at-least-once delivery could double-count; they are computed from `stream_flights` (15.8).
 
 ### 15.7 Live scoring (no leakage)
 
@@ -419,6 +424,7 @@ Keeping `pre` and `outcome` in separate sub-objects makes the leakage boundary s
 
   Every rate states its sample size `n`. Rolling means the last N completed, scored flights (N configurable, default 2,000), with whole-run totals beside it. Metrics are computed from `stream_flights` and cached for a few seconds.
 - **Degraded behaviour:** if Kafka or the consumer is down, the status endpoint returns a clear degraded state with a reason, never a 500. `/api/health` gains an informational `kafka: "up" | "down"` field that never changes its overall status.
+- **Kafka admin calls run in a forked probe process,** so a native crash of the Kafka client on a broker restart cannot take down the API (`docs/DECISIONS.md`, Phase 8e).
 - **Live page (lowest priority):** one new dashboard page in the existing visual style. It polls the status endpoint, has loading, error and degraded states, invents no numbers, and shows the sample size next to every live metric.
 
 ### 15.9 Acceptance (all measured, recorded in `docs/STREAMING.md`)

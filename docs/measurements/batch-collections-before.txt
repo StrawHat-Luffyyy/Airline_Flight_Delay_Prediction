@@ -1,0 +1,23 @@
+{
+  airlines: 14,
+  airports: 322,
+  delay_lookup: 36420,
+  delay_lookup_cells: 249130,
+  export_runs: 2,
+  flights: 5819079,
+  ingest_runs: 17,
+  lookup_runs: 2,
+  model_runs: 2,
+  resolve_runs: 5,
+  stats_airport_hour: 4259,
+  stats_cancellation: 440,
+  stats_cause_monthly: 162,
+  stats_daily: 4926,
+  stats_daily_origin: 386704,
+  stats_delay_buckets: 8,
+  stats_dow_hour: 168,
+  stats_route: 4695,
+  stats_runs: 6,
+  stream_flights: 0,
+  stream_stats: 0
+}

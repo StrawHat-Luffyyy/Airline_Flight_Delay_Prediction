@@ -4,14 +4,15 @@ A Big Data project over the 2015 US domestic flight dataset (5,819,079 flights).
 
 - **Predicts** whether a flight arrives 15 or more minutes late (US DOT definition), using only what is known before departure.
 - **Explains** delays: their causes, and where and when they concentrate (airline, airport, route, month, hour).
-- **Shows** both through a REST API and a five-page dashboard.
+- **Shows** both through a REST API and a dashboard.
+- **Streams** December 2015 through Kafka as a replay, scores each flight live and shows the result on the Live page (Phase 8, [below](#streaming-layer-phase-8)).
 
 The design, every measurement and the reasoning behind each choice are in [`docs/`](#documentation).
 
 ## Requirements
 
 - **Node.js 20 or newer** with npm. The project is tested on Node 22 in CI.
-- **Docker Desktop**, for MongoDB 7.
+- **Docker Desktop**, for MongoDB 7 (and Kafka, only for the optional streaming layer).
 - **Python 3.12**, only to retrain the model. The trained model is committed in `ml/artifacts/`, so you can skip training.
 - About 4 GB of free disk space. Measured on the full build: the CSV is 592 MB, the MongoDB data directory 1.6 GB (`du -sh /data/db` inside the container; WiredTiger files plus journal, against 1,330 MB of collection and index storage in `db.stats()`: 937 MB data plus 393 MB indexes) and the training export 908 MB. MB here means 10^6 bytes.
 
@@ -48,7 +49,7 @@ npm run dev
 
 Open http://localhost:5173. The API listens on http://localhost:3001, and Vite proxies `/api` to it. Both bind to localhost only.
 
-Check that everything is up with `curl http://localhost:3001/api/health`. The expected answer is `{"status":"ok","mongo":"up","modelLoaded":true}`.
+Check that everything is up with `curl http://localhost:3001/api/health`. The expected answer is `{"status":"ok","mongo":"up","modelLoaded":true,"kafka":"down"}`. The `kafka` field is informational: it reads `"up"` when the Kafka broker is reachable and never changes the overall status.
 
 ### Retraining the model (optional)
 
@@ -76,6 +77,60 @@ On macOS or Linux, create the venv with `python3.12 -m venv ml/.venv` and use `m
 - `npm run ingest` with no flag refuses to run when `flights` already has data. `--append` adds to it, `--limit N` loads only the first N flight rows, and `--dir PATH` reads the CSVs from another folder.
 - `npm run explain:report` runs the representative queries with `explain("executionStats")` twice, as a forced collection scan and with the indexes, and times every API endpoint. It rewrites `docs/EXPLAIN_RESULTS.md`. Run it after `build:indexes` and `build:stats`.
 
+## Streaming layer (Phase 8)
+
+An optional speed layer beside the batch pipeline. December 2015 is replayed from `flights.csv` into Kafka (`flights.raw`, 3 partitions), and a consumer writes each flight to `stream_flights` and scores it with the same predictor as `POST /api/predict`. It is a replay at a chosen rate, not a live feed. The batch steps above must have run first. The measurements are in [docs/STREAMING.md](docs/STREAMING.md).
+
+Start MongoDB and the single-node Kafka broker:
+
+```bash
+docker compose up -d mongo kafka
+```
+
+Create the topics (idempotent):
+
+```bash
+npm run kafka:init
+```
+
+Start the consumer in its own terminal. It runs until Ctrl+C; `--idle-exit SECONDS` stops it once no batch has arrived for that long.
+
+```bash
+npm run stream:consume
+```
+
+Replay December at 1,000 events per second. `--rate 0` is unthrottled and `--limit N` stops after N flights of the month. December sits at the end of the CSV, so the replay reads and skips the earlier months before the first event is sent.
+
+```bash
+npm run stream:replay -- --month 12 --rate 1000
+```
+
+With the API running (`npm run dev`), open the **Live** tab at http://localhost:5173/live, or read the status directly:
+
+```bash
+curl http://127.0.0.1:3001/api/stream/status
+```
+
+Check the endpoint's metrics against an independent recomputation from `stream_flights`. Stop the consumer first: a write during the check fails it.
+
+```bash
+npm run stream:verify-status
+```
+
+Measure the newest replay run (conservation, unique keys, lag, throughput, latency). It is read-only; `--out FILE` also saves the report as JSON.
+
+```bash
+npm run stream:measure
+```
+
+**Warning: this empties the speed layer.** `stream:reset` deletes every document in `stream_flights` and `stream_stats`, the consumer group's offsets and the messages on `flights.raw` and `flights.dlq`. It never touches the batch collections. It refuses unless `--db` names the configured `MONGODB_DB` and `--yes` is given, and while a consumer is running.
+
+```bash
+npm run stream:reset -- --db <MONGODB_DB> --yes
+```
+
+With Kafka stopped, every other page and endpoint keeps working; the Live page and `/api/stream/status` report a degraded state instead of failing.
+
 ## Dashboard
 
 | Page | What it shows |
@@ -86,6 +141,7 @@ On macOS or Linux, create the venv with `python3.12 -m venv ml/.venv` and use `m
 | Explorer | Worst/best airlines, airports and routes with a minimum-flights filter, the raw flights behind a route, and an hour × weekday heatmap |
 | Predict | Score a flight (date, airline, origin, destination, hour): probability against the model's threshold, and which historical rates moved it |
 | Model | Baseline vs logistic regression vs LightGBM on the held-out test months, confusion matrix, training setup and feature importance |
+| Live | The Kafka speed layer: state with its reason, flights stored, consumer throughput, lag and DLQ size, and live precision, recall and accuracy for the rolling window beside the whole replay, each with its sample size. Polls `/api/stream/status` every 5 s |
 
 Screenshots of every page, at desktop and mobile width, are in [`docs/screenshots/`](docs/screenshots/).
 
@@ -99,7 +155,7 @@ Everything is under `/api`.
 
 | Method | Endpoint | Parameters / notes |
 |---|---|---|
-| GET | `/health` | MongoDB ping and whether the model is loaded (`503` with `status: degraded` when MongoDB is down) |
+| GET | `/health` | MongoDB ping, whether the model is loaded and an informational `kafka: up\|down` (`503` with `status: degraded` when MongoDB is down) |
 | GET | `/meta` | Row count, date range, airlines, airports, `dataQuality` |
 | GET | `/analytics/summary` | Flights, delay rate, average arrival delay, cancel rate |
 | GET | `/analytics/causes` | `by=overall\|airline\|airport\|month\|hour`, `limit` ≤ 100 |
@@ -114,6 +170,7 @@ Everything is under `/api`.
 | POST | `/predict` | Body `{ date, airline, origin, dest, schedDepHour }` → `{ probability, label, threshold, modelVersion, derived, topFactors }` |
 | GET | `/model/metrics` | The `model_runs` document of the deployed model |
 | GET | `/model/feature-importance` | Feature importance of the deployed model, sorted |
+| GET | `/stream/status` | Speed-layer state (`live`, `idle` or `degraded`, with a reason), Kafka lag and DLQ size, and live metrics from `stream_flights` with their sample sizes. Always `200`; Kafka being down is reported as `degraded` |
 
 Details of the less obvious responses:
 - **Coverage.** Airport-, hour- and route-keyed results carry `coverage.excludedUnresolvedFlights`: flights whose airport is still an unresolved numeric BTS id.
@@ -136,6 +193,11 @@ All settings come from `.env`, validated with zod at startup. See `.env.example`
 | `HOST` | `127.0.0.1` | Interface the API binds to; `0.0.0.0` exposes it on the network |
 | `CORS_ORIGIN` | `http://localhost:5173` | Browser origin allowed to call the API directly |
 | `PREDICT_RATE_LIMIT_PER_MIN` | `30` | `POST /api/predict` requests per client IP per minute |
+| `KAFKA_BROKERS` | `127.0.0.1:9092` | Kafka bootstrap servers (streaming layer only). Use `127.0.0.1`, not `localhost`, on Windows |
+| `KAFKA_CLIENT_ID` | `flight-delay` | Kafka client id |
+| `KAFKA_CONSUMER_GROUP` | `flight-stream` | Consumer group of `stream:consume` |
+| `KAFKA_TOPIC_RAW` / `KAFKA_TOPIC_DLQ` | `flights.raw` / `flights.dlq` | Replayed events and the dead-letter queue |
+| `STREAM_WINDOW_SIZE` | `2000` | Flights in the Live page's rolling window (100 to 20,000) |
 
 ## Development
 
@@ -165,6 +227,8 @@ docs/     design decisions, schema, Big Data justification, explain evidence, sc
 - [docs/BIGDATA_JUSTIFICATION.md](docs/BIGDATA_JUSTIFICATION.md): volume, variety, velocity, scalability (sharding design), and MongoDB compared with Hadoop/Spark/SQL.
 - [docs/SCHEMA.md](docs/SCHEMA.md): every collection, its fields, the indexes and why each exists.
 - [docs/EXPLAIN_RESULTS.md](docs/EXPLAIN_RESULTS.md): `explain("executionStats")` before/after indexes, plus API timings.
+- [docs/STREAMING.md](docs/STREAMING.md): the Kafka speed layer's acceptance measurements (conservation, idempotency, crash recovery, throughput, latency, metrics check).
+- [docs/PERF.md](docs/PERF.md): timings of `/api/stream/status` and `/api/health`, with Kafka up and stopped.
 - [docs/DECISIONS.md](docs/DECISIONS.md): decisions and measurements, phase by phase.
 - [docs/FRONTEND_AUDIT.md](docs/FRONTEND_AUDIT.md): the audit of the AI Studio scaffold the dashboard replaced.
 - [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md): the original specification.

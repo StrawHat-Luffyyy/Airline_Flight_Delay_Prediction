@@ -14,7 +14,7 @@ These limits are stated first because they bound every claim that follows.
 |---|---|
 | The data covers one year: 2015, 5,819,079 flights (source: `ingest_runs`). | There is no year-over-year signal, and the test period (Oct-Dec) is one season of one year. |
 | The model uses no weather and no aircraft-position or inbound-flight features. Only pre-departure schedule fields and historical rates are allowed (PROJECT_OVERVIEW §7). | Test ROC-AUC is 0.6276 (source: `ml/artifacts/metrics.json`), below the 0.65-0.72 that §7 expects. |
-| Velocity is not demonstrated. The optional `npm run simulate:stream` was **not implemented**. | The streaming story is a design argument, not a measurement (see [Velocity](#velocity-simulated)). |
+| Velocity is simulated. The Kafka speed layer (Phase 8) replays December 2015 from the CSV at a chosen rate; there is no live feed. It runs on one broker with replication factor 1. | Throughput and latency are measured for a replay on one machine (source: `docs/STREAMING.md`), not for a production stream. The broker has no fault tolerance (see [Velocity](#velocity-simulated)). |
 | Sharding is a design only. The optional `docker-compose.sharded.yml` was **not built**. | No sharded figures exist (see [Sharding strategy](#sharding-strategy-design-only)). |
 | October airport codes are partly derived. 486,165 October rows used numeric BTS airport ids, and 483,018 (99.35%) were resolved offline (source: DECISIONS.md, "Airport id resolution"). | 1,632 flights still have an unresolved origin and 3,147 have an unresolved origin or destination (source: `stats_runs.dataQuality`). Airport-keyed results exclude them and say so in the API. |
 
@@ -85,19 +85,42 @@ The data has three shapes, and the document model holds all three without a sche
 
 ## Velocity (simulated)
 
-**Not demonstrated.** PROJECT_OVERVIEW §12 lists an optional `npm run simulate:stream` that replays December in small batches. It was **not implemented**, and no incremental-ingest timing exists: `TODO: measure` if it is ever built.
+**Demonstrated as a replay, not a live feed.** Phase 8 adds a Kafka speed layer beside the batch layer (PROJECT_OVERVIEW §15). Every figure below is from `docs/STREAMING.md`, which cites a JSON file in `docs/measurements/` for each one.
 
-What the existing code does support, and what it does not:
+### Where Kafka sits
 
-| Building block | Status today | Gap for a real stream |
+| Layer | Path | Freshness |
 |---|---|---|
-| `npm run ingest -- --append [--dir PATH]` | Implemented. It streams any `flights.csv` into the existing collection in batches of 10,000 and records an `ingest_runs` document with `mode: "append"`. | It loads a whole file, not a feed. There is no unique key on the natural flight identity, so appending the same file twice duplicates rows. A replay would need a December-only CSV and, ideally, a unique index on (date, airline, flightNumber, origin). |
-| Indexes during appends | All 8 `flights` indexes are maintained on every insert. | Insert throughput with indexes present: `TODO: measure`. The bulk load avoids this cost by building indexes after loading (§6.4). |
-| `npm run build:stats` | Idempotent. Every output document carries the run's `buildId`; after each `$merge`, documents with an older `buildId` are deleted. Readers always see a complete collection, never an empty one. | It is a **full recompute**: every pipeline groups all of `flights`. A refresh costs the whole 137.9 s (source: `stats_runs`), not time proportional to the new batch. |
-| Stored sums, not just rates | Each stats document stores `flights`, `completed`, `delayed`, `arrDelaySum` and so on, and derives rates from them (`server/src/stats/builders.ts`). | This is what makes an incremental update possible: `$match` the new batch, `$group` it, then `$merge` with a `whenMatched` pipeline that adds the sums and recomputes the rates. Date-keyed collections (`stats_daily`, `stats_daily_origin`) could instead re-aggregate only the affected dates with `whenMatched: "replace"`. Neither is implemented, and the incremental mode would have to skip the `buildId` sweep. |
-| Reads during refresh | The API caches responses for 10 minutes (`server/src/cache.ts`). `/api/flights` uses the `_id` bounds from `stats_daily` only when the latest stats build started after the last completed ingest, and otherwise falls back to an unbounded (correct, slower) query. | Dashboard freshness is bounded by the cache TTL plus the stats refresh. |
+| Batch | `flights.csv` → `ingest` → `flights` → `build:stats` / `build:lookup` → `stats_*`, `delay_lookup` → model training | As fresh as the last full `build:stats` rebuild (a full recompute; durations in `stats_runs`) |
+| Speed (velocity) | `flights.csv` (December) → `stream:replay` → Kafka `flights.raw` → `stream:consume` → MongoDB `stream_flights` | Each flight is stored and scored as it arrives |
 
-December is in the test split, so a replay would affect neither `delay_lookup` (train split only) nor the model.
+- **Same predictor.** The consumer scores each new flight with `predictDelay` from `server/src/ml/predict.ts`, the same code path as `POST /api/predict`, using only the pre-departure fields of the event. The outcome is read after scoring, to judge the prediction (`docs/DECISIONS.md`, Phase 8d).
+- **Out-of-sample.** December is test data: the model and `delay_lookup` use January to September only.
+- **Batch layer untouched.** Phase 8 writes only `stream_flights` and `stream_stats`. Every batch collection count was identical before and after the 8g runs (source: `docs/measurements/batch-collections-before.txt`, `-after.txt`). The speed layer does not feed `stats_*`; those are still full recomputes.
+- **Delivery.** At-least-once (offsets committed only after the MongoDB write), made effectively-once by upserting on `_id` = the flight key. A re-delivered event bumps `deliveries` and never creates a second document.
+
+### What was measured
+
+All seven §15.9 items passed (source: `docs/STREAMING.md`):
+
+| Measure | Result |
+|---|---|
+| Conservation and unique keys, all of December | 479,230 rows = 479,230 sent = 479,230 upserts; 479,230 stored = 479,230 distinct keys; lag 0 |
+| Idempotent replay of 5,000 events | `stream_flights` stays 479,230; only `deliveries` grows (+5,000) |
+| Hard kill of the consumer at 58,530 of 100,000 | after restart 100,000 stored, 100,000 distinct, lag 0 |
+| Consumer throughput with live scoring | 506/s at a 500/s replay, 2,018/s at 2,000/s, 2,442/s unthrottled |
+| Latency p50 / p95 (`firstWrittenAt − producedAt`) | 63 / 906 ms at 500/s; 138 / 2,236 ms at 2,000/s |
+| `/api/stream/status` vs an independent recomputation | 35 of 35 checks match |
+
+Unthrottled, the producer sent December at 12,542/s while the consumer stored and scored at 2,442/s. Kafka buffered the difference and the backlog drained after the producer had finished, so latency there (p50 72.6 s) is queueing time in Kafka, not processing time. That buffering is the point of putting a log between producer and consumer.
+
+### Honest limits
+
+- **Simulated velocity.** A replay of 2015 data at a chosen rate, not a live feed. Each event already carries its outcome, which in reality arrives hours later.
+- **No fault tolerance.** One broker with replication factor 1: losing the broker or its volume loses every event not yet consumed. Production would need at least 3 brokers, `min.insync.replicas=2` and monitoring.
+- **Bounded by scoring.** Consumer throughput with live scoring is about 2.4k/s in one process (2,442/s, run C). Unscored inserts reached 10,904/s and scoring alone 2,807/s (`docs/PHASE8_STATUS.md`, 8c and 8d). Scaling out to more consumer processes (up to one per partition, 3 here) was not measured.
+- **A native crash in the client.** `@confluentinc/kafka-javascript` 1.11.0 (librdkafka) crashed its process (0xC0000005) in `admin.fetchOffsets` when the broker restarted. The API therefore runs its Kafka admin calls in a forked probe process: the child crashes, the API keeps serving and starts a new one (`docs/DECISIONS.md`, Phase 8e). A consumer under load through a broker restart was not tested.
+- **One machine, one run per rate.** Producer, broker, consumer and MongoDB shared one laptop; no figure is a mean of repeated runs.
 
 ## Schema design trade-offs
 
@@ -218,7 +241,13 @@ A: `csv-parse` stream → `for await` → batches of 10,000 → `insertMany({ or
 A: No. The shard key `{ origin: 1, date: 1 }` is designed, but no cluster was run. `date` alone would be a monotonic write hotspot; leading with `origin` spreads writes and keeps per-airport queries targeted.
 
 **Q: Did you demonstrate velocity?**
-A: No. `simulate:stream` was not implemented. `ingest --append` and the idempotent `build:stats` are the building blocks, but `build:stats` is a full recompute (137.9 s), not incremental.
+A: As a simulation. `stream:replay` sends December 2015 into Kafka (`flights.raw`) at a chosen rate, and `stream:consume` stores each flight in `stream_flights` and scores it with the same `predictDelay` as `/api/predict`. With live scoring the consumer kept up at 2,000/s (2,018/s) and reached 2,442/s unthrottled, where scoring is the bottleneck; p50 latency was 138 ms at 2,000/s (`docs/STREAMING.md`). It is a replay on one broker with replication factor 1, so it has no fault tolerance and is not a live feed.
+
+**Q: Why Kafka in front of MongoDB instead of writing straight to it?**
+A: Kafka decouples the producer's rate from the consumer's. In the unthrottled run the producer sent at 12,542/s and the consumer scored at 2,442/s; Kafka held the backlog and nothing was lost (lag 0 at the end). Committed offsets also make recovery possible: after a hard kill the restarted consumer read exactly the 41,470 unprocessed messages (`docs/STREAMING.md`, item 4).
+
+**Q: Is the stream exactly-once?**
+A: At-least-once delivery with idempotent writes. Offsets are committed only after the MongoDB write, so a crash can redeliver a batch, and `_id` = flight key turns a redelivery into an update of `deliveries`, never a second document. Re-sending 5,000 events left `stream_flights` at 479,230.
 
 **Q: What about the numeric airport codes?**
 A: 486,165 October rows used BTS numeric ids. `resolve:airport-ids` maps them by matching flight schedules against September and November, with at least 20 votes and at least 99% agreement. 99.35% of the rows were resolved. The rest are excluded from airport-keyed results, and the API reports this in `coverage`.

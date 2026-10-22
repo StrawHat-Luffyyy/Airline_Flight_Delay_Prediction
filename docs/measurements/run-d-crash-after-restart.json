@@ -1,0 +1,78 @@
+{
+  "report": {
+    "runId": "replay-20261022141145-4e5fea07",
+    "producer": {
+      "status": "completed",
+      "rate": 0,
+      "limit": 100000,
+      "monthRows": 100000,
+      "sentRaw": 100000,
+      "sentDlq": 0,
+      "malformedCsv": 0,
+      "sendElapsedMs": 7765,
+      "achievedRate": 12879
+    },
+    "kafka": {
+      "rawRetained": 100000,
+      "dlqRetained": 0,
+      "lag": 0
+    },
+    "stored": {
+      "flights": 100000,
+      "flightsOfRun": 100000,
+      "deliveries": 100000,
+      "scored": 100000,
+      "refused": 0
+    },
+    "timing": {
+      "firstProducedAt": "2026-10-22T14:13:07.360Z",
+      "lastProducedAt": "2026-10-22T14:13:15.077Z",
+      "firstWrittenAt": "2026-10-22T14:13:07.845Z",
+      "lastWrittenAt": "2026-10-22T14:14:20.682Z",
+      "consumerSpanMs": 72837,
+      "consumerRate": 1373,
+      "endToEndMs": 73322,
+      "latencyMs": {
+        "p50": 15686,
+        "p95": 65173,
+        "p99": 65607,
+        "min": 485,
+        "max": 65709,
+        "mean": 30257
+      }
+    },
+    "sinceReset": {
+      "producerRuns": 1,
+      "sentRaw": 100000,
+      "sentDlq": 0,
+      "largestRun": 100000
+    }
+  },
+  "checks": [
+    {
+      "name": "month rows = sent to raw + producer DLQ",
+      "ok": true,
+      "detail": "100,000 = 100,000 + 0"
+    },
+    {
+      "name": "raw topic holds exactly what was sent",
+      "ok": true,
+      "detail": "100,000 on flights.raw, 100,000 sent in 1 run(s)"
+    },
+    {
+      "name": "raw messages = upserts + consumer DLQ",
+      "ok": true,
+      "detail": "100,000 messages; 100,000 upserts + 0 consumer DLQ"
+    },
+    {
+      "name": "stored flights = distinct keys produced",
+      "ok": true,
+      "detail": "100,000 stored, 100,000 distinct keys sent, 0 dead-lettered"
+    },
+    {
+      "name": "consumer lag = 0",
+      "ok": true,
+      "detail": "0 messages behind"
+    }
+  ]
+}
