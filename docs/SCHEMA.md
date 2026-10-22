@@ -25,13 +25,17 @@ This document describes the `flight_delay` database: every collection in use, it
 | `delay_lookup_cells` | Intermediate for model features (train split) | 249,130 | 56.55 MB | `npm run build:lookup` |
 | `delay_lookup` | Model feature rates (train split) | 36,420 | 6.49 MB | `build:lookup` |
 | `model_runs` | Model registry | 2 | 0.01 MB | `npm run ml:register` |
-| `ingest_runs` | Audit | 14 | < 0.01 MB | `ingest` |
-| `resolve_runs` | Audit | 4 | < 0.01 MB | `resolve:airport-ids` |
-| `stats_runs` | Audit | 5 | < 0.01 MB | `build:stats` |
-| `lookup_runs` | Audit | 1 | < 0.01 MB | `build:lookup` |
+| `ingest_runs` | Audit | 17 | < 0.01 MB | `ingest` |
+| `resolve_runs` | Audit | 5 | < 0.01 MB | `resolve:airport-ids` |
+| `stats_runs` | Audit | 7 | 0.01 MB | `build:stats` |
+| `lookup_runs` | Audit | 3 | < 0.01 MB | `build:lookup` |
 | `export_runs` | Audit | 2 | < 0.01 MB | `npm run export:training` |
+| `stream_flights` | Phase 8 speed layer: one document per replayed flight with its live score | 479,230 | 272.09 MB | `npm run stream:consume` (PROJECT_OVERVIEW §15.6) |
+| `stream_stats` | Phase 8 bookkeeping: producer runs and consumer heartbeats | 4 | < 0.01 MB | `stream:replay`, `stream:consume` |
 
-On disk, `flights` takes 903.3 MB (WiredTiger compressed, after the Phase 7 rebuild), plus 367.4 MB of indexes. The whole database holds 6,506,355 documents: 4,110.4 MB of data, 959.1 MB of storage and 398.0 MB of indexes (`db.stats()`).
+Counts and sizes measured 2026-10-22 (source: `docs/measurements/batch-runs-2026-10-22.json`).
+
+On disk, `flights` takes 903.3 MB (WiredTiger compressed, after the Phase 7 rebuild), plus 368.6 MB of indexes. The whole database holds 21 collections and 6,985,597 documents: 4,382.5 MB of data, 1,009.3 MB of storage and 429.8 MB of indexes (`db.stats()`, 2026-10-22, including the Phase 8 `stream_*` collections; source: `docs/measurements/batch-runs-2026-10-22.json`).
 
 ## `flights`
 
@@ -121,18 +125,27 @@ Both are reloaded in full on every ingest and upserted by `_id`, so reloading is
 
 **Read cost.** All analytics endpoints answered with medians of 5-39 ms over HTTP with the cache off. The largest unindexed read is a scan of the 4,926 `stats_daily` documents (EXPLAIN_RESULTS.md). The small collections have no secondary index because scanning a few thousand small documents already meets the 1 s target; only `stats_daily_origin` (386,704 documents) needs its two read indexes.
 
-**Build cost** (latest `stats_runs`): 137.9 s in total, peak Node RSS 106 MB.
+**Build cost.** The latest run (2026-10-22) took 370.8 s in total, at a peak Node RSS of 106 MB. It ran with the Kafka broker up and the 479,230-document `stream_flights` collection in the same MongoDB.
 
-| Collection | Build time |
+The seven saved runs on the same 5,819,079 flights took between 110.2 s and 370.8 s:
+- 117.9 s, 110.2 s and 127.3 s on 2026-10-12;
+- 129.5 s on 2026-10-13;
+- 137.9 s on 2026-10-15;
+- 214.9 s on 2026-10-16, with other jobs sharing the machine;
+- 370.8 s on 2026-10-22.
+
+So the build time depends heavily on what else the machine and MongoDB are doing. All seven runs are in `stats_runs` (source: `docs/measurements/batch-runs-2026-10-22.json`).
+
+| Collection | Build time, latest run |
 |---|---|
-| `stats_daily` | 23.0 s |
-| `stats_daily_origin` | 33.8 s |
-| `stats_route` | 20.8 s |
-| `stats_airport_hour` | 19.3 s |
-| `stats_cause_monthly` | 8.3 s |
-| `stats_cancellation` | 5.7 s |
-| `stats_delay_buckets` | 13.5 s |
-| `stats_dow_hour` | 13.0 s |
+| `stats_daily` | 91.8 s |
+| `stats_daily_origin` | 82.6 s |
+| `stats_route` | 67.4 s |
+| `stats_airport_hour` | 43.1 s |
+| `stats_cause_monthly` | 16.0 s |
+| `stats_cancellation` | 12.0 s |
+| `stats_delay_buckets` | 25.5 s |
+| `stats_dow_hour` | 30.0 s |
 
 **Coverage.** Airport-keyed collections (`stats_daily_origin`, `stats_route`, `stats_airport_hour`) exclude flights whose airport is still a numeric BTS id. `stats_runs.dataQuality` records the exact difference: 1,632 flights with an unresolved origin and 3,147 with an unresolved origin or destination. The API reports it in `coverage`.
 
@@ -146,7 +159,7 @@ Both are built by `npm run build:lookup` (`server/src/features/lookup.ts`) from 
 | `delay_lookup` | `"<scope>/<kind>/<key>"`, for example `full/originHour/MDT\|15` | `scope` (`full`, `fold1`, `fold2`, `fold3`), `kind` (`global`, `airline`, `origin`, `dest`, `originHour`, `route`), `key`, `completed`, `delayed`, `rate`, `buildId` | `{ scope: 1, kind: 1, key: 1 }` | Smoothed rate features: `rate = (delayed + 50 × globalRate) / (completed + 50)`. The `full` scope is used by test rows and `/api/predict`; `foldK` excludes fold K's months (1-3, 4-6, 7-9), so no training row's rate includes its own label. |
 
 - Both collections use the same `$merge` + `buildId` sweep as `stats_*`.
-- The latest run (`lookup_runs`) built the cells in 26.1 s and the whole lookup in 32.7 s.
+- The latest run (`lookup_runs`, 2026-10-22) built the cells in 52.9 s and the whole lookup in 65.2 s. Earlier runs took 26.1 s / 32.7 s (2026-10-13) and 47.4 s / 64.7 s (2026-10-16); source: `docs/measurements/batch-runs-2026-10-22.json`.
 - The server reads `delay_lookup` into memory once per process (`loadLookupTable`), so the API never queries it per request.
 
 ## Model registry

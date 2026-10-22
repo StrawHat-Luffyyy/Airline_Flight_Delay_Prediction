@@ -28,8 +28,8 @@ These limits are stated first because they bound every claim that follows.
 | `flights` documents | 5,819,079 | `$collStats`, 2026-10-16 |
 | `flights` uncompressed BSON | 3,924.4 MB (average document 674 bytes) | `$collStats` |
 | `flights` on disk (WiredTiger, compressed) | 903.3 MB | `$collStats` after the Phase 7 rebuild (903.5 MB before it) |
-| `flights` indexes (8, including `_id_`) | 367.4 MB | `$collStats` |
-| Whole `flight_delay` database: 19 collections, 6,506,355 documents | data 4,110.4 MB, storage 959.1 MB, indexes 398.0 MB | `db.stats()`, 2026-10-16 |
+| `flights` indexes (8, including `_id_`) | 368.6 MB | `$collStats`, 2026-10-22 (`docs/measurements/batch-runs-2026-10-22.json`) |
+| Whole `flight_delay` database: 21 collections, 6,985,597 documents (including the Phase 8 `stream_*` collections) | data 4,382.5 MB, storage 1,009.3 MB, indexes 429.8 MB | `db.stats()`, 2026-10-22 (`docs/measurements/batch-runs-2026-10-22.json`) |
 | Ingest | 5,819,079 rows read and inserted, 0 rejected; 296 s at 342 MB peak Node RSS (2026-10-11 run), and 421 s at 362 MB in the Phase 7 reproduction (2026-10-16, with other jobs sharing the machine) | `ingest_runs` (both `--drop` runs) |
 
 Note that 592 MB of CSV is not "big data" by industry standards. What makes it a Big Data exercise here is the size relative to the tools: 5.8M rows will not fit in a browser or a naive Node array, a full scan costs 4-7 s per query (source: EXPLAIN_RESULTS.md, Q1-Q7 "Before"), and the BSON form is 6.6 times the size of the CSV, because every document repeats its field names and carries denormalised fields. WiredTiger compression shrinks the BSON by 4.3x (3,924.4 → 903.3 MB).
@@ -54,8 +54,8 @@ No step loads the dataset into Node memory:
 
 | Job | Peak Node RSS | How | Source |
 |---|---|---|---|
-| `ingest` (5.8M rows) | 342 MB | `csv-parse` stream, `for await`, batches of 10,000, `insertMany({ ordered: false })` | `ingest_runs` |
-| `build:stats` | 106 MB | all work runs inside MongoDB (`$group` + `$merge`, `allowDiskUse: true`) | `stats_runs` |
+| `ingest` (5.8M rows) | 362 MB (latest `--drop` run, 2026-10-16; 342 MB on 2026-10-11) | `csv-parse` stream, `for await`, batches of 10,000, `insertMany({ ordered: false })` | `ingest_runs` (`docs/measurements/batch-runs-2026-10-22.json`) |
+| `build:stats` | 106 MB (latest run, 2026-10-22) | all work runs inside MongoDB (`$group` + `$merge`, `allowDiskUse: true`) | `stats_runs` (`docs/measurements/batch-runs-2026-10-22.json`) |
 | `export:training` | 284 MB | projected cursor streamed to CSV | DECISIONS.md, Phase 4 |
 | `resolve:airport-ids` | 364-455 MB | cursors plus `_id`-targeted bulk updates in batches of 10,000; the 127k-key reference map dominates | DECISIONS.md |
 
@@ -127,7 +127,7 @@ Unthrottled, the producer sent December at 12,542/s while the consumer stored an
 | Choice | Alternative | Why this one | Cost |
 |---|---|---|---|
 | **Denormalise** `airlineName`, `originCity`/`originState`, `destCity`/`destState` and the derived `route` into every flight | Normalised flights plus `$lookup` into `airlines` / `airports` at read time | There is no `$lookup` anywhere in `server/src`. On a 5.8M-row aggregation a `$lookup` runs per input document, and in a sharded cluster it is an extra cross-collection step. The reference data is tiny (14 + 322 documents) and fixed for 2015, so update anomalies are not a practical risk. `route` turns "origin and dest" into one equality on the single-field `route_1` index (Q4: 27.8x faster). | Larger documents: the six fields take about 103 of the 674 average bytes per flight (about 15%; mean `$bsonSize` of an object holding just those fields over a 100,000-flight `$sample`, measured 2026-10-16). Airport *names* are deliberately not copied, so a reference reload never leaves flights stale (comment in `server/src/ingest/run.ts`). |
-| **Computed pattern**: `stats_*` collections built by `$group` + `$merge` | Aggregating `flights` on every request | Q8 shows a whole-collection ranking takes 13.5 s even with indexes. The same ranking from `stats_route` takes 38 ms median. 4,926 `stats_daily` documents replace 5,819,079 flights for daily and monthly totals. | 137.9 s per rebuild (`stats_runs`). Data is as fresh as the last build. About 123 MB of extra uncompressed data (sum of the eight `stats_*` sizes), most of it `stats_daily_origin` (117.53 MB). |
+| **Computed pattern**: `stats_*` collections built by `$group` + `$merge` | Aggregating `flights` on every request | Q8 shows a whole-collection ranking takes 13.5 s even with indexes. The same ranking from `stats_route` takes 38 ms median. 4,926 `stats_daily` documents replace 5,819,079 flights for daily and monthly totals. | 370.8 s for the latest rebuild, 110.2-370.8 s over seven runs (source: `docs/measurements/batch-runs-2026-10-22.json`). Data is as fresh as the last build. About 123 MB of extra uncompressed data (sum of the eight `stats_*` sizes), most of it `stats_daily_origin` (117.53 MB). |
 | **`$merge` into materialised collections** rather than `$out` | `$out` replaces the target collection | `$merge` upserts by `_id`, so a collection is never empty mid-build, and with a `buildId` sweep it is idempotent. A second full build removed 0 stale documents (DECISIONS.md, Phase 3). | The stale-document sweep is an extra `deleteMany` per collection. |
 | **Store sums, derive rates** | Store only `delayRate` / `avgArrDelay` | Re-aggregating at read time (days into months, airlines into an airport) stays exact, and it enables a future incremental update. | Slightly larger documents. |
 | **Partial index** `month_1_airline_1_with_causes` on `{ causes: { $type: "object" } }` | A full `{ month, airline }` index | It indexes only the 1,063,439 flights with causes: 6.0 MB. Q5 is 11.5x faster (4,653 → 403 ms). | Queries must repeat `causes: { $type: "object" }`, or the planner cannot use the index. |
@@ -235,7 +235,7 @@ A: Only 1,063,439 flights report causes. `month_1_airline_1_with_causes` indexes
 A: A random split would let the model learn the test months' seasonality and overstate AUC. Train is Jan-Sep and test is Oct-Dec, tagged as `flights.split` at ingest. `delay_lookup` uses train data only, with out-of-fold rates for the training rows.
 
 **Q: How does ingestion stay within memory?**
-A: `csv-parse` stream → `for await` → batches of 10,000 → `insertMany({ ordered: false })`. The next batch is not read until the insert returns. The peak was 342 MB RSS for 5.8M rows (`ingest_runs`).
+A: `csv-parse` stream → `for await` → batches of 10,000 → `insertMany({ ordered: false })`. The next batch is not read until the insert returns. The peak was 362 MB RSS for 5.8M rows in the latest run (2026-10-16; 342 MB on 2026-10-11; `ingest_runs`, `docs/measurements/batch-runs-2026-10-22.json`).
 
 **Q: Did you shard?**
 A: No. The shard key `{ origin: 1, date: 1 }` is designed, but no cluster was run. `date` alone would be a monotonic write hotspot; leading with `origin` spreads writes and keeps per-airport queries targeted.
