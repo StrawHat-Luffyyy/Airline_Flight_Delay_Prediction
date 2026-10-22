@@ -4,9 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { deriveMetrics } from '../../src/stream/status/metrics.js';
 import type { StreamMetrics } from '../../src/stream/status/queries.js';
+import type { KafkaProbe, KafkaSnapshot } from '../../src/stream/status/kafka-probe.js';
 import { createStreamStatus } from '../../src/stream/status/service.js';
 import type { Heartbeat } from '../../src/stream/status/state.js';
-import { kafkaDown, kafkaUp } from '../helpers/kafka.js';
+import { fixedKafka, kafkaDown, kafkaUp } from '../helpers/kafka.js';
 
 const MODEL = 'lightgbm-a';
 
@@ -237,5 +238,94 @@ describe('createStreamStatus', () => {
     });
     const body = await status.get();
     expect(body).toMatchObject({ state: 'degraded', stored: null, window: null, totals: null });
+  });
+
+  it('calls a stall only after lag has stayed above 0 for the stall window across reads', async () => {
+    let clock = Date.parse('2026-10-22T18:40:00Z');
+    const lagging = fixedKafka({
+      reachable: true,
+      reason: null,
+      lag: { total: 9_000, partitions: [{ partition: 0, committed: 0, end: 9_000, lag: 9_000 }] },
+      dlqMessages: 0,
+    });
+    const status = createStreamStatus({
+      loadMetrics: async () => metrics(),
+      // Fresh heartbeat; last batch long ago (an idle consumer that just got new messages).
+      loadHeartbeat: async () => ({
+        ...running(),
+        lastSeenAt: new Date(clock - 1_000),
+        throughput: 0,
+        lastBatchAt: new Date(clock - 120_000),
+      }),
+      kafka: lagging,
+      groupId: 'g',
+      servedModel: null,
+      now: () => new Date(clock),
+    });
+    expect((await status.get()).state).toBe('live');
+    clock += 10_000;
+    expect((await status.get()).state).toBe('live');
+    clock += 6_000;
+    const stalled = await status.get();
+    expect(stalled.state).toBe('degraded');
+    expect(stalled.reason).toContain('not making progress');
+    expect(stalled.consumer.fresh).toBe(true);
+    expect(stalled.consumer.lastBatchAgeSeconds).toBe(120);
+  });
+
+  it('restarts the stall window after a read with no lag or with Kafka unreachable', async () => {
+    let clock = Date.parse('2026-10-22T18:40:00Z');
+    const lagging: KafkaSnapshot = {
+      reachable: true,
+      reason: null,
+      lag: { total: 9_000, partitions: [{ partition: 0, committed: 0, end: 9_000, lag: 9_000 }] },
+      dlqMessages: 0,
+    };
+    const drained: KafkaSnapshot = {
+      ...lagging,
+      lag: { total: 0, partitions: [{ partition: 0, committed: 9_000, end: 9_000, lag: 0 }] },
+    };
+    const unreachable: KafkaSnapshot = {
+      reachable: false,
+      reason: 'Kafka unreachable',
+      lag: null,
+      dlqMessages: null,
+    };
+    let snapshot: KafkaSnapshot = lagging;
+    const probe: KafkaProbe = {
+      read: async () => snapshot,
+      lastKnown: () => snapshot,
+      close: async () => {},
+    };
+    const status = createStreamStatus({
+      loadMetrics: async () => metrics(),
+      loadHeartbeat: async () => ({
+        ...running(),
+        lastSeenAt: new Date(clock - 1_000),
+        throughput: 0,
+        lastBatchAt: new Date(clock - 120_000),
+      }),
+      kafka: probe,
+      groupId: 'g',
+      servedModel: null,
+      now: () => new Date(clock),
+    });
+    for (const reset of [drained, unreachable]) {
+      snapshot = drained;
+      await status.get();
+      snapshot = lagging;
+      expect((await status.get()).state).toBe('live');
+      clock += 10_000;
+      snapshot = reset;
+      await status.get();
+      clock += 1_000;
+      snapshot = lagging;
+      // 11 s since lag was first seen, but the window restarted at the reset read.
+      expect((await status.get()).state).toBe('live');
+      clock += 10_000;
+      expect((await status.get()).state).toBe('live');
+      clock += 6_000;
+      expect((await status.get()).state).toBe('degraded');
+    }
   });
 });

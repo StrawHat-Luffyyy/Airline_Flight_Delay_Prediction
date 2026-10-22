@@ -5,6 +5,7 @@ import type { ScoreResult } from '../../src/stream/score.js';
 import {
   confusionFilters,
   loadStreamMetrics,
+  noPredictionPipeline,
   rollingWindowPipeline,
 } from '../../src/stream/status/queries.js';
 import { ensureStreamIndexes, streamFlights, upsertEvents } from '../../src/stream/store.js';
@@ -203,5 +204,21 @@ describe('loadStreamMetrics (MongoDB integration)', () => {
       });
       expect(stagesOf(plan)).toContain('"stage":"COUNT_SCAN"');
     }
+  });
+
+  it('splits flights without a prediction into refused and unscored in one consistent read', async (context) => {
+    if (!client) return context.skip();
+    // Regression: two separate counts raced a consumer inserting refused flights, so `refused`
+    // exceeded `noPrediction`, `unscored` went negative and the response failed validation.
+    const before = await loadStreamMetrics(db, { windowSize: 4 });
+    const unscored = event({ n: 50, date: '2015-12-31', p: 0, delayed: false });
+    await upsertEvents(streamFlights(db), [unscored], new Date('2026-10-22T12:00:00Z'));
+    const after = await loadStreamMetrics(db, { windowSize: 4 });
+    expect(after.stored).toEqual({
+      ...before.stored,
+      flights: before.stored.flights + 1,
+      unscored: before.stored.unscored + 1,
+    });
+    expect(noPredictionPipeline()[0]).toEqual({ $match: { 'prediction.modelVersion': null } });
   });
 });
