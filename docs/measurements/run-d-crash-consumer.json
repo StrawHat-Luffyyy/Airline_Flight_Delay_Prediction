@@ -1,0 +1,29 @@
+{
+  "note": "Run D (crash recovery). 'atKill' was printed by mongosh right after PowerShell Stop-Process -Force ended the first consumer (its pid was read from its heartbeat instanceId); 'restartedConsumer' is the final counter line of the second consumer's own log (stream:consume finished). Host name and pid removed.",
+  "atKill": {
+    "storedWhenKillWasIssued": 52502,
+    "storedRightAfterKill": 58530,
+    "deliveriesRightAfterKill": 58530,
+    "killedConsumerHeartbeat": {
+      "status": "running",
+      "consumed": 52002,
+      "lastSeenAt": "2026-10-22T14:13:27.602Z"
+    }
+  },
+  "restartedConsumer": {
+    "consumed": 41470,
+    "inserted": 41470,
+    "redelivered": 0,
+    "dlq": 0,
+    "batches": 87,
+    "idleExitSeconds": 60
+  },
+  "consumerIdleExitSeconds": {
+    "runA": 120,
+    "runB": 120,
+    "runD_first": 300,
+    "runD_restart": 60,
+    "runC": 120,
+    "runC_rereplay": 150
+  }
+}

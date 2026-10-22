@@ -3,15 +3,14 @@
 Read this first if you are a new session resuming Phase 8. The specification is `PROJECT_OVERVIEW.md` §15 (Phase 8 entry in §11). The detailed reasoning and evidence for each sub-step is in `docs/DECISIONS.md`, under the headings "Phase 8a" to "Phase 8d".
 
 **State on 2026-10-22:**
-- Sub-steps 8a to 8f are committed on `main`; nothing is pushed.
-- **8g is next and has not been started.** The user reviews each sub-step before the next.
-- `docs/STREAMING.md` does not exist yet; it is written in 8g.
+- **Phase 8 is complete:** sub-steps 8a to 8g are committed on `main`; nothing is pushed.
+- **The acceptance record is `docs/STREAMING.md`:** all seven §15.9 items pass, with evidence in `docs/measurements/`.
 
-Every number below was measured in this project during 8a to 8f. Nothing is estimated.
+Every number below was measured in this project during 8a to 8g. Nothing is estimated.
 
 ---
 
-## 1. Done: sub-steps 8a to 8f
+## 1. Done: sub-steps 8a to 8g
 
 ### 8a: Kafka infrastructure and topics, commit `65463b6`
 
@@ -122,7 +121,7 @@ Every number below was measured in this project during 8a to 8f. Nothing is esti
   - precision 0.278, recall 0.584;
   - accuracy 0.602 against a majority baseline of 0.794.
 
-### 8f: Live page (see the 8f commit)
+### 8f: Live page, commit `bf9beea`
 
 **Built:**
 - **Page:** the **Live** tab (`/live`, `web/src/pages/Live.tsx`), polling `/api/stream/status` every 5 s. It shows:
@@ -143,6 +142,30 @@ Every number below was measured in this project during 8a to 8f. Nothing is esti
 **Consumer through a broker restart:** a running consumer survived a Kafka stop and start with no error, and the status was live again 5 s after the start. This was one run with no messages flowing.
 
 **Tests at the 8f commit:** 47 test files and 396 tests pass; lint, typecheck, Prettier and the web build are clean.
+
+### 8g: measurements and docs (see the 8g commit)
+
+**Built:**
+- **Tool:** `npm run stream:measure`.
+- **Docs:** `docs/STREAMING.md` and `docs/measurements/`; the README "Streaming layer" section; the Velocity section of `docs/BIGDATA_JUSTIFICATION.md`; `PROJECT_OVERVIEW.md` §15.6 updated.
+
+**Measured** (each run after `stream:reset`; details in `docs/STREAMING.md`):
+
+| Run | Result |
+|---|---|
+| 500/s | consumer 506/s, latency p50 63 ms, p95 906 ms |
+| 2,000/s | consumer 2,018/s, latency p50 138 ms, p95 2,236 ms |
+| Unthrottled, all of December | producer 12,542/s, consumer with live scoring 2,442/s (scoring is the bottleneck), latency p50 72.6 s (queueing in Kafka) |
+
+- **Conservation and unique keys:** they pass in every run.
+- **Idempotent re-replay of 5,000 events:** 0 new flights; `deliveries` +5,000.
+- **Hard kill at 58,530 of 100,000:** after restart, 100,000 stored, 100,000 keys, lag 0.
+- **Status metrics:** 35 of 35 checks match.
+- **Batch collections:** unchanged.
+
+**Final state:** `stream_flights` holds all 479,230 December flights from run C (deliveries 484,230 after the re-replay). `flights.raw` holds 484,230 messages, and the `flight-stream` group's lag is 0.
+
+**Tests at the 8g commit:** 49 test files and 412 tests pass; lint, typecheck and Prettier are clean.
 
 ---
 
@@ -186,36 +209,9 @@ Every number below was measured in this project during 8a to 8f. Nothing is esti
 
 ---
 
-## 3. Approved plan for 8g (not started; 8e and 8f are done, see §1)
+## 3. Plan
 
-Each sub-step runs lint, typecheck and tests, gets a code review, a conventional commit, and stops for the user.
-
-### 8g: docs and measurements
-- **Build:** a measurement script and `docs/STREAMING.md`, plus:
-  - the README run order;
-  - DECISIONS entries;
-  - Kafka's place (the velocity layer) and its limits in `docs/BIGDATA_JUSTIFICATION.md`. A single broker with replication factor 1 has no fault tolerance; say so.
-- **Overview catch-up:** update `PROJECT_OVERVIEW.md` §15.6 to the shapes actually built: `lastRunId`, `correct` and the consumer heartbeat fields.
-
-### Acceptance measurements still to be recorded in `docs/STREAMING.md` (§15.9)
-
-| # | Measurement | Status |
-|---|---|---|
-| 1 | Conservation: rows read = raw + producer DLQ; raw = upserted + consumer DLQ | Shown in 8b, 8c and the smoke test; to be re-measured and recorded for one documented run |
-| 2 | `stream_flights` count = distinct keys produced | Shown in 8c (479,230 = 479,230); to be recorded |
-| 3 | Re-running the same replay changes no counts | Shown in 8c (5,000 re-sent, 0 inserted); to be recorded |
-| 4 | Kill the consumer mid-run, restart: nothing lost or duplicated | Shown in 8c (crash test above); to be recorded |
-| 5 | Throughput at three rates (planned: 500/s, 2,000/s, unthrottled) **with live scoring** | **Not measured.** The producer was measured alone in 8b and the consumer without scoring in 8c; scoring alone was 2,807/s in the backfill. |
-| 6 | End-to-end latency p50 and p95 (`firstWrittenAt - producedAt`, via MongoDB `$percentile`) | **Not measured.** |
-| 7 | `/api/stream/status` metrics match an independent recomputation from `stream_flights` | Shown in 8e: 35 of 35 checks matched (`npm run stream:verify-status`); to be re-run and recorded after the 8g runs |
-
-**Prerequisite for items 5 and 6:** every December key is already stored, so re-sent events are not inserted or scored again. 8g needs an empty state. `npm run stream:reset -- --db flight_delay --yes` (built in 8e, **not run yet**) does this:
-- it clears only `stream_flights`, `stream_stats`, the consumer group's offsets and the messages on the stream topics;
-- it refuses if `--db` is not the configured `MONGODB_DB`, or while a consumer is running.
-
-**Ask the user before running it.**
-
----
+Phase 8 (8a to 8g) is complete. There is no further approved plan; the open items are in §5.
 
 ## 4. How to run
 
@@ -296,12 +292,13 @@ MSYS_NO_PATHCONV=1 docker compose exec kafka /opt/kafka/bin/kafka-consumer-group
 ## 5. Open items
 
 ### Leftover data
+- **Stale figure (found in 8g):** `docs/BIGDATA_JUSTIFICATION.md` (Volume and schema trade-offs) still quotes 137.9 s for `build:stats`, from the 2026-10-15 `stats_runs` record. The newest record (2026-10-16) took 214,872 ms. This predates Phase 8 and was left unchanged.
 - **`flight_delay_crash_test`** (MongoDB) is still present: 479,230 unscored `stream_flights` documents plus `stream_stats`, left from the 8c crash test. The bash guard hook blocked dropping it from Claude. The user can drop it from a terminal: `docker compose exec mongo mongosh flight_delay_crash_test --eval "db.dropDatabase()"`. Its Kafka group `crash-test` was already deleted.
-- **`flights.raw`** holds 487,430 messages: all of December plus test replays. Retention is 168 hours.
-- **`stream_stats`** in `flight_delay` holds every producer-run and consumer-heartbeat document from 8b to 8d, including the run record showing the pre-fix `achievedRate: 11`.
+- **`flights.raw`** holds 484,230 messages after the 8g runs: run C (all of December) plus the 5,000-event re-replay. Retention is 168 hours.
+- **`stream_stats`** in `flight_delay` holds the two producer runs since the last `stream:reset` (run C and the re-replay) plus consumer heartbeats, which expire after 6 h. The 8b to 8d run records, including the pre-fix `achievedRate: 11`, were cleared by the 8g resets.
 
 ### Found in 8e
-- **Native crash:** `@confluentinc/kafka-javascript` 1.11.0 `admin.fetchOffsets` crashes its process (0xC0000005) when the broker comes back after a stop. The API contains this with a forked probe process. The consumer (`stream:consume`) uses the same library. In 8f a running consumer survived one broker stop and start with no messages flowing. Under load this is untested; check it in 8g. A consumer crash is recoverable by restarting it (8c crash test).
+- **Native crash:** `@confluentinc/kafka-javascript` 1.11.0 `admin.fetchOffsets` crashes its process (0xC0000005) when the broker comes back after a stop. The API contains this with a forked probe process. The consumer (`stream:consume`) uses the same library. In 8f a running consumer survived one broker stop and start with no messages flowing. Under load this is still untested; it was not part of the 8g measurements. A consumer crash is recoverable by restarting it (8c crash test).
 - **No web health indicator:** `web/` has no page that calls `/api/health`. The schema change is covered by a web parse test only.
 
 ### Reviewer suggestions not done
@@ -313,23 +310,21 @@ MSYS_NO_PATHCONV=1 docker compose exec kafka /opt/kafka/bin/kafka-consumer-group
 - **8c:**
   - **Idle-exit timing:** `--idle-exit` counts from process start, so a value shorter than the first rebalance exits early.
   - **Poll interval:** librdkafka's `max.poll.interval` still applies, so a MongoDB stall over 5 minutes removes the consumer from the group.
-    - **Overview shapes:** `PROJECT_OVERVIEW.md` §15.6 does not yet list `lastRunId`, `correct` or the full heartbeat fields (deferred to 8g).
 - **8d:**
   - **Circular type import:** there is a type-only circular import between `store.ts` and `score.ts`.
   - **Permanent refusals:** a refused flight's `scoreError` is permanent; the backfill does not retry `UNKNOWN_ROUTE` after a `stats_route` rebuild.
   - **Version literal:** `v: 1` is hard-coded in `score-missing.ts`.
   - **Model-lookup link:** nothing records which `delay_lookup` build the model was trained against. This applies to the API too.
   - **Parity test:** the leakage auditor suggested an automated test comparing the cached and uncached predictor on a seeded database. Instead, parity was verified manually against a running `/api/predict` (20 of 20 identical); no such automated test exists.
-  - **Batch vs stream metrics:** stream metrics differ from the batch test metrics for December by design. `/predict` uses `stats_route`'s route-level `scheduledTime` and distance, not each flight's own, and refused flights are excluded. This must be documented next to measurement 7 in 8g.
+  - **Batch vs stream metrics:** stream metrics differ from the batch test metrics for December by design. `/predict` uses `stats_route`'s route-level `scheduledTime` and distance, not each flight's own, and refused flights are excluded. Documented next to item 7 in `docs/STREAMING.md` (8g).
 
 ### Reviewer suggestions not done (8e)
 - **Flaky-timer risk:** the tests that bound timing (`toBeLessThan(500)` with 30 to 50 ms timeouts) use real timers. They could be flaky on a slow CI.
 - **Unvalidated aggregation rows:** the window `aggregate<WindowRow>` result and the `verify-status` cursor rows are typed but not zod-validated. Both read our own pipeline's output.
 
 ### Not yet measured or verified
-- §15.9 items 5 and 6, and the re-run of item 7 (§3 above).
-- **Consumer throughput with live scoring.** Only scoring alone (2,807/s, backfill) and inserts alone (10,904/s) were measured.
+- **Repeated runs:** each 8g figure is a single run; no mean or spread over repeated runs.
+- **Scaling out:** more than one consumer process (up to one per partition) was not measured.
 - **Graceful stop via a real Ctrl+C.** A SIGINT cannot be sent to a Node process programmatically on Windows. The same `stop()` path was exercised through `--idle-exit`, and both runs ended with heartbeat `status: "stopped"` and lag 0.
 - **The backoff path against a real MongoDB or broker outage.** It is covered by unit-level logic only.
 - **The DLQ path with real data.** December has no rows the transformer rejects. The DLQ path is exercised by unit tests and by `stream:smoke` (one producer reject and one malformed message, both landed on the DLQ topic).
-- **README run order and `BIGDATA_JUSTIFICATION.md`:** not updated yet (8g).

@@ -1170,3 +1170,48 @@ Every run met the conservation check: rows of the month = events on `flights.raw
 - **Refetch on tab return:** the status hook overrides the app's static-data defaults (10 min stale time, no refetch on focus), so returning to the tab refetches at once.
 - **Fixed during the review pass:** the "low sample" tag had been amber, which broke the Lit Column Rule. It is now ink-2.
 
+### Phase 8g: measurements and docs (2026-10-22)
+
+**Built:**
+- **Measurement tool:** `npm run stream:measure -- [--run RUN_ID] [--out FILE]` (`server/src/stream/measure.ts`, `measure-cli.ts`). It is read-only. For one replay run it reports:
+  - conservation, unique keys and consumer lag, as pass/fail checks;
+  - consumer throughput and end-to-end latency, via one aggregation per run on the `runId` index with MongoDB 7.0 `$percentile` (approximate).
+- **Docs:**
+  - `docs/STREAMING.md` (the §15.9 record), with raw evidence in `docs/measurements/`;
+  - a README "Streaming layer" run order;
+  - the Velocity section of `docs/BIGDATA_JUSTIFICATION.md`, rewritten;
+  - `PROJECT_OVERVIEW.md` §15.6 brought up to date with the shapes actually built.
+
+**Decisions:**
+- **Each run from an empty state.** You approved running `stream:reset` once before each run. Four runs were made:
+  - 500/s for 30,000 events;
+  - 2,000/s for 120,000 events;
+  - a 100,000-event crash run with a hard kill;
+  - all of December unthrottled, followed by a 5,000-event re-replay with no reset.
+  Re-sent events are never inserted or scored again, so throughput and latency with live scoring need flights not yet stored.
+- **Paced runs use a prefix of December.** Every run replays the first N rows of December, whose keys are all distinct (8b). The "distinct keys produced" check therefore uses the largest run since the reset. When several runs share a dead-lettered row the exact figure cannot be derived from counts, and the check says "n/a" instead of guessing (ts-reviewer should-fix).
+- **Unthrottled latency is reported as queueing time.** The producer sent at 12,542/s and the consumer scored at 2,442/s, so the p50 of 72.6 s is time waiting in Kafka, not the pipeline's speed. The paced runs give the pipeline latency: p50 63 ms and 138 ms.
+- **Evidence over memory.** Every figure in `STREAMING.md` names a file in `docs/measurements/`. The run D restart counters and the killed consumer's leftover heartbeat were saved from the console and log output (`run-d-crash-consumer.json`, host and pid removed). Run C's whole-run time and peak RSS were added to its snapshot from the same unchanged producer-run record, with a note saying so.
+
+**Measured** (all in `docs/STREAMING.md`):
+- **Items 1 and 2, conservation and unique keys:** pass in runs A, B and C. For all of December, 479,230 rows = 479,230 sent = 479,230 upserts = 479,230 stored flights, with lag 0.
+- **Item 3, idempotent replay:** re-sending 5,000 events left 479,230 flights; `deliveries` rose from 479,230 to 484,230.
+- **Item 4, crash recovery:** a hard kill at 58,530 stored. The restart consumed exactly the 41,470 unread messages, ending at 100,000 flights for 100,000 keys with lag 0.
+  - The kill landed between batches, so no redelivery happened in this run. Redelivery in the write-to-commit window is evidenced by 8c.
+- **Item 5, consumer throughput with live scoring:** 506/s, 2,018/s and 2,442/s at 500/s, 2,000/s and unthrottled.
+- **Item 6, latency p50 / p95:** 63 / 906 ms at 500/s and 138 / 2,236 ms at 2,000/s.
+- **Item 7, status metrics:** 35 of 35 checks match an independent recomputation on the final data. The window figures differ slightly from 8e (TP 299 against 295, ROC-AUC 0.585 against 0.575) because this replay's batches interleaved differently. The whole-replay totals are unchanged.
+- **Batch layer:** every non-stream collection count was identical before and after the four runs and five resets.
+- **Reading time:** the read of January to November took about 71 s in run C, against 93 to 95 s in 8b, so this time varies between runs.
+
+**Reviews:**
+- **ts-reviewer on the measurement code:** no must-fix. Should-fixes applied:
+  - the n/a case for overlapping runs with DLQ messages;
+  - a comment on why `>=` is safe, plus an informational redeliveries line;
+  - zod validation of the aggregate rows;
+  - a strict, tested argument parser (`node:util` `parseArgs`);
+  - tests for DLQ, mismatch and multi-run cases;
+  - an empty-run integration test.
+- **report-writer:** wrote the docs from the evidence, and flagged the claims that were not yet in a saved file; they are now in one. It also found that `docs/BIGDATA_JUSTIFICATION.md` already quoted 137.9 s for `build:stats` from an older `stats_runs` record, while the newest record shows 214.9 s. The new 8g text no longer repeats the figure; the pre-existing occurrence is left as an open item.
+
+**Checks at the commit:** 49 test files and 412 tests pass; lint, typecheck and Prettier are clean.

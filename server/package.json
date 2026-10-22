@@ -22,6 +22,7 @@
     "stream:score-missing": "tsx src/stream/score-missing-cli.ts",
     "stream:indexes": "tsx src/stream/indexes-cli.ts",
     "stream:verify-status": "tsx src/stream/verify-status-cli.ts",
+    "stream:measure": "tsx src/stream/measure-cli.ts",
     "stream:reset": "tsx src/stream/reset-cli.ts"
   },
   "dependencies": {
