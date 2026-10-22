@@ -75,7 +75,7 @@ export function Shell() {
                   to={tab.to}
                   className={({ isActive }) =>
                     `block whitespace-nowrap rounded-full px-2.5 py-2 md:px-3.5 text-[13px] transition-colors ${
-                      isActive ? 'bg-rule-strong text-ink' : 'text-ink-2 hover:text-ink'
+                      isActive ? 'bg-surface text-ink ring-1 ring-inset ring-rule-strong' : 'text-ink-2 hover:text-ink'
                     }`
                   }
                 >

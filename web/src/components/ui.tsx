@@ -141,12 +141,13 @@ export function Swatch({ color }: { color: string }) {
 
 /** Dark, hairline-ruled tooltip body shared by every recharts chart. */
 export const TOOLTIP_STYLE = {
-  background: '#0b0b0b',
-  border: '1px solid rgba(255,255,255,0.16)',
+  background: 'var(--surface)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 8,
-  color: '#f2f1ec',
+  color: 'var(--text)',
   fontSize: 12,
   padding: '8px 10px',
 } as const;
 
-export const AXIS_TICK = { fill: '#94938f', fontSize: 11 } as const;
+/** Chart axis ticks: --text-subtle is 5.80:1 on --bg (SVG attributes resolve CSS variables). */
+export const AXIS_TICK = { fill: 'var(--text-subtle)', fontSize: 11 } as const;

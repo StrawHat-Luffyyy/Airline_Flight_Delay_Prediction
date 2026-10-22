@@ -136,7 +136,7 @@ export function GlobeTooltip({
       className="pointer-events-none fixed left-0 top-0 z-30 will-change-transform"
     >
       <div
-        className={`rounded-lg border border-rule-strong bg-[#0b0b0b] px-3 py-2 transition-opacity duration-150 ${body ? 'opacity-100' : 'opacity-0'}`}
+        className={`rounded-lg border border-rule-strong bg-surface px-3 py-2 transition-opacity duration-150 ${body ? 'opacity-100' : 'opacity-0'}`}
       >
         {body}
       </div>
@@ -203,7 +203,7 @@ export function RouteDetails({
     <section
       aria-label="Selected route"
       aria-live="polite"
-      className={`fixed inset-x-3 bottom-3 z-30 rounded-2xl border border-rule-strong bg-[#0b0b0b]/95 p-5 transition-[opacity,translate] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] sm:inset-x-auto sm:bottom-8 sm:right-8 sm:w-[22rem] ${arc ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'}`}
+      className={`fixed inset-x-3 bottom-3 z-30 rounded-2xl border border-rule-strong bg-surface/95 p-5 transition-[opacity,translate] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] sm:inset-x-auto sm:bottom-8 sm:right-8 sm:w-[22rem] ${arc ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'}`}
     >
       {arc ? (
         <>
@@ -379,7 +379,7 @@ export function AirportDetails({
     <section
       aria-label="Selected airport"
       aria-live="polite"
-      className={`fixed inset-x-3 bottom-3 z-30 max-h-[62dvh] overflow-y-auto rounded-2xl border border-rule-strong bg-[#0b0b0b]/95 p-5 transition-[opacity,translate] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] sm:inset-x-auto sm:bottom-8 sm:right-8 sm:max-h-[calc(100dvh-8rem)] sm:w-[22rem] ${open ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'}`}
+      className={`fixed inset-x-3 bottom-3 z-30 max-h-[62dvh] overflow-y-auto rounded-2xl border border-rule-strong bg-surface/95 p-5 transition-[opacity,translate] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] sm:inset-x-auto sm:bottom-8 sm:right-8 sm:max-h-[calc(100dvh-8rem)] sm:w-[22rem] ${open ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'}`}
     >
       {open ? (
         <>
