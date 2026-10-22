@@ -143,7 +143,7 @@ Every number below was measured in this project during 8a to 8g. Nothing is esti
 
 **Tests at the 8f commit:** 47 test files and 396 tests pass; lint, typecheck, Prettier and the web build are clean.
 
-### 8g: measurements and docs (see the 8g commit)
+### 8g: measurements and docs, commit `417b85a`
 
 **Built:**
 - **Tool:** `npm run stream:measure`.
@@ -163,7 +163,25 @@ Every number below was measured in this project during 8a to 8g. Nothing is esti
 - **Status metrics:** 35 of 35 checks match.
 - **Batch collections:** unchanged.
 
-**Final state:** `stream_flights` holds all 479,230 December flights from run C (deliveries 484,230 after the re-replay). `flights.raw` holds 484,230 messages, and the `flight-stream` group's lag is 0.
+**State after 8g:** `stream_flights` held all 479,230 December flights from run C. The follow-ups below reset it again.
+
+### Follow-ups after acceptance (2026-10-22)
+
+Each was committed separately; details and evidence are in `docs/STREAMING.md` and `docs/measurements/`.
+
+| Commit | Follow-up | Result |
+|---|---|---|
+| `1bb6969` | Stale measured figures | `build:stats` (370.8 s) and `build:lookup` (65.2 s) were re-measured. SCHEMA.md and BIGDATA_JUSTIFICATION.md now cite `batch-runs-2026-10-22.json`, with the 110.2 to 370.8 s range of seven runs, the latest ingest RSS (362 MB) and the current database totals. The README keeps its clean-clone audit times and says their output was not saved. |
+| `ae094fe` | Latency at a sustainable rate | Run E at 1,200/s (49% of 2,442/s capacity): steady state p50 423 ms, p95 2,238 ms; 1,098 / 9,424 ms including the cold start. Lag over time from the new `stream:watch`. `stream:measure` gained `--from`. The host was busy during the run (62% CPU). |
+| `706f4a3` | Mid-batch crash | Run F: kill attempt 2 landed mid-batch, with 31,554 written against 31,054 committed. Those 500 were redelivered: 500 flights have `deliveries` = 2, the run ended with 200,000 flights for 200,000 keys, 0 duplicates and lag 0. |
+| `fdc1b6f` | Kafka restart under load | Run G: the broker was down for 28 s. Nothing was restarted and nothing lost (150,000 sent = stored). The consumer resumed 42 s after the broker came back. Status was degraded with a reason while Kafka was down, then reported `live` while the consumer was stalled. |
+| `6f9b0f0` | Two consumers against one | Runs H1 and H2: 1,736/s against 2,155/s (1.24x). The 3 partitions split 1 + 2 (62.4% to one consumer) and both shared one busy laptop. |
+| `cfcc44b` | Frontend colour scheme (your request) | Reverted the rose / cerulean retheme (`9c41f26`, `b5c3734`), so `web/` is back to the departure-board palette in `web/DESIGN.md`. |
+
+**Current state:**
+- `stream_flights` holds the 150,000 flights of run H2, not all of December, so the Live page shows that subset.
+- `flights.raw` holds those 150,000 messages, and lag is 0.
+- To restore all of December, run `stream:reset`, a consumer, then `stream:replay -- --rate 0` (as for run C).
 
 **Tests at the 8g commit:** 49 test files and 412 tests pass; lint, typecheck and Prettier are clean.
 
@@ -297,8 +315,15 @@ MSYS_NO_PATHCONV=1 docker compose exec kafka /opt/kafka/bin/kafka-consumer-group
 - **`flights.raw`** holds 484,230 messages after the 8g runs: run C (all of December) plus the 5,000-event re-replay. Retention is 168 hours.
 - **`stream_stats`** in `flight_delay` holds the two producer runs since the last `stream:reset` (run C and the re-replay) plus consumer heartbeats, which expire after 6 h. The 8b to 8d run records, including the pre-fix `achievedRate: 11`, were cleared by the 8g resets.
 
+### Found in the follow-ups
+- **"Live" while stalled:** liveness is the heartbeat's age only, so `state` says `live` while a live consumer makes no progress (32 s in run G). Lag and throughput show it; `state` does not.
+- **Slow consumer resume:** after a broker restart the consumer took about 42 s to store again (run G); the cause was not isolated.
+- **`--idle-exit` counts from start:** this already cost one failed run (run E's first attempt). Start the consumer with a limit above the producer's read phase (71 to 123 s measured), or fix it to count from the first batch.
+- **Reset after a hard kill:** `stream:reset` refuses until the killed member's session expires (about 45 s). That is correct, but it means a retry loop.
+- **Host load matters:** timings varied widely across the day (`build:stats` 127 to 371 s; one consumer 2,442/s in the morning, 1,736/s in the evening).
+
 ### Found in 8e
-- **Native crash:** `@confluentinc/kafka-javascript` 1.11.0 `admin.fetchOffsets` crashes its process (0xC0000005) when the broker comes back after a stop. The API contains this with a forked probe process. The consumer (`stream:consume`) uses the same library. In 8f a running consumer survived one broker stop and start with no messages flowing. Under load this is still untested; it was not part of the 8g measurements. A consumer crash is recoverable by restarting it (8c crash test).
+- **Native crash:** `@confluentinc/kafka-javascript` 1.11.0 `admin.fetchOffsets` crashes its process (0xC0000005) when the broker comes back after a stop. The API contains this with a forked probe process. The consumer (`stream:consume`) uses the same library. In 8f a running consumer survived one broker stop and start with no messages flowing. Under load it also survived a 28 s broker outage without crashing (run G, follow-ups); the API's probe process crashed once in that run and was replaced. A consumer crash is recoverable by restarting it (8c crash test).
 - **No web health indicator:** `web/` has no page that calls `/api/health`. The schema change is covered by a web parse test only.
 
 ### Reviewer suggestions not done
@@ -323,8 +348,8 @@ MSYS_NO_PATHCONV=1 docker compose exec kafka /opt/kafka/bin/kafka-consumer-group
 - **Unvalidated aggregation rows:** the window `aggregate<WindowRow>` result and the `verify-status` cursor rows are typed but not zod-validated. Both read our own pipeline's output.
 
 ### Not yet measured or verified
-- **Repeated runs:** each 8g figure is a single run; no mean or spread over repeated runs.
-- **Scaling out:** more than one consumer process (up to one per partition) was not measured.
+- **Repeated runs:** each figure is a single run; no mean or spread over repeated runs.
+- **Three consumers** (one per partition) and more partitions were not measured.
 - **Graceful stop via a real Ctrl+C.** A SIGINT cannot be sent to a Node process programmatically on Windows. The same `stop()` path was exercised through `--idle-exit`, and both runs ended with heartbeat `status: "stopped"` and lag 0.
 - **The backoff path against a real MongoDB or broker outage.** It is covered by unit-level logic only.
 - **The DLQ path with real data.** December has no rows the transformer rejects. The DLQ path is exercised by unit tests and by `stream:smoke` (one producer reject and one malformed message, both landed on the DLQ topic).
