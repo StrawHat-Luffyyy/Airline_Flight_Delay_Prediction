@@ -90,7 +90,7 @@ body {
   color: var(--color-ink);
 }
 
-/* Keyboard focus: one amber ring for every interactive element */
+/* Keyboard focus: one accent ring for every interactive element */
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 3px;
@@ -180,7 +180,7 @@ a.liquid-glass:hover {
   background: color-mix(in srgb, var(--text) 7%, transparent);
 }
 
-/* Departure-board signature: a row whose rank changed holds an amber lamp, then fades. */
+/* Departure-board signature: a row whose rank changed holds an accent lamp, then fades. */
 @keyframes lamp {
   from {
     background-color: color-mix(in srgb, var(--focus) 20%, transparent);
@@ -195,7 +195,7 @@ a.liquid-glass:hover {
   animation: lamp 1.2s var(--ease-out-expo) forwards;
 }
 
-/* Live page: a value that changed since the last poll holds the same amber lamp, then fades. */
+/* Live page: a value that changed since the last poll holds the same accent lamp, then fades. */
 .lit-value {
   border-radius: 2px;
   animation: lamp 1.2s var(--ease-out-expo) forwards;
@@ -288,7 +288,7 @@ a.liquid-glass:hover {
 /* ---------- Predict: flight fields ---------- */
 
 /* A field face (a button that opens a dropdown or the calendar). Hover lifts the hairline; focus
-   and the open state warm it to amber with a soft halo, the same amber as the global focus ring. */
+   and the open state warm it to the accent with a soft halo, the same accent as the global focus ring. */
 .flight-field {
   border-radius: 12px;
   border: 1px solid var(--color-rule-strong);
@@ -316,7 +316,7 @@ a.liquid-glass:hover {
 
 .flight-field:focus-visible .flight-field-chevron,
 .flight-field[data-open] .flight-field-chevron {
-  color: var(--color-delayed);
+  color: var(--focus);
 }
 
 .flight-field-chevron {
@@ -382,7 +382,7 @@ a.liquid-glass:hover {
 }
 
 /* The search row: 16px text on phones (smaller makes iOS zoom the page), 14px from sm. The row
-   underlines amber while the box has focus, in place of the global focus ring. */
+   underlines in the accent while the box has focus, in place of the global focus ring. */
 .flight-search {
   font-size: 16px;
 }
@@ -425,7 +425,7 @@ a.liquid-glass:hover {
   background: color-mix(in srgb, var(--focus) 50%, transparent);
 }
 
-/* Options: the active one (keyboard or pointer) on a wash; the chosen one is marked by an amber
+/* Options: the active one (keyboard or pointer) on a wash; the chosen one is marked by an accent
    code and check, not by colour alone. */
 .flight-option {
   transition: background-color 120ms var(--ease-out-expo);
@@ -443,7 +443,7 @@ a.liquid-glass:hover {
   background-color: color-mix(in srgb, var(--focus) 13%, transparent);
 }
 
-/* Calendar days: round targets; the chosen day lit amber; neighbouring-month days dimmed; days
+/* Calendar days: round targets; the chosen day lit in the accent; neighbouring-month days dimmed; days
    outside the dataset's range struck through and inert. */
 .calendar-day {
   display: grid;
@@ -466,7 +466,7 @@ a.liquid-glass:hover {
 
 .calendar-day:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--color-delayed);
+  box-shadow: 0 0 0 2px var(--focus);
 }
 
 .calendar-day[data-outside] {
@@ -475,7 +475,7 @@ a.liquid-glass:hover {
 }
 
 .calendar-day[data-selected] {
-  background-color: var(--color-delayed);
+  background-color: var(--focus);
   color: var(--color-ground);
   opacity: 1;
 }
@@ -483,7 +483,7 @@ a.liquid-glass:hover {
 .calendar-day[data-selected]:focus-visible {
   box-shadow:
     0 0 0 2px var(--surface),
-    0 0 0 4px var(--color-delayed);
+    0 0 0 4px var(--focus);
 }
 
 .calendar-day[data-disabled] {
@@ -509,7 +509,7 @@ a.liquid-glass:hover {
 }
 
 .calendar-month[data-selected] {
-  background-color: var(--color-delayed);
+  background-color: var(--focus);
   color: var(--color-ground);
 }
 

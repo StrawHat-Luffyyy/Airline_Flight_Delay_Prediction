@@ -5,13 +5,9 @@ const RAW_COLOUR = '/#[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]|rgba?[(]|hsla?[(]/';
 const RAW_COLOUR_MESSAGE =
   'Raw colour: use a token (CSS var / Tailwind theme name, or lib/tokens.ts in JS).';
 const RAW_COLOUR_PENDING = [
-  'web/src/components/ui.tsx',
   'web/src/pages/Causes.tsx',
   'web/src/pages/Overview.tsx',
   'web/src/pages/Explorer.tsx',
-  'web/src/pages/Predict.tsx',
-  'web/src/pages/Model.tsx',
-  'web/src/components/landing/GlobeHud.tsx',
   'web/src/components/globe/**',
 ];
 

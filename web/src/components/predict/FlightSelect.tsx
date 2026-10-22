@@ -37,7 +37,7 @@ function Highlight({ text, query }: { text: string; query: string }): ReactNode 
   return (
     <>
       {text.slice(0, at)}
-      <mark className="bg-transparent text-delayed">{text.slice(at, at + q.length)}</mark>
+      <mark className="bg-transparent text-accent">{text.slice(at, at + q.length)}</mark>
       {text.slice(at + q.length)}
     </>
   );
@@ -354,7 +354,7 @@ export function FlightSelect({
                       className="flight-option flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2"
                     >
                       <span
-                        className={`num shrink-0 text-[13px] ${selected ? 'text-delayed' : 'text-ink'} ${option.name ? 'w-9' : ''}`}
+                        className={`num shrink-0 text-[13px] ${selected ? 'text-accent' : 'text-ink'} ${option.name ? 'w-9' : ''}`}
                       >
                         <Highlight text={option.code} query={query} />
                       </span>
@@ -378,7 +378,7 @@ export function FlightSelect({
                         aria-hidden="true"
                         size={14}
                         strokeWidth={1.75}
-                        className={`shrink-0 text-delayed ${selected ? 'opacity-100' : 'opacity-0'}`}
+                        className={`shrink-0 text-accent ${selected ? 'opacity-100' : 'opacity-0'}`}
                       />
                     </li>
                   );

@@ -145,7 +145,7 @@ function Gauge({ result }: { result: PredictResponse }) {
           d={arc}
           pathLength={1}
           fill="none"
-          stroke="rgba(255,255,255,0.1)"
+          stroke="var(--border)"
           strokeWidth={12}
           strokeLinecap="round"
         />
@@ -164,13 +164,13 @@ function Gauge({ result }: { result: PredictResponse }) {
           y1={tickInner.y}
           x2={tickOuter.x}
           y2={tickOuter.y}
-          stroke="#f2f1ec"
+          stroke="var(--text)"
           strokeWidth={2}
         />
         <text
           x={tickLabel.x}
           y={tickLabel.y}
-          fill="#b9b8b3"
+          fill="var(--text-muted)"
           fontSize={10}
           textAnchor="middle"
           className="num"
@@ -187,7 +187,7 @@ function Gauge({ result }: { result: PredictResponse }) {
         >
           {formatPercent(result.probability)}
         </text>
-        <text x={GAUGE.cx} y={GAUGE.cy + 6} textAnchor="middle" fill="#b9b8b3" fontSize={11}>
+        <text x={GAUGE.cx} y={GAUGE.cy + 6} textAnchor="middle" fill="var(--text-muted)" fontSize={11}>
           chance of arriving 15+ min late
         </text>
       </svg>
@@ -272,8 +272,8 @@ function Result({ result }: { result: PredictResponse }) {
       <div>
         <h3 className="font-display text-xl font-normal">What moved the score</h3>
         <p className="mb-4 mt-1 text-[12px] text-ink-3">
-          <span className="text-delayed">Amber</span> raises the probability,{' '}
-          <span className="text-ontime">blue</span> lowers it, in percentage points.
+          <span className="text-delayed">Rose</span> raises the probability,{' '}
+          <span className="text-ontime">cerulean</span> lowers it, in percentage points.
         </p>
         <ul className="space-y-4">
           {factors.map((factor) => (

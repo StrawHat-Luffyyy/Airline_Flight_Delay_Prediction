@@ -1,7 +1,7 @@
 /**
  * The Predict form's date picker: a field face that opens a dark calendar in a portal.
  *
- * - Days: a Monday-first month grid with the selected day lit amber. Days outside [min, max] are
+ * - Days: a Monday-first month grid with the selected day lit in the accent. Days outside [min, max] are
  *   struck through and cannot be chosen; days from the neighbouring months are dimmed.
  * - Months and years: the title opens a month view with year steps. Every arrow and every month
  *   outside [min, max] is disabled, so the dataset's 2015 limit cannot be crossed.
