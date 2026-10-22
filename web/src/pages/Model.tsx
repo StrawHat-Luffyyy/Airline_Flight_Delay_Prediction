@@ -155,15 +155,13 @@ function Cell({
 }) {
   if (!cell) return <span />;
   const alpha = 0.08 + 0.5 * (cell.rate ?? 0);
-  // Tinted by the prediction (rose = flagged delayed, cerulean = predicted on time), like every
+  // Tinted by the prediction (amber = flagged delayed, blue = predicted on time), like every
   // other delayed/on-time encoding in the app; intensity is the share of the actual row.
-  const hue = cell.flagged ? 'var(--negative)' : 'var(--positive)';
+  const rgb = cell.flagged ? '232,165,75' : '124,155,209';
   return (
     <div
       className="rounded-md px-3 py-4 text-center"
-      style={{
-        background: `color-mix(in srgb, ${hue} ${Math.round(alpha * 100)}%, transparent)`,
-      }}
+      style={{ background: `rgba(${rgb},${alpha})` }}
       role="group"
       aria-label={`${cell.label}: ${formatInteger(cell.count)} flights, ${formatPercent(cell.rate)} of the row`}
     >

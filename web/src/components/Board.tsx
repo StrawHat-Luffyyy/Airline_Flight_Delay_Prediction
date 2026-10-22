@@ -33,7 +33,7 @@ const LAMP_MS = 1200;
 /**
  * The departure board: a real table in fixed tabular columns. When rows are re-sorted or
  * refiltered they glide to their new rank (keyed by row key) and rows whose rank changed hold an
- * accent lamp for a moment. Nothing moves under prefers-reduced-motion.
+ * amber lamp for a moment. Nothing moves under prefers-reduced-motion.
  */
 export function Board<T>({
   rows,
@@ -156,14 +156,14 @@ export function RateCell({
   value,
   max,
   digits = 1,
-  tone = 'delay',
+  tone = 'amber',
   barOnMobile = false,
 }: {
   value: number | null;
   max: number;
   digits?: number;
   /** amber = a delay rate (default); ink = any other share. */
-  tone?: 'delay' | 'ink';
+  tone?: 'amber' | 'ink';
   /** Keep the bar below `sm` (when the bar is the chart, e.g. feature importance). */
   barOnMobile?: boolean;
 }) {
@@ -178,12 +178,12 @@ export function RateCell({
       >
         <span
           className={`block h-1.5 rounded-full transition-[width] duration-500 ${
-            tone === 'delay' ? 'bg-delayed' : 'bg-ink-2'
+            tone === 'amber' ? 'bg-delayed' : 'bg-ink-2'
           }`}
           style={{ width: `${width}%` }}
         />
       </span>
-      <span className={`w-12 text-right sm:w-14 ${tone === 'delay' ? 'text-delayed' : 'text-ink'}`}>
+      <span className={`w-12 text-right sm:w-14 ${tone === 'amber' ? 'text-delayed' : 'text-ink'}`}>
         {formatPercent(value, digits)}
       </span>
     </span>

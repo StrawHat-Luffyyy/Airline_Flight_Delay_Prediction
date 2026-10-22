@@ -1,62 +1,25 @@
 @import 'tailwindcss';
 
-/*
- * One place for every colour. Roles are plain CSS variables on :root (charts and the globe read
- * the same variables through lib/tokens.ts); Tailwind's theme names map onto them. Alpha colours
- * are always color-mix() of a token, never a raw rgba().
- */
-:root {
-  --bg: #0a0a0b;
-  --surface: #131316;
-  --border: #26262b;
-  /* Controls (fields, outline buttons): 3.59:1 on --bg, 3.37:1 on --surface. */
-  --border-strong: #686872;
-  --text: #ececef;
-  --text-muted: #a0a0ab;
-  /* Notes and column heads: 5.80:1 on --bg, 5.43:1 on --surface. */
-  --text-subtle: #8a8a95;
-  --accent-1: #2fa4d9; /* cerulean */
-  --accent-2: #ff2e88; /* neon rose */
-  --positive: var(--accent-1); /* on time, lowers the probability */
-  --negative: var(--accent-2); /* delayed, high */
-  --warning: #f2b33d; /* degraded, errors, cancelled */
-  --neutral: #7a7a85; /* unknown, no data; graphics only (4.37:1 on --surface as text) */
-  --on-negative: #000000; /* text on a rose fill: 6.00:1 */
-  --focus: var(--accent-1);
-  --wash: color-mix(in srgb, var(--text) 5%, transparent);
-  /* Delay causes: tints of the delayed hue, darkest last, plus direct labels in the charts. */
-  --cause-late: var(--negative);
-  --cause-carrier: color-mix(in srgb, var(--negative) 78%, var(--bg));
-  --cause-nas: color-mix(in srgb, var(--negative) 58%, var(--bg));
-  --cause-weather: color-mix(in srgb, var(--negative) 40%, var(--bg));
-  --cause-security: var(--neutral);
-}
-
-@theme inline {
-  --color-ground: var(--bg);
-  --color-surface: var(--surface);
-  --color-ink: var(--text);
-  --color-ink-2: var(--text-muted);
-  --color-ink-3: var(--text-subtle);
-  --color-rule: var(--border);
-  --color-rule-strong: var(--border-strong);
-  --color-wash: var(--wash);
-
-  --color-delayed: var(--negative);
-  --color-ontime: var(--positive);
-  --color-cancelled: var(--warning);
-  --color-warning: var(--warning);
-  --color-neutral: var(--neutral);
-  --color-accent: var(--accent-1);
-
-  --color-cause-late: var(--cause-late);
-  --color-cause-carrier: var(--cause-carrier);
-  --color-cause-nas: var(--cause-nas);
-  --color-cause-weather: var(--cause-weather);
-  --color-cause-security: var(--cause-security);
-}
-
+/* One place for every colour, face and rule used by the app. */
 @theme {
+  --color-ground: #010101;
+  --color-ink: #f2f1ec;
+  --color-ink-2: #b9b8b3;
+  --color-ink-3: #94938f;
+  --color-rule: rgba(255, 255, 255, 0.08);
+  --color-rule-strong: rgba(255, 255, 255, 0.16);
+  --color-wash: rgba(255, 255, 255, 0.05);
+
+  --color-delayed: #e8a54b;
+  --color-ontime: #7c9bd1;
+  --color-cancelled: #d0614a;
+
+  --color-cause-late: #e8a54b;
+  --color-cause-carrier: #7c9bd1;
+  --color-cause-nas: #9a8fc4;
+  --color-cause-weather: #5fa38a;
+  --color-cause-security: #c9c4b8;
+
   --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-display: 'Instrument Serif', 'Times New Roman', serif;
   --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
@@ -66,7 +29,7 @@
 
 :root {
   color-scheme: dark;
-  scrollbar-color: color-mix(in srgb, var(--text) 28%, transparent) transparent;
+  scrollbar-color: rgba(242, 241, 236, 0.28) transparent;
   scrollbar-width: thin;
 }
 
@@ -86,13 +49,13 @@ body {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--focus) 35%, transparent);
+  background: rgba(232, 165, 75, 0.35);
   color: var(--color-ink);
 }
 
-/* Keyboard focus: one accent ring for every interactive element */
+/* Keyboard focus: one amber ring for every interactive element */
 :focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--color-delayed);
   outline-offset: 3px;
   border-radius: 2px;
 }
@@ -102,12 +65,12 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--text) 22%, transparent);
+  background: rgba(242, 241, 236, 0.22);
   border-radius: 5px;
   border: 2px solid var(--color-ground);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--text) 40%, transparent);
+  background: rgba(242, 241, 236, 0.4);
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -142,12 +105,12 @@ input {
 
 /* Glass: reserved for the Predict panel, the only glass surface. */
 .liquid-glass {
-  background: color-mix(in srgb, var(--text) 2%, transparent);
+  background: rgba(255, 255, 255, 0.02);
   background-blend-mode: luminosity;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border: none;
-  box-shadow: inset 0 1px 1px color-mix(in srgb, var(--text) 10%, transparent);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
   position: relative;
 }
 
@@ -159,15 +122,14 @@ input {
   padding: 1px;
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--text) 40%, transparent) 0%,
-    color-mix(in srgb, var(--text) 12%, transparent) 20%,
-    color-mix(in srgb, var(--text) 0%, transparent) 40%,
-    color-mix(in srgb, var(--text) 0%, transparent) 60%,
-    color-mix(in srgb, var(--text) 12%, transparent) 80%,
-    color-mix(in srgb, var(--text) 40%, transparent) 100%
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.12) 20%,
+    rgba(255, 255, 255, 0) 40%,
+    rgba(255, 255, 255, 0) 60%,
+    rgba(255, 255, 255, 0.12) 80%,
+    rgba(255, 255, 255, 0.4) 100%
   );
   -webkit-mask:
-    /* Mask layers: only their alpha matters, so plain white is not a colour choice. */
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -177,16 +139,16 @@ input {
 
 button.liquid-glass:hover,
 a.liquid-glass:hover {
-  background: color-mix(in srgb, var(--text) 7%, transparent);
+  background: rgba(255, 255, 255, 0.07);
 }
 
-/* Departure-board signature: a row whose rank changed holds an accent lamp, then fades. */
+/* Departure-board signature: a row whose rank changed holds an amber lamp, then fades. */
 @keyframes lamp {
   from {
-    background-color: color-mix(in srgb, var(--focus) 20%, transparent);
+    background-color: rgba(232, 165, 75, 0.2);
   }
   to {
-    background-color: color-mix(in srgb, var(--focus) 0%, transparent);
+    background-color: rgba(232, 165, 75, 0);
   }
 }
 
@@ -195,7 +157,7 @@ a.liquid-glass:hover {
   animation: lamp 1.2s var(--ease-out-expo) forwards;
 }
 
-/* Live page: a value that changed since the last poll holds the same accent lamp, then fades. */
+/* Live page: a value that changed since the last poll holds the same amber lamp, then fades. */
 .lit-value {
   border-radius: 2px;
   animation: lamp 1.2s var(--ease-out-expo) forwards;
@@ -252,9 +214,9 @@ a.liquid-glass:hover {
 .skeleton {
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--text) 4%, transparent) 25%,
-    color-mix(in srgb, var(--text) 9%, transparent) 50%,
-    color-mix(in srgb, var(--text) 4%, transparent) 75%
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0.04) 75%
   );
   background-size: 200% 100%;
   animation: sheen 1.6s linear infinite;
@@ -265,7 +227,7 @@ a.liquid-glass:hover {
 .hatch {
   background-image: repeating-linear-gradient(
     135deg,
-    color-mix(in srgb, var(--text) 14%, transparent) 0 2px,
+    rgba(255, 255, 255, 0.14) 0 2px,
     transparent 2px 6px
   );
 }
@@ -288,12 +250,12 @@ a.liquid-glass:hover {
 /* ---------- Predict: flight fields ---------- */
 
 /* A field face (a button that opens a dropdown or the calendar). Hover lifts the hairline; focus
-   and the open state warm it to the accent with a soft halo, the same accent as the global focus ring. */
+   and the open state warm it to amber with a soft halo, the same amber as the global focus ring. */
 .flight-field {
   border-radius: 12px;
   border: 1px solid var(--color-rule-strong);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--text) 3.5%, transparent), color-mix(in srgb, var(--text) 1.2%, transparent));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   transition:
     border-color 200ms var(--ease-out-expo),
     background-color 200ms var(--ease-out-expo),
@@ -301,22 +263,22 @@ a.liquid-glass:hover {
 }
 
 .flight-field:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--text) 26%, transparent);
-  background-color: color-mix(in srgb, var(--text) 2%, transparent);
+  border-color: rgba(255, 255, 255, 0.26);
+  background-color: rgba(255, 255, 255, 0.02);
 }
 
 .flight-field:focus-visible,
 .flight-field[data-open] {
   outline: none;
-  border-color: color-mix(in srgb, var(--focus) 80%, transparent);
+  border-color: rgba(232, 165, 75, 0.8);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent),
-    0 0 0 3px color-mix(in srgb, var(--focus) 20%, transparent);
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 3px rgba(232, 165, 75, 0.2);
 }
 
 .flight-field:focus-visible .flight-field-chevron,
 .flight-field[data-open] .flight-field-chevron {
-  color: var(--focus);
+  color: var(--color-delayed);
 }
 
 .flight-field-chevron {
@@ -330,7 +292,7 @@ a.liquid-glass:hover {
 }
 
 .flight-field[data-invalid] {
-  border-color: color-mix(in srgb, var(--warning) 70%, transparent);
+  border-color: rgba(208, 97, 74, 0.7);
 }
 
 .flight-field[data-disabled] {
@@ -344,11 +306,11 @@ a.liquid-glass:hover {
   border-radius: 14px;
   border: 1px solid var(--color-rule-strong);
   background:
-    radial-gradient(120% 50% at 50% 0%, color-mix(in srgb, var(--focus) 4.5%, transparent), transparent 70%),
-    var(--surface);
+    radial-gradient(120% 50% at 50% 0%, rgba(232, 165, 75, 0.045), transparent 70%),
+    #0c0c0c;
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--text) 5%, transparent),
-    0 18px 50px -12px color-mix(in srgb, var(--bg) 85%, transparent);
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 18px 50px -12px rgba(0, 0, 0, 0.85);
   color: var(--color-ink);
   animation: popover-in 180ms var(--ease-out-expo) both;
   transform-origin: top center;
@@ -382,7 +344,7 @@ a.liquid-glass:hover {
 }
 
 /* The search row: 16px text on phones (smaller makes iOS zoom the page), 14px from sm. The row
-   underlines in the accent while the box has focus, in place of the global focus ring. */
+   underlines amber while the box has focus, in place of the global focus ring. */
 .flight-search {
   font-size: 16px;
 }
@@ -402,13 +364,13 @@ a.liquid-glass:hover {
 }
 
 .flight-search-row:focus-within {
-  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--focus) 70%, transparent);
+  box-shadow: inset 0 -1px 0 rgba(232, 165, 75, 0.7);
 }
 
 /* A slim scrollbar that stays inside the rounded surface. */
 .flight-listbox {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--text) 22%, transparent) transparent;
+  scrollbar-color: rgba(242, 241, 236, 0.22) transparent;
 }
 
 .flight-listbox::-webkit-scrollbar {
@@ -416,34 +378,34 @@ a.liquid-glass:hover {
 }
 
 .flight-listbox::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--text) 18%, transparent);
-  border: 2px solid var(--surface);
+  background: rgba(242, 241, 236, 0.18);
+  border: 2px solid #0c0c0c;
   border-radius: 4px;
 }
 
 .flight-listbox::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--focus) 50%, transparent);
+  background: rgba(232, 165, 75, 0.5);
 }
 
-/* Options: the active one (keyboard or pointer) on a wash; the chosen one is marked by an accent
+/* Options: the active one (keyboard or pointer) on a wash; the chosen one is marked by an amber
    code and check, not by colour alone. */
 .flight-option {
   transition: background-color 120ms var(--ease-out-expo);
 }
 
 .flight-option[data-active] {
-  background-color: color-mix(in srgb, var(--text) 6.5%, transparent);
+  background-color: rgba(255, 255, 255, 0.065);
 }
 
 .flight-option[aria-selected='true'] {
-  background-color: color-mix(in srgb, var(--focus) 8%, transparent);
+  background-color: rgba(232, 165, 75, 0.08);
 }
 
 .flight-option[aria-selected='true'][data-active] {
-  background-color: color-mix(in srgb, var(--focus) 13%, transparent);
+  background-color: rgba(232, 165, 75, 0.13);
 }
 
-/* Calendar days: round targets; the chosen day lit in the accent; neighbouring-month days dimmed; days
+/* Calendar days: round targets; the chosen day lit amber; neighbouring-month days dimmed; days
    outside the dataset's range struck through and inert. */
 .calendar-day {
   display: grid;
@@ -461,12 +423,12 @@ a.liquid-glass:hover {
 }
 
 .calendar-day:hover:not([data-disabled]):not([data-selected]) {
-  background-color: color-mix(in srgb, var(--text) 7%, transparent);
+  background-color: rgba(255, 255, 255, 0.07);
 }
 
 .calendar-day:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--focus);
+  box-shadow: 0 0 0 2px var(--color-delayed);
 }
 
 .calendar-day[data-outside] {
@@ -475,15 +437,15 @@ a.liquid-glass:hover {
 }
 
 .calendar-day[data-selected] {
-  background-color: var(--focus);
+  background-color: var(--color-delayed);
   color: var(--color-ground);
   opacity: 1;
 }
 
 .calendar-day[data-selected]:focus-visible {
   box-shadow:
-    0 0 0 2px var(--surface),
-    0 0 0 4px var(--focus);
+    0 0 0 2px #0c0c0c,
+    0 0 0 4px var(--color-delayed);
 }
 
 .calendar-day[data-disabled] {
@@ -504,12 +466,12 @@ a.liquid-glass:hover {
 }
 
 .calendar-month:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--text) 7%, transparent);
+  background-color: rgba(255, 255, 255, 0.07);
   color: var(--color-ink);
 }
 
 .calendar-month[data-selected] {
-  background-color: var(--focus);
+  background-color: var(--color-delayed);
   color: var(--color-ground);
 }
 
@@ -535,9 +497,9 @@ a.liquid-glass:hover {
 
 .score-button:hover:not(:disabled) {
   box-shadow:
-    inset 0 1px 1px color-mix(in srgb, var(--text) 12%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--focus) 35%, transparent),
-    0 10px 30px -14px color-mix(in srgb, var(--focus) 45%, transparent);
+    inset 0 1px 1px rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(232, 165, 75, 0.35),
+    0 10px 30px -14px rgba(232, 165, 75, 0.45);
 }
 
 .score-button:active:not(:disabled) {
@@ -548,9 +510,9 @@ a.liquid-glass:hover {
    lit by the same evening sun as the landing globe. */
 .predict-card.liquid-glass {
   background:
-    radial-gradient(120% 70% at 85% -10%, color-mix(in srgb, var(--focus) 7%, transparent), transparent 60%),
-    radial-gradient(90% 60% at 0% 110%, color-mix(in srgb, var(--positive) 5%, transparent), transparent 60%),
-    color-mix(in srgb, var(--text) 2.2%, transparent);
+    radial-gradient(120% 70% at 85% -10%, rgba(232, 165, 75, 0.07), transparent 60%),
+    radial-gradient(90% 60% at 0% 110%, rgba(124, 155, 209, 0.05), transparent 60%),
+    rgba(255, 255, 255, 0.022);
   animation: rise 0.8s var(--ease-out-expo) both;
 }
 
@@ -570,7 +532,7 @@ a.liquid-glass:hover {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--text) 4.5%, transparent), color-mix(in srgb, var(--text) 0%, transparent));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0));
   opacity: 0;
   transition: opacity 300ms var(--ease-out-expo);
   pointer-events: none;
@@ -631,16 +593,16 @@ a.liquid-glass:hover {
 
 /* Where the globe will be, before three.js has loaded: a faint limb glow, never an empty void. */
 .landing-orbit-hint {
-  background: radial-gradient(circle at 50% 24%, color-mix(in srgb, var(--text) 8%, transparent), transparent 32%);
+  background: radial-gradient(circle at 50% 24%, rgba(169, 184, 204, 0.08), transparent 32%);
 }
 
 /* Legibility: the copy column on phones gets its own fade so it reads over the globe. */
 .landing-scrim {
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--bg) 0%, transparent) 0%,
-    color-mix(in srgb, var(--bg) 10%, transparent) 34%,
-    color-mix(in srgb, var(--bg) 55%, transparent) 70%
+    rgba(1, 1, 1, 0) 0%,
+    rgba(1, 1, 1, 0.1) 34%,
+    rgba(1, 1, 1, 0.55) 70%
   );
 }
 
@@ -655,25 +617,25 @@ a.liquid-glass:hover {
   z-index: -1;
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--bg) 0%, transparent) 0%,
-    color-mix(in srgb, var(--bg) 82%, transparent) 4rem,
-    color-mix(in srgb, var(--bg) 90%, transparent) 100%
+    rgba(1, 1, 1, 0) 0%,
+    rgba(1, 1, 1, 0.82) 4rem,
+    rgba(1, 1, 1, 0.9) 100%
   );
   pointer-events: none;
 }
 
 @media (min-width: 768px) {
   .landing-orbit-hint {
-    background: radial-gradient(circle at 74% 52%, color-mix(in srgb, var(--text) 8%, transparent), transparent 36%);
+    background: radial-gradient(circle at 74% 52%, rgba(169, 184, 204, 0.08), transparent 36%);
   }
 
   /* The globe owns the right; the left third darkens so the copy holds AA over any arc, and the
      top-right corner darkens under the controls and map key. */
   .landing-scrim {
     background:
-      radial-gradient(34% 30% at 100% 0%, color-mix(in srgb, var(--bg) 82%, transparent), color-mix(in srgb, var(--bg) 0%, transparent) 100%),
-      linear-gradient(90deg, color-mix(in srgb, var(--bg) 94%, transparent) 0%, color-mix(in srgb, var(--bg) 80%, transparent) 36%, color-mix(in srgb, var(--bg) 0%, transparent) 62%),
-      linear-gradient(0deg, color-mix(in srgb, var(--bg) 50%, transparent) 0%, color-mix(in srgb, var(--bg) 0%, transparent) 28%);
+      radial-gradient(34% 30% at 100% 0%, rgba(1, 1, 1, 0.82), rgba(1, 1, 1, 0) 100%),
+      linear-gradient(90deg, rgba(1, 1, 1, 0.94) 0%, rgba(1, 1, 1, 0.8) 36%, rgba(1, 1, 1, 0) 62%),
+      linear-gradient(0deg, rgba(1, 1, 1, 0.5) 0%, rgba(1, 1, 1, 0) 28%);
   }
 
   .landing-copy::before {
