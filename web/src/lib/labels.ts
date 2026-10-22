@@ -11,12 +11,45 @@ export const CAUSE_ORDER: readonly CauseKey[] = [
   'security',
 ] satisfies readonly CauseKey[];
 
-export const CAUSE_META: Record<CauseKey, { label: string; color: string }> = {
-  lateAircraft: { label: 'Late-arriving aircraft', color: 'var(--color-cause-late)' },
-  carrier: { label: 'Carrier', color: 'var(--color-cause-carrier)' },
-  nas: { label: 'National Air System', color: 'var(--color-cause-nas)' },
-  weather: { label: 'Weather', color: 'var(--color-cause-weather)' },
-  security: { label: 'Security', color: 'var(--color-cause-security)' },
+/**
+ * Cause colours are tints of the delayed hue (--cause-* tokens) and every chart also labels the
+ * segments directly; `short` is that label and `labelColour` the text on the tint (contrast in
+ * web/DESIGN.md).
+ */
+export const CAUSE_META: Record<
+  CauseKey,
+  { label: string; short: string; color: string; labelColour: string }
+> = {
+  lateAircraft: {
+    label: 'Late-arriving aircraft',
+    short: 'Late aircraft',
+    color: 'var(--color-cause-late)',
+    labelColour: 'var(--bg)',
+  },
+  carrier: {
+    label: 'Carrier',
+    short: 'Carrier',
+    color: 'var(--color-cause-carrier)',
+    labelColour: 'var(--text)',
+  },
+  nas: {
+    label: 'National Air System',
+    short: 'NAS',
+    color: 'var(--color-cause-nas)',
+    labelColour: 'var(--text)',
+  },
+  weather: {
+    label: 'Weather',
+    short: 'Weather',
+    color: 'var(--color-cause-weather)',
+    labelColour: 'var(--text)',
+  },
+  security: {
+    label: 'Security',
+    short: 'Security',
+    color: 'var(--color-cause-security)',
+    labelColour: 'var(--bg)',
+  },
 };
 
 export function isCauseKey(value: string): value is CauseKey {

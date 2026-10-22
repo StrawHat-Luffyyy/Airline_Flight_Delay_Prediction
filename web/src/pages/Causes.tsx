@@ -2,6 +2,7 @@ import {
   CANCELLATION_REASONS,
   type CancellationReasonCode,
   type CancellationRowSchema,
+  type CauseKey,
   type CauseRow,
   type CascadeResponse,
 } from '@flight-delay/shared';
@@ -11,6 +12,7 @@ import {
   BarChart,
   CartesianGrid,
   ComposedChart,
+  LabelList,
   Line,
   ResponsiveContainer,
   Tooltip,
@@ -49,13 +51,44 @@ interface CauseChartRow {
 }
 
 const REASON_ORDER: readonly CancellationReasonCode[] = ['A', 'B', 'C', 'D'];
+/** Cancellations are a warning outcome, not a delay: tints of amber, unknown in neutral grey. */
 const REASON_COLORS: Record<CancellationReasonCode | 'unknown', string> = {
-  A: 'var(--color-cause-carrier)',
-  B: 'var(--color-cause-weather)',
-  C: 'var(--color-cause-nas)',
-  D: 'var(--color-cause-security)',
-  unknown: 'var(--color-ink-3)',
+  A: 'var(--warning)',
+  B: 'color-mix(in srgb, var(--warning) 75%, var(--surface))',
+  C: 'color-mix(in srgb, var(--warning) 52%, var(--surface))',
+  D: 'color-mix(in srgb, var(--warning) 32%, var(--surface))',
+  unknown: 'var(--neutral)',
 };
+
+/** Direct label inside a stacked cause segment: name and share when it fits, share alone, or none. */
+function causeLabel(key: CauseKey, data: readonly CauseChartRow[]) {
+  function CauseSegmentLabel(props: {
+    x?: number | string;
+    y?: number | string;
+    width?: number | string;
+    height?: number | string;
+    index?: number;
+  }) {
+    const [x, y, width, height] = [props.x, props.y, props.width, props.height].map(Number);
+    const share = props.index === undefined ? undefined : data[props.index]?.shares[key];
+    if (share == null || !(width! > 34) || !(height! > 12)) return null;
+    const pct = formatPercent(share, 0);
+    const text = width! > 96 ? `${CAUSE_META[key].short} ${pct}` : pct;
+    return (
+      <text
+        x={x! + 6}
+        y={y! + height! / 2}
+        dominantBaseline="central"
+        fill={CAUSE_META[key].labelColour}
+        fontSize={11}
+        pointerEvents="none"
+      >
+        {text}
+      </text>
+    );
+  }
+  return CauseSegmentLabel;
+}
 
 function toChartRows(rows: readonly CauseRow[], by: CauseGrouping): CauseChartRow[] {
   return rows.map((row) => ({
@@ -111,11 +144,11 @@ function CauseChart({
           stackOffset={mode === 'share' ? 'expand' : 'none'}
           margin={{ top: 4, right: 16, bottom: 0, left: 0 }}
         >
-          <CartesianGrid stroke="rgba(255,255,255,0.08)" horizontal={false} />
+          <CartesianGrid stroke="var(--border)" horizontal={false} />
           <XAxis
             type="number"
             tick={AXIS_TICK}
-            stroke="rgba(255,255,255,0.16)"
+            stroke="var(--border-strong)"
             tickLine={false}
             tickFormatter={(value: number) =>
               mode === 'share' ? formatPercent(value, 0) : `${value}M`
@@ -132,7 +165,7 @@ function CauseChart({
           />
           <Tooltip
             contentStyle={TOOLTIP_STYLE}
-            cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+            cursor={{ fill: 'color-mix(in srgb, var(--text) 5%, transparent)' }}
             labelFormatter={(_label, payload) => {
               const first = payload[0];
               const row = first ? (first.payload as CauseChartRow | undefined) : undefined;
@@ -153,7 +186,9 @@ function CauseChart({
               stackId="causes"
               fill={CAUSE_META[key].color}
               isAnimationActive={false}
-            />
+            >
+              <LabelList content={causeLabel(key, data)} />
+            </Bar>
           ))}
         </BarChart>
       </ResponsiveContainer>
@@ -232,11 +267,11 @@ function CascadeChart({ data }: { data: CascadeResponse }) {
       >
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-            <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
+            <CartesianGrid stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="hourText"
               tick={AXIS_TICK}
-              stroke="rgba(255,255,255,0.16)"
+              stroke="var(--border-strong)"
               tickLine={false}
               interval={1}
             />
@@ -252,7 +287,7 @@ function CascadeChart({ data }: { data: CascadeResponse }) {
             <YAxis yAxisId="volume" orientation="right" hide />
             <Tooltip
               contentStyle={TOOLTIP_STYLE}
-              cursor={{ stroke: 'rgba(255,255,255,0.3)' }}
+              cursor={{ stroke: 'color-mix(in srgb, var(--text) 30%, transparent)' }}
               labelFormatter={(label) => `Departing ${hourLabel(Number(label))}`}
               formatter={(value, name) =>
                 name === 'Delay minutes'
@@ -264,7 +299,7 @@ function CascadeChart({ data }: { data: CascadeResponse }) {
               yAxisId="volume"
               dataKey="volume"
               name="Delay minutes"
-              fill="rgba(255,255,255,0.1)"
+              fill="color-mix(in srgb, var(--text) 10%, transparent)"
               isAnimationActive={false}
             />
             <Line
@@ -285,8 +320,8 @@ function CascadeChart({ data }: { data: CascadeResponse }) {
                     cx={cx}
                     cy={cy}
                     r={3.5}
-                    fill={row.thin ? '#010101' : '#e8a54b'}
-                    stroke={row.thin ? '#94938f' : '#e8a54b'}
+                    fill={row.thin ? 'var(--bg)' : 'var(--negative)'}
+                    stroke={row.thin ? 'var(--text-subtle)' : 'var(--negative)'}
                     strokeWidth={1.5}
                   />
                 );
@@ -365,11 +400,11 @@ function CancellationsByMonth({ rows }: { rows: readonly CancellationRow[] }) {
     >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-          <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
+          <CartesianGrid stroke="var(--border)" vertical={false} />
           <XAxis
             dataKey="axis"
             tick={AXIS_TICK}
-            stroke="rgba(255,255,255,0.16)"
+            stroke="var(--border-strong)"
             tickLine={false}
             interval={0}
           />
@@ -382,7 +417,7 @@ function CancellationsByMonth({ rows }: { rows: readonly CancellationRow[] }) {
           />
           <Tooltip
             contentStyle={TOOLTIP_STYLE}
-            cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+            cursor={{ fill: 'color-mix(in srgb, var(--text) 5%, transparent)' }}
             labelFormatter={(_label, payload) => {
               const first = payload[0];
               const row = first

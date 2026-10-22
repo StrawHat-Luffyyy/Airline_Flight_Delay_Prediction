@@ -122,12 +122,12 @@ function TrendChart({ points }: { points: readonly TrendPoint[] }) {
       >
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={[...points]} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
-            <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
+            <CartesianGrid stroke="var(--border)" vertical={false} />
             {first && lastTrain ? (
               <ReferenceArea
                 x1={first.period}
                 x2={lastTrain.period}
-                fill="rgba(255,255,255,0.02)"
+                fill="color-mix(in srgb, var(--text) 2%, transparent)"
                 stroke="none"
               />
             ) : null}
@@ -135,7 +135,7 @@ function TrendChart({ points }: { points: readonly TrendPoint[] }) {
               <ReferenceArea
                 x1={firstTest.period}
                 x2={last.period}
-                fill="rgba(255,255,255,0.06)"
+                fill="color-mix(in srgb, var(--text) 6%, transparent)"
                 stroke="none"
               />
             ) : null}
@@ -143,7 +143,7 @@ function TrendChart({ points }: { points: readonly TrendPoint[] }) {
               dataKey="period"
               tickFormatter={(value: string) => monthName(value, true)}
               tick={AXIS_TICK}
-              stroke="rgba(255,255,255,0.16)"
+              stroke="var(--border-strong)"
               tickLine={false}
             />
             <YAxis
@@ -157,7 +157,7 @@ function TrendChart({ points }: { points: readonly TrendPoint[] }) {
             />
             <Tooltip
               contentStyle={TOOLTIP_STYLE}
-              cursor={{ stroke: 'rgba(255,255,255,0.3)' }}
+              cursor={{ stroke: 'color-mix(in srgb, var(--text) 30%, transparent)' }}
               labelFormatter={(label) => monthName(String(label))}
               formatter={(value) => [formatPercent(Number(value)), 'Delay rate']}
             />
@@ -166,7 +166,7 @@ function TrendChart({ points }: { points: readonly TrendPoint[] }) {
               dataKey="delayRate"
               stroke="var(--color-delayed)"
               strokeWidth={2}
-              dot={{ r: 3, fill: '#010101', stroke: '#e8a54b', strokeWidth: 2 }}
+              dot={{ r: 3, fill: 'var(--bg)', stroke: 'var(--negative)', strokeWidth: 2 }}
               activeDot={{ r: 5 }}
               isAnimationActive={false}
             />
@@ -434,7 +434,7 @@ export default function Overview() {
                       />
                       <Tooltip
                         contentStyle={TOOLTIP_STYLE}
-                        cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                        cursor={{ fill: 'color-mix(in srgb, var(--text) 5%, transparent)' }}
                         formatter={(value) => [`${formatInteger(Number(value))} flights`, '']}
                         separator=""
                       />
@@ -449,7 +449,7 @@ export default function Overview() {
                           dataKey="share"
                           position="right"
                           formatter={(value) => formatPercent(Number(value))}
-                          fill="#b9b8b3"
+                          fill="var(--text-muted)"
                           fontSize={11}
                         />
                       </Bar>
