@@ -1,6 +1,7 @@
 import { flightKey, type FlightEvent } from '@flight-delay/shared';
 import { MongoClient, type Db } from 'mongodb';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { HttpError } from '../../src/middleware/error.js';
 import { scoreMissing } from '../../src/stream/score-missing.js';
 import type { Predictor, ScoreResult } from '../../src/stream/score.js';
 import {
@@ -228,5 +229,84 @@ describe('upsertEvents (MongoDB integration)', () => {
       scored: 0,
       refused: 0,
     });
+  });
+});
+
+describe('scoreMissing --retry-refused (MongoDB integration)', () => {
+  const scoredResponse = {
+    probability: 0.3,
+    label: 'delayed' as const,
+    threshold: 0.2,
+    modelVersion: 'm3',
+    derived: { dayOfWeek: 1, isHolidayWeek: true, distance: 1744, scheduledTime: 275 },
+    topFactors: [],
+  };
+
+  it('re-scores refusals a data rebuild can fix, never permanent ones', async (context) => {
+    if (!client) return context.skip();
+    const fixable = event(40);
+    const unknownCode = event(41);
+    const permanent = event(42);
+    await upsertEvents(streamFlights(db), [fixable, unknownCode, permanent], new Date(40_000));
+    for (const [flight, scoreError] of [
+      [fixable, 'UNKNOWN_ROUTE'],
+      [unknownCode, 'UNKNOWN_CODE'],
+      [permanent, 'INVALID_REQUEST'],
+    ] as const) {
+      await streamFlights(db).updateOne({ _id: flight.key }, { $set: { scoreError } });
+    }
+    const refuseRoute: Predictor = async () => {
+      throw new HttpError(422, 'UNKNOWN_ROUTE', 'no route');
+    };
+
+    // Without the flag, refusals stay as they are.
+    expect(await scoreMissing(streamFlights(db), async () => scoredResponse)).toEqual({
+      scanned: 0,
+      scored: 0,
+      refused: 0,
+    });
+    // Still refused after a retry: recorded again, and still retryable later.
+    expect(await scoreMissing(streamFlights(db), refuseRoute, { retryRefused: true })).toEqual({
+      scanned: 2,
+      scored: 0,
+      refused: 2,
+    });
+    // After the rebuild the route scores.
+    expect(
+      await scoreMissing(streamFlights(db), async () => scoredResponse, { retryRefused: true }),
+    ).toEqual({ scanned: 2, scored: 2, refused: 0 });
+
+    expect(await streamFlights(db).findOne({ _id: fixable.key })).toMatchObject({
+      prediction: { probability: 0.3, modelVersion: 'm3' },
+      scoreError: null,
+      correct: true,
+    });
+    expect(await streamFlights(db).findOne({ _id: permanent.key })).toMatchObject({
+      prediction: null,
+      scoreError: 'INVALID_REQUEST',
+    });
+  });
+
+  it('keeps a flight retryable when a retry hits a transient scoring failure', async (context) => {
+    if (!client) return context.skip();
+    const flight = event(43);
+    await upsertEvents(streamFlights(db), [flight], new Date(43_000));
+    await streamFlights(db).updateOne(
+      { _id: flight.key },
+      { $set: { scoreError: 'UNKNOWN_ROUTE' } },
+    );
+    const broken: Predictor = async () => {
+      throw new Error('model hiccup');
+    };
+    expect(await scoreMissing(streamFlights(db), broken, { retryRefused: true })).toMatchObject({
+      refused: 1,
+    });
+    expect(await streamFlights(db).findOne({ _id: flight.key })).toMatchObject({
+      scoreError: 'SCORING_FAILED',
+    });
+    // The next retry picks it up again and scores it.
+    expect(
+      await scoreMissing(streamFlights(db), async () => scoredResponse, { retryRefused: true }),
+    ).toEqual({ scanned: 1, scored: 1, refused: 0 });
   });
 });

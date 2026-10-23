@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
   FOLD_MONTHS,
   LookupTable,
+  lookupFingerprint,
   type LookupEntry,
   type LookupKind,
   type LookupScope,
@@ -246,12 +247,28 @@ const StoredEntry = z.object({
   rate: z.number(),
 });
 
-/** Loads delay_lookup into memory (tens of thousands of small entries). */
-export async function loadLookupTable(db: Db): Promise<LookupTable> {
+async function loadLookupEntries(db: Db): Promise<LookupEntry[]> {
   const docs = await db
     .collection(LOOKUP)
     .find({}, { projection: { _id: 0, scope: 1, kind: 1, key: 1, rate: 1 } })
     .toArray();
-  const entries: LookupEntry[] = z.array(StoredEntry).parse(docs);
-  return new LookupTable(entries);
+  return z.array(StoredEntry).parse(docs);
+}
+
+/** Loads delay_lookup into memory (tens of thousands of small entries). */
+export async function loadLookupTable(db: Db): Promise<LookupTable> {
+  return new LookupTable(await loadLookupEntries(db));
+}
+
+/** lookupFingerprint of the delay_lookup currently in the database. */
+export async function loadLookupFingerprint(db: Db): Promise<string> {
+  return lookupFingerprint(await loadLookupEntries(db));
+}
+
+/** The table and its fingerprint from one read, so both describe the same rates. */
+export async function loadLookupWithFingerprint(
+  db: Db,
+): Promise<{ table: LookupTable; fingerprint: string }> {
+  const entries = await loadLookupEntries(db);
+  return { table: new LookupTable(entries), fingerprint: lookupFingerprint(entries) };
 }

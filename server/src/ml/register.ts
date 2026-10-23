@@ -13,7 +13,12 @@ import { fromRepoRoot } from '../paths.js';
 export const MODEL_RUNS = 'model_runs';
 export const DEFAULT_METRICS_FILE = fromRepoRoot('ml', 'artifacts', 'metrics.json');
 
-export type ModelRunDoc = Omit<ModelRun, 'createdAt'> & { createdAt: Date; registeredAt: Date };
+export type ModelRunDoc = Omit<ModelRun, 'createdAt'> & {
+  createdAt: Date;
+  registeredAt: Date;
+  /** lookupFingerprint of delay_lookup at registration; absent on runs registered before it. */
+  lookupFingerprint?: string;
+};
 
 export const DEFAULT_OPERATING_POINTS_FILE = fromRepoRoot(
   'ml',
@@ -55,7 +60,11 @@ export function attachOperatingPoints(run: ModelRun, points: OperatingPoints): M
  * Refuses runs whose feature list contains a post-departure feature (§7) or differs from
  * FEATURE_COLUMNS (the order /predict encodes in).
  */
-export async function registerModelRun(db: Db, run: ModelRun): Promise<ModelRunDoc> {
+export async function registerModelRun(
+  db: Db,
+  run: ModelRun,
+  { lookupFingerprint }: { lookupFingerprint?: string } = {},
+): Promise<ModelRunDoc> {
   const leaked = run.featureList.filter(isForbiddenFeature);
   if (leaked.length > 0) {
     throw new Error(`Model run ${run.modelVersion} lists forbidden features: ${leaked.join(', ')}`);
@@ -65,7 +74,12 @@ export async function registerModelRun(db: Db, run: ModelRun): Promise<ModelRunD
       `Model run ${run.modelVersion} does not match the TypeScript feature contract (FEATURE_COLUMNS); /predict could not encode its inputs.`,
     );
   }
-  const doc: ModelRunDoc = { ...run, createdAt: new Date(run.createdAt), registeredAt: new Date() };
+  const doc: ModelRunDoc = {
+    ...run,
+    createdAt: new Date(run.createdAt),
+    registeredAt: new Date(),
+    ...(lookupFingerprint === undefined ? {} : { lookupFingerprint }),
+  };
   await db
     .collection<ModelRunDoc>(MODEL_RUNS)
     .replaceOne({ modelVersion: run.modelVersion }, doc, { upsert: true });

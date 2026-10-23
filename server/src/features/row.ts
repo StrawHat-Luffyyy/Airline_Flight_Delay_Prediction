@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { Split } from '../db/collections.js';
 import type { FeatureColumn } from './feature-list.js';
 import { isHolidayWeek } from './holidays.js';
@@ -25,6 +26,19 @@ export interface LookupEntry {
   kind: LookupKind;
   key: string;
   rate: number;
+}
+
+/**
+ * A content fingerprint of the rates /api/predict reads (the `full` scope): sha256 over the sorted
+ * `kind/key=rate` lines. buildIds are random per build, so they change on every rebuild; this only
+ * changes when a served rate does. `ml:register` pins it and the API compares it at startup.
+ */
+export function lookupFingerprint(entries: Iterable<LookupEntry>): string {
+  const lines: string[] = [];
+  for (const entry of entries) {
+    if (entry.scope === 'full') lines.push(`${entry.kind}/${entry.key}=${entry.rate}`);
+  }
+  return createHash('sha256').update(lines.sort().join('\n')).digest('hex');
 }
 
 export const originHourKey = (origin: string, hour: number): string => `${origin}|${hour}`;
