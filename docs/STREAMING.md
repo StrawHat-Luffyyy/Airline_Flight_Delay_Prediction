@@ -8,13 +8,13 @@ The speed layer replays December 2015 from `data/raw/flights.csv` into Kafka. A 
 
 ### Setup
 
-| Item | Value |
-|---|---|
-| Host | Windows 11, Docker Desktop with 7.61 GiB and 12 CPUs |
-| MongoDB | 7.0.43, single node in Docker |
-| Kafka | `apache/kafka:4.3.1`, one node in KRaft mode, `flights.raw` with 3 partitions, replication factor 1 |
-| Client | `@confluentinc/kafka-javascript` 1.11.0 |
-| Model | `lightgbm-20261013093139-12f165c2`, threshold 0.20697 (frozen at training) |
+| Item     | Value                                                                                                                    |
+| -------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Host     | Windows 11, Docker Desktop with 7.61 GiB and 12 CPUs                                                                     |
+| MongoDB  | 7.0.43, single node in Docker                                                                                            |
+| Kafka    | `apache/kafka:4.3.1`, one node in KRaft mode, `flights.raw` with 3 partitions, replication factor 1                      |
+| Client   | `@confluentinc/kafka-javascript` 1.11.0                                                                                  |
+| Model    | `lightgbm-20261013093139-12f165c2`, threshold 0.20697 (frozen at training)                                               |
 | Consumer | one `stream:consume` process: batches of up to 500, 3 partitions consumed concurrently, live scoring on every new flight |
 
 Producer, consumer, MongoDB and Kafka all ran on the same machine, so `producedAt` (stamped by the producer) and `firstWrittenAt` (stamped by the consumer) come from one clock. No clock-skew correction was needed.
@@ -34,47 +34,47 @@ Each measured run started from an empty speed layer:
 
 Definitions used by `stream:measure` (`server/src/stream/measure.ts`):
 
-| Figure | Definition |
-|---|---|
-| Producer rate | events sent ÷ send phase (first December row to last broker acknowledgement) |
-| Consumer rate | flights first stored by the run ÷ time from their first to their last `firstWrittenAt` |
-| Latency | `firstWrittenAt − producedAt` per flight. p50, p95 and p99 come from MongoDB 7.0 `$percentile` with `method: "approximate"` (the only method 7.0 offers); min, max and mean are exact |
-| Upserts | the sum of `deliveries` in `stream_flights` (one per message the consumer stored) |
+| Figure        | Definition                                                                                                                                                                            |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Producer rate | events sent ÷ send phase (first December row to last broker acknowledgement)                                                                                                          |
+| Consumer rate | flights first stored by the run ÷ time from their first to their last `firstWrittenAt`                                                                                                |
+| Latency       | `firstWrittenAt − producedAt` per flight. p50, p95 and p99 come from MongoDB 7.0 `$percentile` with `method: "approximate"` (the only method 7.0 offers); min, max and mean are exact |
+| Upserts       | the sum of `deliveries` in `stream_flights` (one per message the consumer stored)                                                                                                     |
 
 The runs, in the order they were made:
 
-| Run | Command flags | Started from | Evidence |
-|---|---|---|---|
-| A | `--rate 500 --limit 30000` | reset | `run-a-500.json` |
-| B | `--rate 2000 --limit 120000` | reset | `run-b-2000.json` |
-| D (crash) | `--rate 0 --limit 100000` | reset | `run-d-crash-before-restart.json`, `run-d-crash-after-restart.json` |
-| C | `--rate 0` (all of December) | reset | `run-c-unthrottled.json` |
-| C re-replay | `--rate 0 --limit 5000` | run C's data, no reset | `run-c-rereplay-5000.json` |
+| Run         | Command flags                | Started from           | Evidence                                                            |
+| ----------- | ---------------------------- | ---------------------- | ------------------------------------------------------------------- |
+| A           | `--rate 500 --limit 30000`   | reset                  | `run-a-500.json`                                                    |
+| B           | `--rate 2000 --limit 120000` | reset                  | `run-b-2000.json`                                                   |
+| D (crash)   | `--rate 0 --limit 100000`    | reset                  | `run-d-crash-before-restart.json`, `run-d-crash-after-restart.json` |
+| C           | `--rate 0` (all of December) | reset                  | `run-c-unthrottled.json`                                            |
+| C re-replay | `--rate 0 --limit 5000`      | run C's data, no reset | `run-c-rereplay-5000.json`                                          |
 
 ## Results
 
-| # | Item | Result | Key figures | Evidence |
-|---|---|---|---|---|
-| 1 | Conservation | **PASS** | Run C: 479,230 month rows = 479,230 sent + 0 producer DLQ; 479,230 on `flights.raw` = 479,230 upserts + 0 consumer DLQ. Runs A and B pass the same checks. | `run-c-unthrottled.json`, `run-a-500.json`, `run-b-2000.json` |
-| 2 | Unique keys | **PASS** | Run C: 479,230 stored = 479,230 distinct keys | `run-c-unthrottled.json` |
-| 3 | Idempotent replay | **PASS** | `stream_flights` stays 479,230; deliveries 479,230 → 484,230 | `run-c-rereplay-5000.json` |
-| 4 | Crash recovery | **PASS** | Run F: a hard kill landed mid-batch (500 flights written but not committed); after restart those 500 were redelivered (`deliveries` = 2), 200,000 stored = 200,000 distinct keys, 0 duplicates, lag 0. Run D: a kill between batches, nothing redelivered | `run-f-*.json`, `run-d-crash-*.json` |
-| 5 | Throughput at three rates | **PASS** (measured) | Consumer 506/s, 1,190/s, 2,018/s and 2,442/s at 500/s, 1,200/s, 2,000/s and unthrottled | `run-a-500.json`, `run-b-2000.json`, `run-c-unthrottled.json` |
-| 6 | Latency p50 / p95 | **PASS** (measured) | **Headline, 1,200/s (about 49% of capacity), steady state: 423 / 2,238 ms**; whole run including start-up 1,098 / 9,424 ms. Also 63 / 906 ms at 500/s and 138 / 2,236 ms at 2,000/s; unthrottled is queueing delay under overload (below) | `run-e-1200-steady.json`, `run-e-1200.json`, `run-a-500.json`, `run-b-2000.json`, `run-c-unthrottled.json` |
-| 7 | Status metrics match a recomputation | **PASS** | 35 of 35 checks match | `verify-status.json` |
+| #   | Item                                 | Result              | Key figures                                                                                                                                                                                                                                               | Evidence                                                                                                   |
+| --- | ------------------------------------ | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 1   | Conservation                         | **PASS**            | Run C: 479,230 month rows = 479,230 sent + 0 producer DLQ; 479,230 on `flights.raw` = 479,230 upserts + 0 consumer DLQ. Runs A and B pass the same checks.                                                                                                | `run-c-unthrottled.json`, `run-a-500.json`, `run-b-2000.json`                                              |
+| 2   | Unique keys                          | **PASS**            | Run C: 479,230 stored = 479,230 distinct keys                                                                                                                                                                                                             | `run-c-unthrottled.json`                                                                                   |
+| 3   | Idempotent replay                    | **PASS**            | `stream_flights` stays 479,230; deliveries 479,230 → 484,230                                                                                                                                                                                              | `run-c-rereplay-5000.json`                                                                                 |
+| 4   | Crash recovery                       | **PASS**            | Run F: a hard kill landed mid-batch (500 flights written but not committed); after restart those 500 were redelivered (`deliveries` = 2), 200,000 stored = 200,000 distinct keys, 0 duplicates, lag 0. Run D: a kill between batches, nothing redelivered | `run-f-*.json`, `run-d-crash-*.json`                                                                       |
+| 5   | Throughput at three rates            | **PASS** (measured) | Consumer 506/s, 1,190/s, 2,018/s and 2,442/s at 500/s, 1,200/s, 2,000/s and unthrottled                                                                                                                                                                   | `run-a-500.json`, `run-b-2000.json`, `run-c-unthrottled.json`                                              |
+| 6   | Latency p50 / p95                    | **PASS** (measured) | **Headline, 1,200/s (about 49% of capacity), steady state: 423 / 2,238 ms**; whole run including start-up 1,098 / 9,424 ms. Also 63 / 906 ms at 500/s and 138 / 2,236 ms at 2,000/s; unthrottled is queueing delay under overload (below)                 | `run-e-1200-steady.json`, `run-e-1200.json`, `run-a-500.json`, `run-b-2000.json`, `run-c-unthrottled.json` |
+| 7   | Status metrics match a recomputation | **PASS**            | 35 of 35 checks match                                                                                                                                                                                                                                     | `verify-status.json`                                                                                       |
 
 ### 1 and 2. Conservation and unique keys
 
 `stream:measure` runs five checks per run. All five passed in runs A, B and C, and in run D after the restart.
 
-| Check | Run A (500/s) | Run B (2,000/s) | Run C (unthrottled) |
-|---|---|---|---|
+| Check                                   | Run A (500/s)       | Run B (2,000/s)       | Run C (unthrottled)   |
+| --------------------------------------- | ------------------- | --------------------- | --------------------- |
 | Month rows = sent to raw + producer DLQ | 30,000 = 30,000 + 0 | 120,000 = 120,000 + 0 | 479,230 = 479,230 + 0 |
-| Raw topic holds exactly what was sent | 30,000 = 30,000 | 120,000 = 120,000 | 479,230 = 479,230 |
-| Raw messages = upserts + consumer DLQ | 30,000 = 30,000 + 0 | 120,000 = 120,000 + 0 | 479,230 = 479,230 + 0 |
-| Stored flights = distinct keys produced | 30,000 = 30,000 | 120,000 = 120,000 | 479,230 = 479,230 |
-| Consumer lag | 0 | 0 | 0 |
-| Scored / refused | 30,000 / 0 | 120,000 / 0 | 479,230 / 0 |
+| Raw topic holds exactly what was sent   | 30,000 = 30,000     | 120,000 = 120,000     | 479,230 = 479,230     |
+| Raw messages = upserts + consumer DLQ   | 30,000 = 30,000 + 0 | 120,000 = 120,000 + 0 | 479,230 = 479,230 + 0 |
+| Stored flights = distinct keys produced | 30,000 = 30,000     | 120,000 = 120,000     | 479,230 = 479,230     |
+| Consumer lag                            | 0                   | 0                     | 0                     |
+| Scored / refused                        | 30,000 / 0          | 120,000 / 0           | 479,230 / 0           |
 
 - **How "distinct keys produced" is counted.** The check compares the `stream_flights` count with the largest single run since the reset, minus consumer DLQ messages. That equals the distinct keys only because the source has no duplicate keys: December has 479,230 rows and 479,230 distinct flight keys, measured read-only on `flights` in 8b (`docs/DECISIONS.md`, Phase 8b). The script does not count distinct keys on the topic itself.
 - **The DLQ path was not exercised by real data.** December has no rows the transformer rejects and no malformed messages, so every DLQ term above is 0. The DLQ path is covered by unit tests and `stream:smoke` (`docs/DECISIONS.md`, Phase 8c).
@@ -83,14 +83,14 @@ The runs, in the order they were made:
 
 Right after run C, the first 5,000 December rows were replayed again (`--rate 0 --limit 5000`) with no reset (source: `run-c-rereplay-5000.json`; the "after run C" column is from `run-c-unthrottled.json`).
 
-| Measure | After run C | After the re-replay |
-|---|---|---|
-| `stream_flights` documents | 479,230 | 479,230 |
-| Flights first stored by the re-replay | n/a | 0 |
-| Sum of `deliveries` | 479,230 | 484,230 (+5,000) |
-| Messages on `flights.raw` | 479,230 | 484,230 = 484,230 sent in 2 runs |
-| Scored / refused | 479,230 / 0 | 479,230 / 0 |
-| Lag | 0 | 0 |
+| Measure                               | After run C | After the re-replay              |
+| ------------------------------------- | ----------- | -------------------------------- |
+| `stream_flights` documents            | 479,230     | 479,230                          |
+| Flights first stored by the re-replay | n/a         | 0                                |
+| Sum of `deliveries`                   | 479,230     | 484,230 (+5,000)                 |
+| Messages on `flights.raw`             | 479,230     | 484,230 = 484,230 sent in 2 runs |
+| Scored / refused                      | 479,230 / 0 | 479,230 / 0                      |
+| Lag                                   | 0           | 0                                |
 
 The 5,000 re-sent events were consumed and upserted onto existing documents; only `deliveries` changed. This re-sent a prefix of the same replay, not all 479,230 events a second time. 8c ran the same kind of test without live scoring (5,000 re-sent, 0 inserted; `docs/DECISIONS.md`, Phase 8c).
 
@@ -98,15 +98,15 @@ The 5,000 re-sent events were consumed and upserted onto existing documents; onl
 
 Run D replayed 100,000 flights unthrottled. While the consumer was writing, it was hard-killed with PowerShell `Stop-Process -Force`.
 
-| Measure | Before restart | After restart |
-|---|---|---|
-| `stream_flights` documents | 58,530 | 100,000 |
-| Sum of `deliveries` | 58,530 | 100,000 |
-| Consumer lag | 41,470 (= 100,000 − 58,530) | 0 |
+| Measure                               | Before restart                                 | After restart                |
+| ------------------------------------- | ---------------------------------------------- | ---------------------------- |
+| `stream_flights` documents            | 58,530                                         | 100,000                      |
+| Sum of `deliveries`                   | 58,530                                         | 100,000                      |
+| Consumer lag                          | 41,470 (= 100,000 − 58,530)                    | 0                            |
 | Raw messages = upserts + consumer DLQ | FAIL (100,000 vs 58,530 + 0), expected mid-run | PASS (100,000 = 100,000 + 0) |
-| Stored = distinct keys | FAIL (58,530 vs 100,000), expected mid-run | PASS (100,000 = 100,000) |
-| Lag = 0 | FAIL, expected mid-run | PASS |
-| Scored / refused | 58,530 / 0 | 100,000 / 0 |
+| Stored = distinct keys                | FAIL (58,530 vs 100,000), expected mid-run     | PASS (100,000 = 100,000)     |
+| Lag = 0                               | FAIL, expected mid-run                         | PASS                         |
+| Scored / refused                      | 58,530 / 0                                     | 100,000 / 0                  |
 
 Sources: `run-d-crash-before-restart.json`, `run-d-crash-after-restart.json`.
 
@@ -126,23 +126,23 @@ Run D's kill landed between batches, so it could not show redelivery. Run F set 
   - Every key in the run is new, so stored = written.
   - Written > committed means a batch was written and not committed, so Kafka must redeliver it.
 
-| Attempt | Flights written | Messages committed | Written but not committed | Source |
-|---|---|---|---|---|
-| 1 | 18,000 | 18,000 | 0 (between batches) | `run-f-kill-attempt-1.json` |
-| 2 | 31,554 | 31,054 | **500** (one full batch, mid-batch) | `run-f-kill-attempt-2.json` |
+| Attempt | Flights written | Messages committed | Written but not committed           | Source                      |
+| ------- | --------------- | ------------------ | ----------------------------------- | --------------------------- |
+| 1       | 18,000          | 18,000             | 0 (between batches)                 | `run-f-kill-attempt-1.json` |
+| 2       | 31,554          | 31,054             | **500** (one full batch, mid-batch) | `run-f-kill-attempt-2.json` |
 
 After attempt 2 a third consumer was started and ran to the end:
 
-| Measure | Value | Source |
-|---|---|---|
-| Produced (sent to `flights.raw`) | 200,000 | `run-f-midbatch-final.json` |
-| Upserts (messages processed, summed `deliveries`) | 200,500 = 200,000 + **500 redelivered** | `run-f-midbatch-final.json` |
-| Flights with `deliveries` = 1 / = 2 | 199,500 / **500** | `run-f-midbatch-deliveries.json` |
-| Restarted consumer's own counters | 168,946 consumed, 168,446 inserted, **500 redelivered**, 0 DLQ | `run-f-midbatch-deliveries.json` |
-| Consumer DLQ | 0 | `run-f-midbatch-final.json` |
-| Distinct keys stored | 200,000 for 200,000 keys sent | `run-f-midbatch-final.json` |
-| Duplicates | **0** (`_id` is the flight key; 200,000 documents) | `run-f-midbatch-final.json` |
-| Lag at the end | 0 | `run-f-midbatch-final.json` |
+| Measure                                           | Value                                                          | Source                           |
+| ------------------------------------------------- | -------------------------------------------------------------- | -------------------------------- |
+| Produced (sent to `flights.raw`)                  | 200,000                                                        | `run-f-midbatch-final.json`      |
+| Upserts (messages processed, summed `deliveries`) | 200,500 = 200,000 + **500 redelivered**                        | `run-f-midbatch-final.json`      |
+| Flights with `deliveries` = 1 / = 2               | 199,500 / **500**                                              | `run-f-midbatch-deliveries.json` |
+| Restarted consumer's own counters                 | 168,946 consumed, 168,446 inserted, **500 redelivered**, 0 DLQ | `run-f-midbatch-deliveries.json` |
+| Consumer DLQ                                      | 0                                                              | `run-f-midbatch-final.json`      |
+| Distinct keys stored                              | 200,000 for 200,000 keys sent                                  | `run-f-midbatch-final.json`      |
+| Duplicates                                        | **0** (`_id` is the flight key; 200,000 documents)             | `run-f-midbatch-final.json`      |
+| Lag at the end                                    | 0                                                              | `run-f-midbatch-final.json`      |
 
 - **What this shows:** the redelivered batch is exactly the 500 written-but-uncommitted messages. Kafka delivered them again, the upsert turned each into an update of `deliveries`, and no second document was created. This is the at-least-once + idempotent-write guarantee working under a real crash, with live scoring on (redeliveries are not re-scored).
 - **Heartbeat counters lag the truth.** The killed consumers' last heartbeats said 16,300 and 11,554 consumed, against 18,000 and 13,554 actually written (heartbeats are written every 2 s). This is why the totals come from `stream_flights` and Kafka offsets, not from heartbeats.
@@ -152,12 +152,12 @@ After attempt 2 a third consumer was started and ran to the end:
 
 From an empty speed layer, 150,000 events were replayed at 1,000/s with one consumer running and the API up. When about 41,500 flights were stored, the broker was stopped with `docker compose stop kafka` (issued 15:17:25 UTC, stopped 15:17:29) and started again with `docker compose start kafka` at 15:17:56 to 15:17:57: **about 28 s down**. Nothing else was restarted.
 
-| Component | What it did | Evidence |
-|---|---|---|
-| Producer (`stream:replay`) | Blocked while the broker was down, then resumed at its paced rate; finished all 150,000 sends with no warning or error and exit code 0. Its send phase stretched to 191,009 ms (785/s achieved against 1,000/s) | `run-g-kafka-restart.json` (`producer`), replay log |
-| Consumer (`stream:consume`) | Logged no warning or error and was **not restarted**. It stored nothing from 15:17:29 until **15:18:39, about 42 s after the broker started**, then caught up: all 150,000 stored by 15:19:55 | `run-g-kafka-restart-status.json`, `run-g-kafka-restart.json` |
-| `GET /api/stream/status` | Answered **200** throughout (every request in at most 1.02 s while the broker was down). `degraded` with "Kafka unreachable: Kafka admin request timed out after 1000 ms" in all 19 samples from 15:17:29 to 15:18:05; `live` again from 15:18:07 | `run-g-kafka-restart-status.json` |
-| API Kafka probe process | Crashed once with exit code 3221225477 (0xC0000005) at 15:18:07, as the broker came back; the API logged it, kept serving and started a new probe process (`docs/DECISIONS.md`, Phase 8e) | API log |
+| Component                   | What it did                                                                                                                                                                                                                                       | Evidence                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Producer (`stream:replay`)  | Blocked while the broker was down, then resumed at its paced rate; finished all 150,000 sends with no warning or error and exit code 0. Its send phase stretched to 191,009 ms (785/s achieved against 1,000/s)                                   | `run-g-kafka-restart.json` (`producer`), replay log           |
+| Consumer (`stream:consume`) | Logged no warning or error and was **not restarted**. It stored nothing from 15:17:29 until **15:18:39, about 42 s after the broker started**, then caught up: all 150,000 stored by 15:19:55                                                     | `run-g-kafka-restart-status.json`, `run-g-kafka-restart.json` |
+| `GET /api/stream/status`    | Answered **200** throughout (every request in at most 1.02 s while the broker was down). `degraded` with "Kafka unreachable: Kafka admin request timed out after 1000 ms" in all 19 samples from 15:17:29 to 15:18:05; `live` again from 15:18:07 | `run-g-kafka-restart-status.json`                             |
+| API Kafka probe process     | Crashed once with exit code 3221225477 (0xC0000005) at 15:18:07, as the broker came back; the API logged it, kept serving and started a new probe process (`docs/DECISIONS.md`, Phase 8e)                                                         | API log                                                       |
 
 Final counts (`run-g-kafka-restart.json`): 150,000 sent = 150,000 on `flights.raw` = 150,000 upserts = 150,000 flights for 150,000 keys; `deliveries` 1 for every flight (no redelivery); 0 DLQ; lag 0. All checks pass. Latency for this run (p50 214 ms, p95 32,068 ms, max 87,139 ms) includes the outage and the consumer's 42 s resume, so it is not a latency figure.
 
@@ -167,34 +167,35 @@ Final counts (`run-g-kafka-restart.json`): 150,000 sent = 150,000 on `flights.ra
 
 ### 5. Throughput (with live scoring)
 
-| Replay rate | Flights | Producer achieved | Send phase | Consumer rate | Consumer span (first to last write) | Source |
-|---|---|---|---|---|---|---|
-| 500/s | 30,000 | 500/s | 59,953 ms | 506/s | 59,328 ms | `run-a-500.json` |
-| 1,200/s (run E) | 120,000 | 1,200/s | 100,037 ms | 1,190/s | 100,867 ms | `run-e-1200.json` |
-| 2,000/s | 120,000 | 2,002/s | 59,951 ms | 2,018/s | 59,472 ms | `run-b-2000.json` |
-| Unthrottled (`--rate 0`) | 479,230 | 12,542/s | 38,210 ms | **2,442/s** | 196,258 ms | `run-c-unthrottled.json` |
+| Replay rate              | Flights | Producer achieved | Send phase | Consumer rate | Consumer span (first to last write) | Source                   |
+| ------------------------ | ------- | ----------------- | ---------- | ------------- | ----------------------------------- | ------------------------ |
+| 500/s                    | 30,000  | 500/s             | 59,953 ms  | 506/s         | 59,328 ms                           | `run-a-500.json`         |
+| 1,200/s (run E)          | 120,000 | 1,200/s           | 100,037 ms | 1,190/s       | 100,867 ms                          | `run-e-1200.json`        |
+| 2,000/s                  | 120,000 | 2,002/s           | 59,951 ms  | 2,018/s       | 59,472 ms                           | `run-b-2000.json`        |
+| Unthrottled (`--rate 0`) | 479,230 | 12,542/s          | 38,210 ms  | **2,442/s**   | 196,258 ms                          | `run-c-unthrottled.json` |
 
 - **At 500/s and 2,000/s the consumer keeps up.** Its rate matches the producer's. It reads slightly higher because its span (first to last write) is a little shorter than the producer's send phase.
 - **Unthrottled, the consumer is the bottleneck.** The producer sent all of December in 38.2 s; the consumer took 196.3 s to store and score it, so the backlog sat in Kafka and drained after the producer had finished. Lag still ended at 0.
 - **Why about 2.4k/s.** Live scoring bounds the consumer. Earlier per-component figures (`docs/PHASE8_STATUS.md`):
 
-  | Component alone | Rate | Phase |
-  |---|---|---|
-  | Producer, all of December, `--rate 0` | 9,987/s | 8b |
-  | Consumer inserts without scoring | 10,904/s | 8c |
-  | Scoring backfill (`stream:score-missing`) | 2,807/s | 8d |
+  | Component alone                           | Rate     | Phase |
+  | ----------------------------------------- | -------- | ----- |
+  | Producer, all of December, `--rate 0`     | 9,987/s  | 8b    |
+  | Consumer inserts without scoring          | 10,904/s | 8c    |
+  | Scoring backfill (`stream:score-missing`) | 2,807/s  | 8d    |
 
   The consumer with scoring (2,442/s) sits just under scoring alone, and far under unscored inserts. This is one consumer process; scaling out (more consumer processes in the group, up to one per partition) was not measured.
+
 - **Producer, whole run C:** 109,673 ms including reading January to November to reach December, at a peak RSS of 298 MB (`run-c-unthrottled.json`, `producer.elapsedMs` and `producer.peakRssMb`, read from the same producer-run record). Reading January to November took about 71 s in this run (109.7 s minus the 38.2 s send phase); 8b measured 93 to 95 s for the same read, so this figure varies between runs on this machine.
 
 ### Scaling out: two consumers against one (runs H1 and H2)
 
 Two back-to-back runs under the same host conditions, each from an empty speed layer, replaying 150,000 events unthrottled so the consumers are saturated:
 
-| Run | Consumers in `flight-stream` | Consumer rate (stored and scored) | Span, first to last write | All checks | Source |
-|---|---|---|---|---|---|
-| H1 | 1 | **1,736/s** | 86,419 ms | pass | `run-h1-one-consumer.json` |
-| H2 | 2 | **2,155/s** (1.24x) | 69,610 ms | pass | `run-h2-two-consumers.json` |
+| Run | Consumers in `flight-stream` | Consumer rate (stored and scored) | Span, first to last write | All checks | Source                      |
+| --- | ---------------------------- | --------------------------------- | ------------------------- | ---------- | --------------------------- |
+| H1  | 1                            | **1,736/s**                       | 86,419 ms                 | pass       | `run-h1-one-consumer.json`  |
+| H2  | 2                            | **2,155/s** (1.24x)               | 69,610 ms                 | pass       | `run-h2-two-consumers.json` |
 
 Why only 1.24x, from the data (`run-h2-partitions.json`):
 
@@ -210,33 +211,33 @@ Latency is `firstWrittenAt − producedAt`, in milliseconds.
 
 **Headline: a sustainable rate.** Run E replayed 120,000 flights at **1,200/s, about 49% of the measured consumer capacity with live scoring (2,442/s, run C)**, from an empty speed layer.
 
-| Run E, 1,200/s | p50 | p95 | p99 | Min | Max | Mean | Flights | Source |
-|---|---|---|---|---|---|---|---|---|
-| **Steady state** (flights produced after the start-up backlog drained) | **423** | **2,238** | 2,686 | 44 | 3,060 | 691 | produced 14:58:51.9 to 14:59:52.9 UTC | `run-e-1200-steady.json` |
-| Whole run, including start-up | 1,098 | 9,424 | 10,199 | 44 | 10,873 | 2,773 | 120,000 | `run-e-1200.json` |
+| Run E, 1,200/s                                                         | p50     | p95       | p99    | Min | Max    | Mean  | Flights                               | Source                   |
+| ---------------------------------------------------------------------- | ------- | --------- | ------ | --- | ------ | ----- | ------------------------------------- | ------------------------ |
+| **Steady state** (flights produced after the start-up backlog drained) | **423** | **2,238** | 2,686  | 44  | 3,060  | 691   | produced 14:58:51.9 to 14:59:52.9 UTC | `run-e-1200-steady.json` |
+| Whole run, including start-up                                          | 1,098   | 9,424     | 10,199 | 44  | 10,873 | 2,773 | 120,000                               | `run-e-1200.json`        |
 
 **Consumer lag over time**, sampled every 2 s from `GET /api/stream/status` by `npm run stream:watch` (`run-e-1200-lag.json`; resolution limited by the endpoint's 2 to 3 s caches). Time is seconds after lag first rose above 0, every third sample until the run was fully stored:
 
 | t (s) | Lag (messages) | Flights stored | Consumer throughput (/s) |
-|---|---|---|---|
-| 0 | 3,296 | 2 | 0 |
-| 6 | 8,158 | 2 | 0 |
-| 12 | 10,258 | 7,502 | 1319 |
-| 18 | 11,687 | 10,873 | 935 |
-| 24 | 8,158 | 24,002 | 2242 |
-| 30 | 5,578 | 31,502 | 1481 |
-| 36 | 120 | 46,569 | 2546 |
-| 42 | 332 | 51,240 | 997 |
-| 48 | 1,080 | 60,000 | 1082 |
-| 54 | 720 | 65,398 | 1466 |
-| 60 | 1,200 | 74,400 | 1004 |
-| 66 | 2,283 | 78,180 | 741 |
-| 72 | 0 | 90,006 | 1923 |
-| 78 | 333 | 94,795 | 1136 |
-| 84 | 74 | 104,483 | 1355 |
-| 90 | 76 | 109,320 | 1217 |
-| 96 | 2,880 | 116,211 | 714 |
-| 100 | 0 | 120,000 | 1240 |
+| ----- | -------------- | -------------- | ------------------------ |
+| 0     | 3,296          | 2              | 0                        |
+| 6     | 8,158          | 2              | 0                        |
+| 12    | 10,258         | 7,502          | 1319                     |
+| 18    | 11,687         | 10,873         | 935                      |
+| 24    | 8,158          | 24,002         | 2242                     |
+| 30    | 5,578          | 31,502         | 1481                     |
+| 36    | 120            | 46,569         | 2546                     |
+| 42    | 332            | 51,240         | 997                      |
+| 48    | 1,080          | 60,000         | 1082                     |
+| 54    | 720            | 65,398         | 1466                     |
+| 60    | 1,200          | 74,400         | 1004                     |
+| 66    | 2,283          | 78,180         | 741                      |
+| 72    | 0              | 90,006         | 1923                     |
+| 78    | 333            | 94,795         | 1136                     |
+| 84    | 74             | 104,483        | 1355                     |
+| 90    | 76             | 109,320        | 1217                     |
+| 96    | 2,880          | 116,211        | 714                      |
+| 100   | 0              | 120,000        | 1240                     |
 
 - **Why the steady state is the headline.** In the first samples after December started arriving the consumer had stored 2 flights; by t = 12 s it was storing at full speed. Its reference-data cache starts empty, so the first batches do several MongoDB reads per flight (`docs/DECISIONS.md`, Phase 8d), on top of process warm-up. Lag built to 11,687 at t = 18 s and was back near zero (120) at t = 36 s. From then on (cut at the first sample with lag at or below 1,200, one second of input, after the peak) lag stayed between 0 and 2,880 messages (median 720 over 32 samples), and the whole-run tail is that start-up backlog.
 - **Host load.** Run E ran while the laptop was busy with other desktop applications: 62% host CPU and 2.2 GB of free memory right after the run, with MongoDB at 4.2 GiB and Kafka at 627 MiB (`run-e-host-load.json`). The read of January to November took 122.7 s against 71 s in run C. Host load was not recorded for runs A to D, so their latencies (below) are not directly comparable with run E.
@@ -244,15 +245,15 @@ Latency is `firstWrittenAt − producedAt`, in milliseconds.
 
 **Other paced runs** (host load not recorded):
 
-| Replay rate | p50 | p95 | p99 | Min | Max | Mean | Source |
-|---|---|---|---|---|---|---|---|
-| 500/s | 63 | 906 | 1,778 | 32 | 2,281 | 155 | `run-a-500.json` |
-| 2,000/s | 138 | 2,236 | 2,586 | 40 | 2,788 | 441 | `run-b-2000.json` |
+| Replay rate | p50 | p95   | p99   | Min | Max   | Mean | Source            |
+| ----------- | --- | ----- | ----- | --- | ----- | ---- | ----------------- |
+| 500/s       | 63  | 906   | 1,778 | 32  | 2,281 | 155  | `run-a-500.json`  |
+| 2,000/s     | 138 | 2,236 | 2,586 | 40  | 2,788 | 441  | `run-b-2000.json` |
 
 **Unthrottled: queueing delay under overload, not processing time.**
 
-| Replay rate | p50 | p95 | p99 | Min | Max | Mean | Source |
-|---|---|---|---|---|---|---|---|
+| Replay rate | p50    | p95     | p99     | Min | Max     | Mean   | Source                   |
+| ----------- | ------ | ------- | ------- | --- | ------- | ------ | ------------------------ |
 | Unthrottled | 72,641 | 152,105 | 157,307 | 515 | 158,623 | 74,641 | `run-c-unthrottled.json` |
 
 The producer sent at 12,542/s, about 5 times what the consumer can store and score (2,442/s), so events waited in Kafka for up to 158.6 s before being consumed. This measures how long the backlog took to drain, not the pipeline's speed; Kafka absorbing that burst without loss (lag 0 at the end) is the point of the log.
@@ -268,17 +269,17 @@ The producer sent at 12,542/s, about 5 times what the consumer can store and sco
 - **Independent path.** The script streams every `stream_flights` document through a cursor and classifies it by its stored `correct` and label, instead of the endpoint's COUNT_SCANs. It recomputes window ROC-AUC by counting every (delayed, on-time) pair, instead of the endpoint's rank-sum formula.
 - **Recompute time:** 57.8 s. **No writes during the run** (`changedDuringRun: false`).
 
-| Metric | Whole replay | Window (2,000 newest judged, replay order) |
-|---|---|---|
-| n (judged) | 469,717 | 2,000 |
-| TP / FP / FN / TN | 56,479 / 146,806 / 40,293 / 226,139 | 299 / 1,509 / 15 / 177 |
-| Precision | 0.278 | 0.165 |
-| Recall | 0.584 | 0.952 |
-| F1 | 0.376 | 0.282 |
-| Base rate (delayed share) | 0.206 | 0.157 |
-| Accuracy / majority baseline | 0.602 / 0.794 | 0.238 / 0.843 |
-| ROC-AUC | not computed (would need all 469,717 probabilities in memory) | 0.585 |
-| Scored, no arrival outcome | 9,513 | n/a |
+| Metric                       | Whole replay                                                  | Window (2,000 newest judged, replay order) |
+| ---------------------------- | ------------------------------------------------------------- | ------------------------------------------ |
+| n (judged)                   | 469,717                                                       | 2,000                                      |
+| TP / FP / FN / TN            | 56,479 / 146,806 / 40,293 / 226,139                           | 299 / 1,509 / 15 / 177                     |
+| Precision                    | 0.278                                                         | 0.165                                      |
+| Recall                       | 0.584                                                         | 0.952                                      |
+| F1                           | 0.376                                                         | 0.282                                      |
+| Base rate (delayed share)    | 0.206                                                         | 0.157                                      |
+| Accuracy / majority baseline | 0.602 / 0.794                                                 | 0.238 / 0.843                              |
+| ROC-AUC                      | not computed (would need all 469,717 probabilities in memory) | 0.585                                      |
+| Scored, no arrival outcome   | 9,513                                                         | n/a                                        |
 
 - **The window is a slice of the schedule.** It holds the 2,000 newest judged flights in replay order: all on 2015-12-31, departure hours 13 to 23. It is not a sample of December, and its AUC must not be compared with the test-set AUC.
 - **Window values differ slightly from 8e** (8e and 8f: precision 0.164 of 1,797 flagged, so TP 295, and ROC-AUC 0.575; now TP 299 and 0.585; `docs/DECISIONS.md`, Phase 8f). This replay's consumer batches interleaved the three partitions differently, so a different set of late-December flights fell into the newest 2,000. The whole-replay totals are identical to 8d and 8e.
@@ -291,6 +292,7 @@ The batch collections were counted before the runs (speed layer empty) and after
 ## Reliability fixes after acceptance (2026-10-22 to 23)
 
 Six broker-restart experiments (R1 to R6) ran in an **isolated environment**, so the accepted full-December state was not touched:
+
 - database `flight_delay_reliability_test`, consumer group `reliability-test`, topics `reliability.raw` and `reliability.dlq`;
 - a second API on port 3002;
 - only the airline and airport reference data copied in.
@@ -299,20 +301,20 @@ Every flight was refused by the scorer there (no route statistics), which does n
 
 ### Findings and fixes
 
-| # | Finding (evidence) | Fix | Verified |
-|---|---|---|---|
-| 1 | **"live" while stalled.** After a broker restart the consumer was alive (fresh heartbeat) but stored nothing, and the endpoint said `live` (run G: 32 s). | The heartbeat records `lastBatchAt`. The state is `degraded` ("Consumer is alive but not making progress: no batch for N s with M messages waiting") when the heartbeat is fresh, lag is above 0, messages have been waiting more than 15 s **and** no batch has been stored for more than 15 s (`STALL_AFTER_MS`). The waiting window avoids a false alarm when new messages reach a consumer that has been idle: the first version flagged a stall once at start-up in R2. | R4 (`reliability-r4-status.json`): `degraded` with that reason in all 8 samples from 19:00:51 to 19:01:05, while the consumer was stalled (lag 16,478 to 30,078). `live` again at 19:01:07, the first sample after it resumed. No stall reported anywhere else in R3 or R4. Unit and service tests. |
-| 2 | **Negative `unscored` failed the response schema.** `refused` and "no prediction" were two separate counts; with a consumer inserting refused flights, `refused` overtook the total, `unscored` went negative and the endpoint answered with its validation fallback (R1: 12 samples). | Both now come from one aggregation over the flights without a prediction (`noPredictionPipeline`, IXSCAN on `stream_totals`), so refused can never exceed the total. | R3 and R4: 0 validation fallbacks. Integration test. |
-| 3 | **Slow resume after a broker restart.** The consumer resumed 36.9 s (R2) and 39.1 s (R4) after the broker started, with the client's default 30 s session timeout. Run G: about 42 s. | New `KAFKA_SESSION_TIMEOUT_MS`, **default 10 s**. librdkafka sends group heartbeats from its own thread, so slow batches do not count against it; slow processing is still governed by the separate 5-minute poll interval. | R3 with 10 s: resumed **17.2 s** after the broker started, about 20 s sooner, matching the 20 s cut. R2 and R4 with 30 s: 36.9 s and 39.1 s. One run per setting. |
-| 4 | **`--idle-exit` counted from the process start.** A consumer started before a replay exits during the producer's read of January to November (71 to 123 s measured; run E's first attempt). | It now counts from the first batch (`idle-exit.ts`), and the consumer waits as long as needed for the first one. | Unit tests; R2 to R4 consumers waited through the read phase. |
+| #   | Finding (evidence)                                                                                                                                                                                                                                                                     | Fix                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Verified                                                                                                                                                                                                                                                                                            |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **"live" while stalled.** After a broker restart the consumer was alive (fresh heartbeat) but stored nothing, and the endpoint said `live` (run G: 32 s).                                                                                                                              | The heartbeat records `lastBatchAt`. The state is `degraded` ("Consumer is alive but not making progress: no batch for N s with M messages waiting") when the heartbeat is fresh, lag is above 0, messages have been waiting more than 15 s **and** no batch has been stored for more than 15 s (`STALL_AFTER_MS`). The waiting window avoids a false alarm when new messages reach a consumer that has been idle: the first version flagged a stall once at start-up in R2. | R4 (`reliability-r4-status.json`): `degraded` with that reason in all 8 samples from 19:00:51 to 19:01:05, while the consumer was stalled (lag 16,478 to 30,078). `live` again at 19:01:07, the first sample after it resumed. No stall reported anywhere else in R3 or R4. Unit and service tests. |
+| 2   | **Negative `unscored` failed the response schema.** `refused` and "no prediction" were two separate counts; with a consumer inserting refused flights, `refused` overtook the total, `unscored` went negative and the endpoint answered with its validation fallback (R1: 12 samples). | Both now come from one aggregation over the flights without a prediction (`noPredictionPipeline`, IXSCAN on `stream_totals`), so refused can never exceed the total.                                                                                                                                                                                                                                                                                                         | R3 and R4: 0 validation fallbacks. Integration test.                                                                                                                                                                                                                                                |
+| 3   | **Slow resume after a broker restart.** The consumer resumed 36.9 s (R2) and 39.1 s (R4) after the broker started, with the client's default 30 s session timeout. Run G: about 42 s.                                                                                                  | New `KAFKA_SESSION_TIMEOUT_MS`, **default 10 s**. librdkafka sends group heartbeats from its own thread, so slow batches do not count against it; slow processing is still governed by the separate 5-minute poll interval.                                                                                                                                                                                                                                                  | R3 with 10 s: resumed **17.2 s** after the broker started, about 20 s sooner, matching the 20 s cut. R2 and R4 with 30 s: 36.9 s and 39.1 s. One run per setting.                                                                                                                                   |
+| 4   | **`--idle-exit` counted from the process start.** A consumer started before a replay exits during the producer's read of January to November (71 to 123 s measured; run E's first attempt).                                                                                            | It now counts from the first batch (`idle-exit.ts`), and the consumer waits as long as needed for the first one.                                                                                                                                                                                                                                                                                                                                                             | Unit tests; R2 to R4 consumers waited through the read phase.                                                                                                                                                                                                                                       |
 
-| Run | Session timeout | Resumed after broker start | Stored / keys | Redelivered (`deliveries` = 2) | Evidence |
-|---|---|---|---|---|---|
-| R2 | 30 s (client default) | 36.9 s | 60,000 / 60,000 | 75 | `reliability-r2-outage.json` |
-| R3 | 10 s | 17.2 s | 60,000 / 60,000 | 75 | `reliability-r3-outage.json`, `reliability-r3-status.json` |
-| R4 | 30 s (explicit) | 39.1 s | 60,000 / 60,000 | 78 | `reliability-r4-outage.json`, `reliability-r4-status.json` |
-| R5 | 10 s | 19.1 s | 60,000 / 60,000 | 40 | `reliability-r5-outage.json`, `reliability-r5-probe-console-lost.json` |
-| R6 | 10 s | 19.8 s | 60,000 / 60,000 | 100 | `reliability-r6-outage.json`, `reliability-r6-status.json` |
+| Run | Session timeout       | Resumed after broker start | Stored / keys   | Redelivered (`deliveries` = 2) | Evidence                                                               |
+| --- | --------------------- | -------------------------- | --------------- | ------------------------------ | ---------------------------------------------------------------------- |
+| R2  | 30 s (client default) | 36.9 s                     | 60,000 / 60,000 | 75                             | `reliability-r2-outage.json`                                           |
+| R3  | 10 s                  | 17.2 s                     | 60,000 / 60,000 | 75                             | `reliability-r3-outage.json`, `reliability-r3-status.json`             |
+| R4  | 30 s (explicit)       | 39.1 s                     | 60,000 / 60,000 | 78                             | `reliability-r4-outage.json`, `reliability-r4-status.json`             |
+| R5  | 10 s                  | 19.1 s                     | 60,000 / 60,000 | 40                             | `reliability-r5-outage.json`, `reliability-r5-probe-console-lost.json` |
+| R6  | 10 s                  | 19.8 s                     | 60,000 / 60,000 | 100                            | `reliability-r6-outage.json`, `reliability-r6-status.json`             |
 
 With 10 s the consumer resumed 17.2 to 19.8 s after the broker started (3 runs); with 30 s, 36.9 and 39.1 s (2 runs), and about 42 s in run G.
 
@@ -326,12 +328,12 @@ With 10 s the consumer resumed 17.2 to 19.8 s after the broker started (3 runs);
 
 ### Remaining risks, fixed afterwards (R5 and R6)
 
-| Risk | Fix | Verified |
-|---|---|---|
-| **Failed commits were silent.** In R1, 16,000 offsets were not committed although the client never returned a commit error, so watching commit errors cannot catch it. | The consumer notices the consequence instead: when a batch contains flights that are already stored, it logs a warning with how many (`redelivery-warning.ts`; at most one per 10 s, the rest folded into the next). | R5: one warning, `redelivered: 40`, exactly the 40 flights stored twice. R6: two warnings, 26 + 74 = 100, exactly the 100 stored twice. Unit tests. |
-| **The probe could not restart in an API that had lost its console.** | Reproduced on Windows: a process forks a child every 3 s; once its console host is killed, every child dies at start-up with 0xC0000142. `windowsHide` and ignored stdio did not help; `detached: true` did, with and without piped output. The API now forks the probe detached, with its output piped back. A detached child still exits when the API is killed (its IPC channel closes; checked). | An isolated API whose console was killed before its probe started: Kafka reachable; then, on two broker restarts (R5b and R6), the probe crashed (0xC0000005, the known client crash), was replaced, and status was reachable again within about 6 s of the broker starting (`reliability-r5-probe-console-lost.json`). |
-| **Single runs.** | Two more runs at 10 s (R5, R6). | 17.2, 19.1 and 19.8 s; see the table above. |
-| **Isolated test data left behind.** | `stream:reset` on the isolated environment. | `flight_delay_reliability_test` holds only its reference data (14 airlines, 322 airports) and ingest bookkeeping; `stream_flights` and `stream_stats` are empty, and the `reliability.*` topics have no records. The main database still holds 479,230 stream flights. |
+| Risk                                                                                                                                                                   | Fix                                                                                                                                                                                                                                                                                                                                                                                                  | Verified                                                                                                                                                                                                                                                                                                                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Failed commits were silent.** In R1, 16,000 offsets were not committed although the client never returned a commit error, so watching commit errors cannot catch it. | The consumer notices the consequence instead: when a batch contains flights that are already stored, it logs a warning with how many (`redelivery-warning.ts`; at most one per 10 s, the rest folded into the next).                                                                                                                                                                                 | R5: one warning, `redelivered: 40`, exactly the 40 flights stored twice. R6: two warnings, 26 + 74 = 100, exactly the 100 stored twice. Unit tests.                                                                                                                                                                     |
+| **The probe could not restart in an API that had lost its console.**                                                                                                   | Reproduced on Windows: a process forks a child every 3 s; once its console host is killed, every child dies at start-up with 0xC0000142. `windowsHide` and ignored stdio did not help; `detached: true` did, with and without piped output. The API now forks the probe detached, with its output piped back. A detached child still exits when the API is killed (its IPC channel closes; checked). | An isolated API whose console was killed before its probe started: Kafka reachable; then, on two broker restarts (R5b and R6), the probe crashed (0xC0000005, the known client crash), was replaced, and status was reachable again within about 6 s of the broker starting (`reliability-r5-probe-console-lost.json`). |
+| **Single runs.**                                                                                                                                                       | Two more runs at 10 s (R5, R6).                                                                                                                                                                                                                                                                                                                                                                      | 17.2, 19.1 and 19.8 s; see the table above.                                                                                                                                                                                                                                                                             |
+| **Isolated test data left behind.**                                                                                                                                    | `stream:reset` on the isolated environment.                                                                                                                                                                                                                                                                                                                                                          | `flight_delay_reliability_test` holds only its reference data (14 airlines, 322 airports) and ingest bookkeeping; `stream_flights` and `stream_stats` are empty, and the `reliability.*` topics have no records. The main database still holds 479,230 stream flights.                                                  |
 
 ### Remaining Kafka risks
 
@@ -342,30 +344,30 @@ With 10 s the consumer resumed 17.2 to 19.8 s after the broker started (3 runs);
 
 ## Raw evidence
 
-| File | What it holds |
-|---|---|
-| `docs/measurements/run-a-500.json` | `stream:measure` report and checks, run A |
-| `docs/measurements/run-b-2000.json` | run B |
-| `docs/measurements/run-c-unthrottled.json` | run C, all of December |
-| `docs/measurements/run-c-rereplay-5000.json` | the 5,000-event re-replay after run C (`timing` is null: it stored nothing new) |
-| `docs/measurements/run-d-crash-before-restart.json` | run D after the hard kill, before the restart |
-| `docs/measurements/run-d-crash-after-restart.json` | run D after the restart |
-| `docs/measurements/reliability-r1-redelivery.json`, `reliability-r1-status.json` | R1 (isolated): 16,000 redelivered after an outage, and the status series that showed the validation fallbacks and the first stall detection |
-| `docs/measurements/reliability-r2-outage.json`, `reliability-r3-*.json`, `reliability-r4-*.json` | R2 to R4 (isolated): resume times by session timeout, and the status series verifying the stall state |
-| `docs/measurements/reliability-r5-outage.json`, `reliability-r6-outage.json`, `reliability-r6-status.json` | R5 and R6 (isolated, 10 s): resume times, the consumer's redelivery warnings, and the status series |
-| `docs/measurements/reliability-r5-probe-console-lost.json` | the probe in an API whose console was killed: its process log and status every 2 s through a broker restart |
-| `docs/measurements/run-h1-one-consumer.json`, `run-h2-two-consumers.json` | runs H1 and H2: one against two consumers, 150,000 events unthrottled |
-| `docs/measurements/run-h2-partitions.json` | run H2: messages per partition and per consumer |
-| `docs/measurements/run-g-kafka-restart.json` | run G (Kafka stopped about 28 s under load): checks and counts after recovery |
-| `docs/measurements/run-g-kafka-restart-status.json` | run G: `GET /api/stream/status` every 2 s through the outage (`stream:watch`) |
-| `docs/measurements/run-f-kill-attempt-1.json`, `run-f-kill-attempt-2.json` | run F: `stream:measure` right after each hard kill (written vs committed) |
-| `docs/measurements/run-f-midbatch-final.json`, `run-f-midbatch-deliveries.json` | run F after recovery: checks, and flights grouped by `deliveries` with each consumer's heartbeat |
-| `docs/measurements/run-e-1200.json`, `run-e-1200-steady.json` | run E at 1,200/s: the whole run, and only the flights produced after the start-up backlog drained (`stream:measure --from`) |
-| `docs/measurements/run-e-1200-lag.json` | run E: consumer lag, flights stored and throughput every 2 s (`stream:watch`) |
-| `docs/measurements/run-e-host-load.json` | host load right after run E |
-| `docs/measurements/run-d-crash-consumer.json` | run D: the state printed at the kill, the restarted consumer's final counters, and each run's `--idle-exit` |
-| `docs/measurements/verify-status.json` | `stream:verify-status`: 35 checks with endpoint and recomputed values |
-| `docs/measurements/batch-collections-before.txt`, `-after.txt` | collection counts in `flight_delay` before and after |
+| File                                                                                                       | What it holds                                                                                                                               |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/measurements/run-a-500.json`                                                                         | `stream:measure` report and checks, run A                                                                                                   |
+| `docs/measurements/run-b-2000.json`                                                                        | run B                                                                                                                                       |
+| `docs/measurements/run-c-unthrottled.json`                                                                 | run C, all of December                                                                                                                      |
+| `docs/measurements/run-c-rereplay-5000.json`                                                               | the 5,000-event re-replay after run C (`timing` is null: it stored nothing new)                                                             |
+| `docs/measurements/run-d-crash-before-restart.json`                                                        | run D after the hard kill, before the restart                                                                                               |
+| `docs/measurements/run-d-crash-after-restart.json`                                                         | run D after the restart                                                                                                                     |
+| `docs/measurements/reliability-r1-redelivery.json`, `reliability-r1-status.json`                           | R1 (isolated): 16,000 redelivered after an outage, and the status series that showed the validation fallbacks and the first stall detection |
+| `docs/measurements/reliability-r2-outage.json`, `reliability-r3-*.json`, `reliability-r4-*.json`           | R2 to R4 (isolated): resume times by session timeout, and the status series verifying the stall state                                       |
+| `docs/measurements/reliability-r5-outage.json`, `reliability-r6-outage.json`, `reliability-r6-status.json` | R5 and R6 (isolated, 10 s): resume times, the consumer's redelivery warnings, and the status series                                         |
+| `docs/measurements/reliability-r5-probe-console-lost.json`                                                 | the probe in an API whose console was killed: its process log and status every 2 s through a broker restart                                 |
+| `docs/measurements/run-h1-one-consumer.json`, `run-h2-two-consumers.json`                                  | runs H1 and H2: one against two consumers, 150,000 events unthrottled                                                                       |
+| `docs/measurements/run-h2-partitions.json`                                                                 | run H2: messages per partition and per consumer                                                                                             |
+| `docs/measurements/run-g-kafka-restart.json`                                                               | run G (Kafka stopped about 28 s under load): checks and counts after recovery                                                               |
+| `docs/measurements/run-g-kafka-restart-status.json`                                                        | run G: `GET /api/stream/status` every 2 s through the outage (`stream:watch`)                                                               |
+| `docs/measurements/run-f-kill-attempt-1.json`, `run-f-kill-attempt-2.json`                                 | run F: `stream:measure` right after each hard kill (written vs committed)                                                                   |
+| `docs/measurements/run-f-midbatch-final.json`, `run-f-midbatch-deliveries.json`                            | run F after recovery: checks, and flights grouped by `deliveries` with each consumer's heartbeat                                            |
+| `docs/measurements/run-e-1200.json`, `run-e-1200-steady.json`                                              | run E at 1,200/s: the whole run, and only the flights produced after the start-up backlog drained (`stream:measure --from`)                 |
+| `docs/measurements/run-e-1200-lag.json`                                                                    | run E: consumer lag, flights stored and throughput every 2 s (`stream:watch`)                                                               |
+| `docs/measurements/run-e-host-load.json`                                                                   | host load right after run E                                                                                                                 |
+| `docs/measurements/run-d-crash-consumer.json`                                                              | run D: the state printed at the kill, the restarted consumer's final counters, and each run's `--idle-exit`                                 |
+| `docs/measurements/verify-status.json`                                                                     | `stream:verify-status`: 35 checks with endpoint and recomputed values                                                                       |
+| `docs/measurements/batch-collections-before.txt`, `-after.txt`                                             | collection counts in `flight_delay` before and after                                                                                        |
 
 ## Honest limits
 
