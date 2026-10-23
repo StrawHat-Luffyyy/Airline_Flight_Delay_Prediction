@@ -197,6 +197,7 @@ Six broker-restart runs (R1 to R6) in an isolated database, consumer group and t
 - **Redelivery warning:** the consumer logs how many already-stored flights arrived again (R5: 40, R6: 26 + 74, each exactly the flights stored twice).
 - **Probe in an API without a console:** the probe is forked detached; reproduced the 0xC0000142 start-up failure and verified the fix through two broker restarts.
 - **More runs at 10 s:** resumed 17.2, 19.1 and 19.8 s after the broker started (R3, R5, R6).
+- **Lost commits fixed at the root:** `commitOffsets()` in the Kafka client resolves when a commit is queued, not stored, and drops a later failure. The consumer now reads each commit back from the broker and fails the batch if it is missing. Reproduced and verified with `stream:commit-check` (raw: 28 of 28 commits believed during an outage; confirmed: 0 believed), and in R7: 41 redelivered against 16,000 in R1, no loss, no duplicate documents.
 
 ## 2. Decisions that later steps depend on
 
@@ -328,7 +329,7 @@ MSYS_NO_PATHCONV=1 docker compose exec kafka /opt/kafka/bin/kafka-consumer-group
 
 ### Found in the follow-ups
 - **Fixed:** "live" while stalled, the slow resume after a broker restart, and `--idle-exit` counting from the start (see Kafka reliability fixes above).
-- **Lost commits now warn:** the consumer logs redelivered flights as they arrive. Why the client lost 16,000 commits in R1 without an error is still not traced.
+- **Lost commits:** fixed (commits are confirmed by reading them back; see Kafka reliability fixes above). The redelivery warning stays as a second signal.
 - **Reset after a hard kill:** `stream:reset` refuses until the killed member's session expires (about 45 s). That is correct, but it means a retry loop.
 - **Host load matters:** timings varied widely across the day (`build:stats` 127 to 371 s; one consumer 2,442/s in the morning, 1,736/s in the evening).
 

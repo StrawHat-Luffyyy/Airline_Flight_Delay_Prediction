@@ -1252,3 +1252,41 @@ Lift = precision / base rate. Operating points on September validation (462,153 
 
 **Review:** the leakage-auditor passed all six checks: no October to December data; out-of-sample September scores; encoders and imputation as in training; threshold unchanged; lift correct; model artifacts unchanged. Both of its optional suggestions were applied: the stricter AUC and PR-AUC reproduction check, and the optimism caveat on the page and in the JSON.
 
+### Kafka: confirm every offset commit with the broker (2026-10-23)
+
+**Problem:** run R1 lost 16,000 offset commits without any error. The flights were delivered again after the restart, and only the idempotent upsert kept the data correct.
+
+**Root cause:** in `@confluentinc/kafka-javascript` 1.11.0, `consumer.commitOffsets()` resolves when librdkafka has queued the commit (`commitAsync` in the native `commitCb`), not when the broker has stored it. The broker's answer goes to the offset-commit callback, which the KafkaJS layer enables but never listens to. While the broker was down, every commit resolved and the consumer moved on; the commits were then lost.
+
+**Reproduction:** `npm run stream:commit-check -- --mode raw --yes`, on a throwaway topic and group (6,000 messages, 20 s outage). All 28 commits made while the broker was stopped resolved. The consumer restarted from offset 2,402 and delivered offsets 2,402 to 5,999 twice (3,598 messages). Three earlier prototype runs agree (38 of 38 resolved).
+
+**Options considered:**
+- **Listen for the `offset.commit` event.** It sits on the client's private internal consumer, so the KafkaJS API cannot reach it.
+- **Use `commitSync`.** It exists only on the non-KafkaJS consumer API, so it would mean rewriting the consumer on another API.
+- **Switch client.** Out of scope; `kafkajs` has had no release since 2023 (Phase 8a).
+- **Read the commit back after each batch (chosen).** `consumer.committed()` asks the broker for the group's committed offset, with a 5 s bound per read and up to three reads 50 ms apart, because the queued commit may not have been sent yet. Anything still below the offset just committed, or a failed read, fails the batch. The batch is not marked processed, the client seeks back, the batch is delivered again, and the upsert absorbs it.
+
+**Why this is safe:**
+- **No data loss.** The commit still happens only after the write.
+- **No duplicates.** A failed confirmation leads to a redelivery, which the upsert turns into `deliveries` + 1, never a second document.
+- **A worst case that costs one batch.** A commit the broker did store, but whose read-back timed out, causes one extra delivery.
+
+**Verified:**
+- `stream:commit-check --mode confirmed`: 0 commits believed while the broker was stopped, final offset 6,000. The one rejected commit had in fact been stored as the broker shut down, so nothing was delivered twice. An earlier single-read run delivered one batch of 100 twice.
+- R7 (real consumer, 28 s outage): 3 batch failures logged ("not confirmed: … Local: Timed out"), 41 redelivered against 16,000 in R1, 60,000 stored with no duplicates.
+- Draining 60,000 events: 1,970/s with confirmation against 1,890/s without (one run each, within noise).
+- Unit tests: `commit.test.ts` and `commit-check.test.ts`.
+
+**Review:** ts-reviewer found no must-fix. Its should-fixes were applied:
+- the re-reads;
+- offset parsing inside the error path;
+- cleanup in `finally` so the check never leaves the broker stopped or its topic behind;
+- a wrong file reference;
+- a misplaced comment.
+
+Making `docker compose` asynchronous in the check exposed a misclassification: commits confirmed while the broker was still shutting down had been counted as made while it was down. The check now counts from when the stop has returned.
+
+**Kept:** the redelivery warning (`redelivery-warning.ts`) as a second, independent signal.
+
+**Recheck when the client is upgraded:** run `stream:commit-check` in both modes. If `raw` stops reproducing the defect, the client reports commit failures itself, and the read-back becomes redundant but harmless.
+
