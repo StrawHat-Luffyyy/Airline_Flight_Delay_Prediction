@@ -13,6 +13,8 @@
     "typecheck": "npm run typecheck --workspace=@flight-delay/server && npm run typecheck --workspace=@flight-delay/shared && tsc --noEmit -p web/tsconfig.json",
     "test": "vitest run",
     "build:web": "npm run build --workspace=@flight-delay/web",
+    "build:server": "npm run build --workspace=@flight-delay/server",
+    "start": "npm run start --workspace=@flight-delay/server",
     "format": "prettier --write server shared vitest.config.ts eslint.config.js",
     "format:check": "prettier --check server shared vitest.config.ts eslint.config.js",
     "ingest": "npm run ingest --workspace=@flight-delay/server --",

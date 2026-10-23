@@ -51,6 +51,39 @@ describe('POST /api/predict rate limit (Phase 7)', () => {
   });
 });
 
+describe('POST /api/predict rate limit behind a reverse proxy', () => {
+  const limitedApp = (trustProxyHops: number) =>
+    createApp({
+      kafkaProbe: kafkaUp,
+      pingMongo: async () => true,
+      model: null,
+      predictRateLimit: { limit: 1, windowMs: 60_000 },
+      trustProxyHops,
+    });
+  const predictFrom = (app: ReturnType<typeof createApp>, forwardedFor: string) =>
+    request(app).post('/api/predict').set('x-forwarded-for', forwardedFor).send(body);
+
+  it('ignores X-Forwarded-For when no proxy is trusted, so a client cannot spoof a fresh key', async () => {
+    const app = limitedApp(0);
+    expect((await predictFrom(app, '203.0.113.1')).status).toBe(503);
+    expect((await predictFrom(app, '203.0.113.2')).status).toBe(429);
+  });
+
+  it('keys each client by the address the trusted proxy reports', async () => {
+    const app = limitedApp(1);
+    expect((await predictFrom(app, '203.0.113.1')).status).toBe(503);
+    expect((await predictFrom(app, '203.0.113.2')).status).toBe(503);
+    expect((await predictFrom(app, '203.0.113.1')).status).toBe(429);
+  });
+
+  it('trusts only the configured hops, so a prepended address does not escape the limit', async () => {
+    const app = limitedApp(1);
+    expect((await predictFrom(app, '198.51.100.7, 203.0.113.1')).status).toBe(503);
+    // The client forged a different first address; the proxy-appended one is unchanged.
+    expect((await predictFrom(app, '198.51.100.99, 203.0.113.1')).status).toBe(429);
+  });
+});
+
 describe('error mapping and limits (Phase 7)', () => {
   it('maps a MongoDB outage to 503 DATABASE_UNAVAILABLE without leaking driver details', async () => {
     const failing = express();
@@ -111,5 +144,12 @@ describe('env (Phase 7)', () => {
     expect(() => parseEnv({ ...base, PREDICT_RATE_LIMIT_PER_MIN: '0' })).toThrow(
       /PREDICT_RATE_LIMIT_PER_MIN/,
     );
+  });
+
+  it('trusts no proxy by default and accepts a hop count, never `true`', () => {
+    expect(parseEnv(base)).toMatchObject({ TRUST_PROXY_HOPS: 0 });
+    expect(parseEnv({ ...base, TRUST_PROXY_HOPS: '1' })).toMatchObject({ TRUST_PROXY_HOPS: 1 });
+    expect(() => parseEnv({ ...base, TRUST_PROXY_HOPS: 'true' })).toThrow(/TRUST_PROXY_HOPS/);
+    expect(() => parseEnv({ ...base, TRUST_PROXY_HOPS: '-1' })).toThrow(/TRUST_PROXY_HOPS/);
   });
 });

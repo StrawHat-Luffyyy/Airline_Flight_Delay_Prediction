@@ -1,12 +1,10 @@
-import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { InferenceSession, Tensor } from 'onnxruntime-node';
 import { FEATURE_COLUMNS } from '../features/feature-list.js';
 import { loadEncoders, type Encoders } from './encoders.js';
+import { fromRepoRoot } from '../paths.js';
 
-export const DEFAULT_ARTIFACTS_DIR = fileURLToPath(
-  new URL('../../../ml/artifacts', import.meta.url),
-);
+export const DEFAULT_ARTIFACTS_DIR = fromRepoRoot('ml', 'artifacts');
 
 const PROBABILITIES_OUTPUT = 'probabilities';
 

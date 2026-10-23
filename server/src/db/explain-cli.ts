@@ -1,5 +1,4 @@
 import { writeFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import type { Db } from 'mongodb';
 import { env } from '../config/env.js';
 import { logger } from '../logger.js';
@@ -19,8 +18,9 @@ import type { DataQuality } from '@flight-delay/shared';
 import { loadDataQuality } from '../analytics/common.js';
 import { STATS_COLLECTIONS } from '../stats/builders.js';
 import { API_LIMIT_MS, measureApi, type ApiTiming } from './api-timing.js';
+import { fromRepoRoot } from '../paths.js';
 
-const OUTPUT = fileURLToPath(new URL('../../../docs/EXPLAIN_RESULTS.md', import.meta.url));
+const OUTPUT = fromRepoRoot('docs', 'EXPLAIN_RESULTS.md');
 const RUNS = 3;
 const Q1_AIRLINE = 'AA';
 const Q1_MONTH = 3;

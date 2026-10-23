@@ -1,10 +1,10 @@
-import { fileURLToPath } from 'node:url';
 import { closeMongo, connectToMongo, getDb } from '../db/client.js';
 import { logger } from '../logger.js';
 import { resolveAirportIds } from './resolve.js';
+import { fromRepoRoot } from '../paths.js';
 
 const USAGE = 'Usage: npm run resolve:airport-ids [-- --apply]';
-const MAP_FILE = fileURLToPath(new URL('../../../docs/airport-id-map.json', import.meta.url));
+const MAP_FILE = fromRepoRoot('docs', 'airport-id-map.json');
 
 function parseApply(argv: readonly string[]): boolean {
   for (const arg of argv)

@@ -13,8 +13,8 @@ import { execFile } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs, promisify } from 'node:util';
-import { fileURLToPath } from 'node:url';
 import { logger } from '../logger.js';
+import { REPO_ROOT } from '../paths.js';
 import { commitAndConfirm } from './commit.js';
 import { CommitLog, commitVerdict, type CommitMode } from './commit-check.js';
 import { installedKafkaClientVersion } from './client-version.js';
@@ -26,7 +26,7 @@ const PROCESS_MS = 150;
 const DOWN_MS = 20_000;
 const RECOVER_MS = 45_000;
 const CONFIRM_TIMEOUT_MS = 2_000;
-const REPO = fileURLToPath(new URL('../../../', import.meta.url));
+const REPO = REPO_ROOT;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // Async, so the consumer keeps running (and heartbeating) while the broker stops and starts.

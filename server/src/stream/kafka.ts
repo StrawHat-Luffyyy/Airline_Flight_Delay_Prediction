@@ -60,9 +60,11 @@ const PROBE_PROCESS_SLACK_MS = 500;
  * (status/isolated-probe.ts explains the crash this contains). Nothing starts until the first read.
  */
 export function createStatusProbe(): KafkaProbe {
-  // Same extension as this module: .ts under tsx, .js if ever compiled.
-  const extension = import.meta.url.endsWith('.ts') ? '.ts' : '.js';
-  const worker = new URL(`./status/probe-worker${extension}`, import.meta.url);
+  // Under tsx this module is src/stream/kafka.ts; in the production build it is bundled into
+  // dist/server.js, with the worker bundled beside it as dist/probe-worker.js.
+  const worker = import.meta.url.endsWith('.ts')
+    ? new URL('./status/probe-worker.ts', import.meta.url)
+    : new URL('./probe-worker.js', import.meta.url);
   return createIsolatedProbe({
     // execArgv carries the tsx loader into the child. Detached: without its own console the child
     // does not need the API's, which can be gone (its terminal closed). A non-detached child of

@@ -39,6 +39,8 @@ export interface AppOptions {
   referenceData?: ReferenceData;
   /** Per-IP limit on POST /api/predict; defaults to PREDICT_RATE_LIMIT_PER_MIN per minute. */
   predictRateLimit?: { limit: number; windowMs: number };
+  /** Reverse proxies to trust for the client address; defaults to TRUST_PROXY_HOPS. */
+  trustProxyHops?: number;
   /** Kafka view for /stream/status and /health; defaults to a lazily connected real probe. */
   kafkaProbe?: KafkaProbe;
   /** MongoDB reads for /stream/status; defaults to stream_flights and stream_stats behind getDb. */
@@ -61,10 +63,14 @@ export function createApp(options: AppOptions = {}) {
   app.use(pinoHttp({ logger }));
   app.use(helmet());
   app.use(cors({ origin: options.corsOrigin ?? env.CORS_ORIGIN }));
+  // Behind a reverse proxy the socket address is the proxy's, so every client would share one
+  // rate-limit key. Trust exactly the configured number of hops (see TRUST_PROXY_HOPS in env.ts).
+  const trustProxyHops = options.trustProxyHops ?? env.TRUST_PROXY_HOPS;
+  if (trustProxyHops > 0) app.set('trust proxy', trustProxyHops);
+
   // Rate-limit the one CPU-bound endpoint (6 ONNX rows + 4 DB reads per call), before body parsing so
-  // oversized or malformed bodies count too. In memory is enough for one local process (§9: no
-  // Redis). `trust proxy` is deliberately unset: the API is not behind a proxy, so the key is the
-  // socket address; behind one, every client would share a key.
+  // oversized or malformed bodies count too. In memory is enough for one API process (§9: no
+  // Redis). The key is req.ip: the socket address, or the proxy-reported one when hops are trusted.
   const predictLimit = options.predictRateLimit ?? {
     limit: env.PREDICT_RATE_LIMIT_PER_MIN,
     windowMs: 60_000,

@@ -1,5 +1,4 @@
 import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import type { Db } from 'mongodb';
 import {
   ModelRunSchema,
@@ -9,16 +8,17 @@ import {
 } from '@flight-delay/shared';
 import { isDeepStrictEqual } from 'node:util';
 import { FEATURE_COLUMNS, isForbiddenFeature } from '../features/feature-list.js';
+import { fromRepoRoot } from '../paths.js';
 
 export const MODEL_RUNS = 'model_runs';
-export const DEFAULT_METRICS_FILE = fileURLToPath(
-  new URL('../../../ml/artifacts/metrics.json', import.meta.url),
-);
+export const DEFAULT_METRICS_FILE = fromRepoRoot('ml', 'artifacts', 'metrics.json');
 
 export type ModelRunDoc = Omit<ModelRun, 'createdAt'> & { createdAt: Date; registeredAt: Date };
 
-export const DEFAULT_OPERATING_POINTS_FILE = fileURLToPath(
-  new URL('../../../ml/artifacts/operating-points.json', import.meta.url),
+export const DEFAULT_OPERATING_POINTS_FILE = fromRepoRoot(
+  'ml',
+  'artifacts',
+  'operating-points.json',
 );
 
 /** Reads and validates ml/artifacts/metrics.json. */
