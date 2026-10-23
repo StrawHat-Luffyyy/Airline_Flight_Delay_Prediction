@@ -5,7 +5,7 @@ import { scoreMissing } from '../../src/stream/score-missing.js';
 import type { Predictor, ScoreResult } from '../../src/stream/score.js';
 import {
   ensureStreamIndexes,
-  findStoredKeys,
+  findStoredDeliveries,
   streamFlights,
   upsertEvents,
   type StreamFlightDoc,
@@ -160,10 +160,36 @@ describe('upsertEvents (MongoDB integration)', () => {
     });
   });
 
-  it('finds which keys are already stored', async (context) => {
+  it('records the message that last wrote each flight, and finds stored flights with it', async (context) => {
     if (!client) return context.skip();
-    const found = await findStoredKeys(streamFlights(db), [event(1).key, 'nope', event(1).key]);
-    expect([...found]).toEqual([event(1).key]);
+    const at = (offset: string) => ({ topic: 'flights.raw', partition: 2, offset });
+    // Two messages for one flight in a batch: the later one is recorded.
+    await upsertEvents(
+      streamFlights(db),
+      [event(20), event(20, 'run-2')],
+      new Date(10_000),
+      new Map(),
+      [at('500'), at('501')],
+    );
+    const found = await findStoredDeliveries(streamFlights(db), [
+      event(20).key,
+      event(1).key,
+      'nope',
+      event(20).key,
+    ]);
+    expect([...found.keys()].sort()).toEqual([event(1).key, event(20).key].sort());
+    expect(found.get(event(20).key)).toEqual({ lastSource: at('501') });
+    // Stored without positions (before they were recorded): no lastSource.
+    expect(found.get(event(1).key)).toEqual({ lastSource: null });
+  });
+
+  it('keeps the highest offset when a rewind re-reads an older message', async (context) => {
+    if (!client) return context.skip();
+    const at = (offset: string) => ({ topic: 'flights.raw', partition: 2, offset });
+    // Offset 501 is stored; a rewind then re-reads 500 (the older message for the same flight).
+    await upsertEvents(streamFlights(db), [event(20)], new Date(11_000), new Map(), [at('500')]);
+    const found = await findStoredDeliveries(streamFlights(db), [event(20).key]);
+    expect(found.get(event(20).key)?.lastSource).toEqual(at('501'));
   });
 
   it('backfills unscored flights once, through the same scorer, leaving scored ones alone', async (context) => {

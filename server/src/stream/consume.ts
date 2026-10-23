@@ -5,6 +5,7 @@
  * Kafka redelivers the batch; idempotent upserts keyed by the flight key absorb the repeat.
  */
 import { FlightEventSchema, type DlqMessage, type FlightEvent } from '@flight-delay/shared';
+import type { AlreadyStored, MessageSource } from './already-stored.js';
 
 export interface IncomingMessage {
   offset: string;
@@ -20,6 +21,8 @@ export interface BatchContext {
 
 export interface DecodedBatch {
   events: FlightEvent[];
+  /** Where each event came from, in the same order as `events`. */
+  sources: MessageSource[];
   dlq: DlqMessage[];
   /** The next offset to read (last + 1), or null for an empty batch. */
   commitOffset: string | null;
@@ -31,6 +34,7 @@ export const MAX_DLQ_VALUE = 10_000;
 /** Splits a batch into valid events and dead letters. Never throws for bad input. */
 export function decodeBatch(messages: readonly IncomingMessage[], ctx: BatchContext): DecodedBatch {
   const events: FlightEvent[] = [];
+  const sources: MessageSource[] = [];
   const dlq: DlqMessage[] = [];
   const deadLetter = (offset: string, reason: string, value?: string) =>
     dlq.push({
@@ -61,6 +65,7 @@ export function decodeBatch(messages: readonly IncomingMessage[], ctx: BatchCont
     const parsed = FlightEventSchema.safeParse(json);
     if (parsed.success) {
       events.push(parsed.data);
+      sources.push({ topic: ctx.topic, partition: ctx.partition, offset: message.offset });
     } else {
       // The top-level field of each problem (pre, outcome, key, ...), deduplicated.
       const fields = [...new Set(parsed.error.issues.map((issue) => String(issue.path[0] ?? '')))];
@@ -71,6 +76,7 @@ export function decodeBatch(messages: readonly IncomingMessage[], ctx: BatchCont
   const last = messages.at(-1);
   return {
     events,
+    sources,
     dlq,
     commitOffset: last === undefined ? null : (BigInt(last.offset) + 1n).toString(),
   };
@@ -83,14 +89,21 @@ export interface WriteResult {
   redelivered: number;
 }
 
+/** What the consumer's write reports: the counts, plus why flights were already stored. */
+export interface WriteReport extends WriteResult {
+  /** Breaks `redelivered` down by cause (already-stored.ts); absent when not classified. */
+  alreadyStored?: AlreadyStored;
+}
+
 export interface BatchDeps {
-  write(events: readonly FlightEvent[]): Promise<WriteResult>;
+  /** `sources[i]` is the message `events[i]` came from. */
+  write(events: readonly FlightEvent[], sources: readonly MessageSource[]): Promise<WriteReport>;
   sendDlq(messages: readonly DlqMessage[]): Promise<void>;
   /** Commits `offset` (the next offset to read) for this partition. */
   commit(offset: string): Promise<void>;
 }
 
-export interface BatchResult extends WriteResult {
+export interface BatchResult extends WriteReport {
   consumed: number;
   dlq: number;
 }
@@ -103,7 +116,9 @@ export async function handleBatch(
 ): Promise<BatchResult> {
   const decoded = decodeBatch(messages, ctx);
   const written =
-    decoded.events.length > 0 ? await deps.write(decoded.events) : { inserted: 0, redelivered: 0 };
+    decoded.events.length > 0
+      ? await deps.write(decoded.events, decoded.sources)
+      : { inserted: 0, redelivered: 0 };
   if (decoded.dlq.length > 0) await deps.sendDlq(decoded.dlq);
   if (decoded.commitOffset !== null) await deps.commit(decoded.commitOffset);
   return { consumed: messages.length, ...written, dlq: decoded.dlq.length };

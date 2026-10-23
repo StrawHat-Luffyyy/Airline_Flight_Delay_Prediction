@@ -217,7 +217,7 @@ Six broker-restart runs (R1 to R6) in an isolated database, consumer group and t
   - `pre` = date, airline, flightNumber, origin, dest, schedDepMin, schedDepHour (strict).
   - `outcome` = depDelay, arrDelay, isDelayed, cancelled, diverted (strict).
 - **Collections:** Phase 8 writes only these two. `flights`, `stats_*`, `delay_lookup` and `model_runs` are never written by Phase 8 code.
-  - **`stream_flights`:** `{_id: key, runId, lastRunId, pre, outcome, prediction: {probability, label, threshold, modelVersion} | null, scoreError, correct, producedAt, firstWrittenAt, lastWrittenAt, deliveries}`. Indexes: `firstWrittenAt_-1` and `runId_1`.
+  - **`stream_flights`:** `{_id: key, runId, lastRunId, pre, outcome, prediction: {probability, label, threshold, modelVersion} | null, scoreError, correct, producedAt, firstWrittenAt, lastWrittenAt, deliveries, lastSource?}` (`lastSource` since 2026-10-23: the newest message that wrote the flight, to tell a redelivery from a replay). Indexes: `firstWrittenAt_-1` and `runId_1`.
   - **`stream_stats`:** producer-run documents (`kind: "producer-run"`), and one heartbeat document per consumer process (`kind: "consumer"`, `_id: "consumer:<group>:<host>-<pid>"`, `lastSeenAt` every 2 s, per-process counters, `throughput`).
 - **How the scorer is called:**
   - `createPredictor(db)` returns `predict = (request) => predictDelay(request, model, cachedReferenceData(mongoReferenceData(() => db)))`.
