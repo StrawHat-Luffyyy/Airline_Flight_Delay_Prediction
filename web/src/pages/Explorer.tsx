@@ -3,7 +3,9 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useDelayRate, useFlights, useHeatmap } from '../api/hooks';
 import { Board, RateCell, type BoardColumn } from '../components/Board';
 import { ErrorBlock, QueryState } from '../components/QueryState';
-import { Note, PageHeader, Section, Segmented, SelectField } from '../components/ui';
+import { FlightSelect } from '../components/predict/FlightSelect';
+import type { FieldOption } from '../components/predict/FlightFields';
+import { Note, PageHeader, Section, Segmented } from '../components/ui';
 import {
   dayName,
   formatInteger,
@@ -28,6 +30,18 @@ const ENTITY_NOUN: Record<Entity, string> = {
 
 const MIN_FLIGHTS_OPTIONS = [100, 500, 1000, 5000] as const;
 const LIMIT_OPTIONS = [10, 20, 50] as const;
+
+// The ranking filters use the Predict form's dropdown, so every list in the app opens the same way.
+const MIN_FLIGHTS_FIELD: FieldOption[] = MIN_FLIGHTS_OPTIONS.map((value) => ({
+  value: String(value),
+  code: formatInteger(value),
+  name: 'flights',
+}));
+const LIMIT_FIELD: FieldOption[] = LIMIT_OPTIONS.map((value) => ({
+  value: String(value),
+  code: String(value),
+  name: 'rows',
+}));
 
 function boardColumns(
   entity: Entity,
@@ -274,32 +288,22 @@ function RankingSection() {
               { value: 'best', label: 'Best' },
             ]}
           />
-          <div className="w-40">
-            <SelectField
-              label="Minimum flights"
-              value={minFlights}
-              onChange={(event) => setMinFlights(Number(event.target.value))}
-            >
-              {MIN_FLIGHTS_OPTIONS.map((value) => (
-                <option key={value} value={value}>
-                  {formatInteger(value)}
-                </option>
-              ))}
-            </SelectField>
-          </div>
-          <div className="w-32">
-            <SelectField
-              label="Show"
-              value={limit}
-              onChange={(event) => setLimit(Number(event.target.value))}
-            >
-              {LIMIT_OPTIONS.map((value) => (
-                <option key={value} value={value}>
-                  {value} rows
-                </option>
-              ))}
-            </SelectField>
-          </div>
+          <FlightSelect
+            label="Minimum flights"
+            className="w-40"
+            value={String(minFlights)}
+            options={MIN_FLIGHTS_FIELD}
+            minListWidth={176}
+            onChange={(next) => setMinFlights(Number(next))}
+          />
+          <FlightSelect
+            label="Show"
+            className="w-32"
+            value={String(limit)}
+            options={LIMIT_FIELD}
+            minListWidth={176}
+            onChange={(next) => setLimit(Number(next))}
+          />
         </div>
         <QueryState
           query={ranking}

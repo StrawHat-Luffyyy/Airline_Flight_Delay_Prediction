@@ -16,7 +16,15 @@ import {
 import { useCauses, useDelayDistribution, useDelayRate, useSummary, useTrend } from '../api/hooks';
 import { Board, RateCell, type BoardColumn } from '../components/Board';
 import { QueryState } from '../components/QueryState';
-import { AXIS_TICK, Note, PageHeader, Section, Swatch, TOOLTIP_STYLE } from '../components/ui';
+import {
+  AXIS_TICK,
+  Note,
+  PageHeader,
+  Section,
+  Swatch,
+  TOOLTIP_STYLE,
+  useChartMotion,
+} from '../components/ui';
 import { formatInteger, formatPercent, formatSignedMinutes, monthName } from '../lib/format';
 import { CAUSE_META, CAUSE_ORDER } from '../lib/labels';
 
@@ -82,6 +90,7 @@ function Kpis({ summary }: { summary: SummaryResponse }) {
 }
 
 function TrendChart({ points }: { points: readonly TrendPoint[] }) {
+  const chartMotion = useChartMotion();
   const rates = points.map((p) => p.delayRate ?? 0);
   const maxRate = Math.max(...rates, 0);
   const lastIndex = points.length - 1;
@@ -168,7 +177,7 @@ function TrendChart({ points }: { points: readonly TrendPoint[] }) {
               strokeWidth={2}
               dot={{ r: 3, fill: '#010101', stroke: '#e8a54b', strokeWidth: 2 }}
               activeDot={{ r: 5 }}
-              isAnimationActive={false}
+              {...chartMotion}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -316,6 +325,7 @@ function CauseShareSection() {
 }
 
 export default function Overview() {
+  const chartMotion = useChartMotion();
   const summary = useSummary();
   const trend = useTrend('month');
   const airlines = useDelayRate({
@@ -438,7 +448,7 @@ export default function Overview() {
                         formatter={(value) => [`${formatInteger(Number(value))} flights`, '']}
                         separator=""
                       />
-                      <Bar dataKey="flights" radius={2} isAnimationActive={false}>
+                      <Bar dataKey="flights" radius={2} {...chartMotion}>
                         {rows.map((row) => (
                           <Cell
                             key={row.label}

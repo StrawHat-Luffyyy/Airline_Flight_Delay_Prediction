@@ -25,6 +25,7 @@ import {
 import { createPortal } from 'react-dom';
 import { filterOptions, typeAhead } from '../../lib/picker';
 import { FieldShell, type FieldOption } from './FlightFields';
+import { usePresence } from '../../hooks/usePresence';
 import { useOutsidePress, usePopover } from './usePopover';
 
 const PAGE = 8;
@@ -100,10 +101,11 @@ export function FlightSelect({
   );
   const route = variant === 'route';
   const placement = usePopover(trigger, open, { minWidth: minListWidth });
+  const presence = usePresence(open, 120);
 
   const close = useCallback((refocus: boolean) => {
+    // The query is cleared on the next open, so the list does not jump while it fades out.
     setOpen(false);
-    setQuery('');
     if (refocus) trigger.current?.focus();
   }, []);
 
@@ -275,10 +277,12 @@ export function FlightSelect({
         />
       </button>
 
-      {open
+      {presence.mounted
         ? createPortal(
             <div
               ref={popover}
+              data-state={presence.closing ? 'closing' : 'open'}
+              inert={presence.closing}
               className="flight-popover flex flex-col"
               data-side={placement.side}
               style={placement.style}

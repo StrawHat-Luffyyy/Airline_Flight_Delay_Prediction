@@ -36,6 +36,7 @@ import {
   weekdayIndex,
 } from '../../lib/picker';
 import { FieldShell } from './FlightFields';
+import { usePresence } from '../../hooks/usePresence';
 import { useOutsidePress, usePopover } from './usePopover';
 
 const WEEKDAY_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -83,13 +84,14 @@ export function DatePicker({
 
   const shown = parseIso(focus)!;
   const placement = usePopover(trigger, open, { minWidth: 304, maxHeight: 420 });
+  const presence = usePresence(open, 120);
   const days = useMemo(() => monthGrid(shown.year, shown.month), [shown.year, shown.month]);
   const minParts = parseIso(min)!;
   const maxParts = parseIso(max)!;
 
   const close = useCallback((refocus: boolean) => {
+    // The view resets on the next open, so the calendar does not switch while it fades out.
     setOpen(false);
-    setView('days');
     if (refocus) trigger.current?.focus();
   }, []);
 
@@ -196,7 +198,7 @@ export function DatePicker({
         />
       </button>
 
-      {open
+      {presence.mounted
         ? createPortal(
             <div
               ref={popover}
@@ -204,6 +206,8 @@ export function DatePicker({
               aria-modal="false"
               aria-labelledby={titleId}
               onKeyDown={onPopoverKey}
+              data-state={presence.closing ? 'closing' : 'open'}
+              inert={presence.closing}
               className="flight-popover flight-calendar overflow-y-auto p-3"
               data-side={placement.side}
               style={{
@@ -278,7 +282,7 @@ export function DatePicker({
                       ))}
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody key={`${shown.year}-${shown.month}`} className="calendar-swap">
                     {Array.from({ length: 6 }, (_unused, week) => (
                       <tr key={week}>
                         {days.slice(week * 7, week * 7 + 7).map((iso) => {
@@ -320,7 +324,7 @@ export function DatePicker({
                 <div
                   role="group"
                   aria-label={`Months of ${viewYear}`}
-                  className="grid grid-cols-3 gap-1.5 py-1"
+                  className="calendar-swap grid grid-cols-3 gap-1.5 py-1"
                 >
                   {Array.from({ length: 12 }, (_unused, index) => {
                     const month = index + 1;

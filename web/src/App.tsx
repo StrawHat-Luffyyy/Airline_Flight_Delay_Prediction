@@ -1,8 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
 import { Landing } from './components/landing/Landing';
-import { Skeleton } from './components/QueryState';
-import { Shell } from './components/Shell';
+import { PageFallback, Shell } from './components/Shell';
 
 const Overview = lazy(() => import('./pages/Overview'));
 const Causes = lazy(() => import('./pages/Causes'));
@@ -10,15 +9,6 @@ const Explorer = lazy(() => import('./pages/Explorer'));
 const Predict = lazy(() => import('./pages/Predict'));
 const Model = lazy(() => import('./pages/Model'));
 const Live = lazy(() => import('./pages/Live'));
-
-function PageFallback() {
-  return (
-    <div role="status">
-      <span className="sr-only">Loading page</span>
-      <Skeleton className="h-96" />
-    </div>
-  );
-}
 
 export default function App() {
   return (

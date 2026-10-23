@@ -1,6 +1,9 @@
-import { Link, NavLink, Outlet } from 'react-router';
+import { Suspense, useEffect, useRef } from 'react';
+import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { useMeta } from '../api/hooks';
+import { useSlidingIndicator } from '../hooks/useSlidingIndicator';
 import { formatDate, formatInteger } from '../lib/format';
+import { Skeleton } from './QueryState';
 
 const TABS = [
   { to: '/overview', label: 'Overview' },
@@ -51,7 +54,54 @@ function DataStrip() {
   );
 }
 
+export function PageFallback() {
+  return (
+    <div role="status">
+      <span className="sr-only">Loading page</span>
+      <Skeleton className="h-96" />
+    </div>
+  );
+}
+
+/** The page tabs. One pill slides to the active tab rather than each tab lighting on its own. */
+function Tabs() {
+  const { pathname } = useLocation();
+  const list = useRef<HTMLUListElement>(null);
+  const pill = useSlidingIndicator(list, 'a[aria-current="page"]', pathname);
+
+  // On phones the tab row scrolls sideways: bring the active tab into view after navigating.
+  useEffect(() => {
+    const row = list.current?.parentElement;
+    const active = list.current?.querySelector('a[aria-current="page"]');
+    if (!row || !active) return;
+    const view = row.getBoundingClientRect();
+    const tab = active.getBoundingClientRect();
+    if (tab.left >= view.left && tab.right <= view.right) return;
+    row.scrollBy({ left: tab.left - view.left - 16, behavior: 'instant' });
+  }, [pathname]);
+  return (
+    <ul ref={list} className="relative flex gap-1 px-1 md:px-0">
+      <span className="slide-pill bg-rule-strong" style={pill} aria-hidden="true" />
+      {TABS.map((tab) => (
+        <li key={tab.to} className="relative">
+          <NavLink
+            to={tab.to}
+            className={({ isActive }) =>
+              `block whitespace-nowrap rounded-full px-2.5 py-2 md:px-3.5 text-[13px] transition-colors duration-200 ${
+                isActive ? 'text-ink' : 'text-ink-2 hover:bg-wash hover:text-ink'
+              }`
+            }
+          >
+            {tab.label}
+          </NavLink>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function Shell() {
+  const { pathname } = useLocation();
   return (
     <div className="min-h-screen">
       <a
@@ -68,29 +118,19 @@ export function Shell() {
           aria-label="Pages"
           className="-mx-1 w-full overflow-x-auto md:mx-0 md:w-auto md:overflow-visible"
         >
-          <ul className="flex gap-1 px-1 md:px-0">
-            {TABS.map((tab) => (
-              <li key={tab.to}>
-                <NavLink
-                  to={tab.to}
-                  className={({ isActive }) =>
-                    `block whitespace-nowrap rounded-full px-2.5 py-2 md:px-3.5 text-[13px] transition-colors ${
-                      isActive ? 'bg-rule-strong text-ink' : 'text-ink-2 hover:text-ink'
-                    }`
-                  }
-                >
-                  {tab.label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
+          <Tabs />
         </nav>
         <div className="ml-auto w-full md:w-auto">
           <DataStrip />
         </div>
       </header>
       <main id="content" className="mx-auto w-full max-w-[1440px] px-5 py-8 md:px-10">
-        <Outlet />
+        <Suspense fallback={<PageFallback />}>
+          {/* Keyed by path: the entrance plays on navigation, never on a re-render. */}
+          <div key={pathname} className="page-enter">
+            <Outlet />
+          </div>
+        </Suspense>
       </main>
     </div>
   );

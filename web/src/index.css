@@ -247,6 +247,69 @@ a.liquid-glass:hover {
   animation: rise 0.7s var(--ease-out-expo) var(--delay, 0s) both;
 }
 
+/* ---------- Shell motion: one vocabulary for every page ---------- */
+
+/* Page entrance on navigation only (the wrapper is keyed by path): the page's top-level blocks
+   rise 6px and fade in 60ms steps, capped at the fifth so long pages never wait. */
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.page-enter > * > * {
+  animation: enter 0.45s var(--ease-out-expo) both;
+}
+.page-enter > * > :nth-child(2) {
+  animation-delay: 60ms;
+}
+.page-enter > * > :nth-child(3) {
+  animation-delay: 120ms;
+}
+.page-enter > * > :nth-child(4) {
+  animation-delay: 180ms;
+}
+.page-enter > * > :nth-child(n + 5) {
+  animation-delay: 240ms;
+}
+
+/* Loaded data replaces its skeleton with a short fade, so blocks settle rather than pop. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.data-in {
+  animation: fade-in 0.35s var(--ease-out-expo) both;
+}
+
+/* The pill behind the active nav tab or segmented option. It slides between options (transform
+   and width, on an absolutely placed element, so nothing around it reflows); the transition is
+   switched on only after the first placement. */
+.slide-pill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+[data-indicator-ready] > .slide-pill {
+  transition:
+    transform 320ms var(--ease-out-expo),
+    width 320ms var(--ease-out-expo);
+}
+
 /* ---------- Predict: flight fields ---------- */
 
 /* A field face (a button that opens a dropdown or the calendar). Hover lifts the hairline; focus
@@ -306,8 +369,7 @@ a.liquid-glass:hover {
   border-radius: 14px;
   border: 1px solid var(--color-rule-strong);
   background:
-    radial-gradient(120% 50% at 50% 0%, rgba(232, 165, 75, 0.045), transparent 70%),
-    #0c0c0c;
+    radial-gradient(120% 50% at 50% 0%, rgba(232, 165, 75, 0.045), transparent 70%), #0c0c0c;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     0 18px 50px -12px rgba(0, 0, 0, 0.85);
@@ -341,6 +403,35 @@ a.liquid-glass:hover {
     opacity: 1;
     transform: none;
   }
+}
+
+/* Closing folds back toward the field, faster than it opened (usePresence keeps it mounted). */
+.flight-popover[data-state='closing'] {
+  pointer-events: none;
+  animation: popover-out 120ms var(--ease-out-expo) both;
+}
+
+.flight-popover[data-side='above'][data-state='closing'] {
+  animation-name: popover-out-above;
+}
+
+@keyframes popover-out {
+  to {
+    opacity: 0;
+    transform: translateY(-3px) scale(0.985);
+  }
+}
+
+@keyframes popover-out-above {
+  to {
+    opacity: 0;
+    transform: translateY(3px) scale(0.985);
+  }
+}
+
+/* A month or view change in the calendar cross-fades the grid instead of snapping. */
+.calendar-swap {
+  animation: fade-in 200ms var(--ease-out-expo) both;
 }
 
 /* The search row: 16px text on phones (smaller makes iOS zoom the page), 14px from sm. The row
@@ -514,6 +605,39 @@ a.liquid-glass:hover {
     radial-gradient(90% 60% at 0% 110%, rgba(124, 155, 209, 0.05), transparent 60%),
     rgba(255, 255, 255, 0.022);
   animation: rise 0.8s var(--ease-out-expo) both;
+}
+
+/* Predict result. A new score dims the previous one in place (no skeleton swap, no layout shift);
+   when it lands the gauge counts to it (useTween), then the label, facts and factor bars follow. */
+.predict-result {
+  transition: opacity 240ms var(--ease-out-expo);
+}
+
+.predict-result[aria-busy='true'] {
+  opacity: 0.42;
+}
+
+.result-in {
+  animation: enter 0.5s var(--ease-out-expo) var(--delay, 0s) both;
+}
+
+/* Factor bars grow out of the centre line: rightward when they raise the score, leftward when
+   they lower it (transform-origin is set inline). */
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.factor-bar {
+  animation: grow-x 0.7s var(--ease-out-expo) var(--delay, 0s) both;
+}
+
+.gauge-fill {
+  transition: stroke 260ms var(--ease-out-expo);
 }
 
 /* Hand-off links: a hairline draws across the top on hover or focus, and the cell lifts faintly. */
