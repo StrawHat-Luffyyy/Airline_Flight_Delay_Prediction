@@ -8,6 +8,7 @@ import type { KafkaJS } from '@confluentinc/kafka-javascript';
 import type { DlqMessage } from '@flight-delay/shared';
 import type { Db } from 'mongodb';
 import type { Logger } from 'pino';
+import { commitAndConfirm } from './commit.js';
 import { handleBatch } from './consume.js';
 import { createRedeliveryWarning } from './redelivery-warning.js';
 import { scoreEvents, type Predictor } from './score.js';
@@ -24,6 +25,8 @@ import {
 /** Events per eachBatch call (the client's default is 32). */
 const MAX_BATCH = 500;
 const MAX_BACKOFF_MS = 30_000;
+/** Bound on reading a commit back from the broker; longer fails the batch (redelivered). */
+const COMMIT_CONFIRM_TIMEOUT_MS = 5_000;
 /** At most one redelivery warning per interval (redelivery-warning.ts). */
 const REDELIVERY_WARN_INTERVAL_MS = 10_000;
 
@@ -190,9 +193,12 @@ export async function startConsumer(options: ConsumerOptions): Promise<RunningCo
                 // Reassigned mid-batch: do not commit for a partition we no longer own. The write
                 // already happened; the new owner re-reads the batch and the upserts absorb it.
                 if (isStale()) throw new StaleBatch();
-                await consumer.commitOffsets([
+                // commitOffsets alone resolves before the broker has the commit (commit.ts).
+                await commitAndConfirm(
+                  consumer,
                   { topic: batch.topic, partition: batch.partition, offset: nextOffset },
-                ]);
+                  { timeoutMs: COMMIT_CONFIRM_TIMEOUT_MS },
+                );
                 // Marked processed only once committed, so a failed commit seeks back cleanly.
                 resolveOffset(batch.lastOffset());
               },
