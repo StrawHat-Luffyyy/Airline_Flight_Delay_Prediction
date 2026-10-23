@@ -68,17 +68,83 @@ const SELECT_X = 0.16;
 type ChapterPose = Pose & { sway: number; beacons: number; tilt: number };
 const DESKTOP_POSES: ChapterPose[] = [
   // Hero: the lower 48, coast to coast on the right, leaning back like a view from the south.
-  { lat: 38, lon: -96.5, size: 2.1, x: 0.37, y: -0.06, arcs: 1, airports: 1, sway: 3.5, beacons: 0.8, tilt: 34 },
+  {
+    lat: 38,
+    lon: -96.5,
+    size: 2.1,
+    x: 0.37,
+    y: -0.06,
+    arcs: 1,
+    airports: 1,
+    sway: 3.5,
+    beacons: 0.8,
+    tilt: 34,
+  },
   // Volume: back far enough to take in Alaska and Hawaii, the columns at full strength.
-  { lat: 40, lon: -121, size: 1.0, x: 0.4, y: -0.04, arcs: 0.25, airports: 1.4, sway: 5, beacons: 1, tilt: 30 },
+  {
+    lat: 40,
+    lon: -121,
+    size: 1.0,
+    x: 0.4,
+    y: -0.04,
+    arcs: 0.25,
+    airports: 1.4,
+    sway: 5,
+    beacons: 1,
+    tilt: 30,
+  },
   // Routes: the lower 48 again, flatter so the arcs read, the columns stepped back.
-  { lat: 37.5, lon: -96, size: 2.05, x: 0.37, y: -0.04, arcs: 1, airports: 0.9, sway: 3.5, beacons: 0.35, tilt: 18 },
+  {
+    lat: 37.5,
+    lon: -96,
+    size: 2.05,
+    x: 0.37,
+    y: -0.04,
+    arcs: 1,
+    airports: 0.9,
+    sway: 3.5,
+    beacons: 0.35,
+    tilt: 18,
+  },
   // Predict: closer and steeper, the delay colours up.
-  { lat: 36, lon: -95, size: 2.35, x: 0.36, y: -0.12, arcs: 0.55, airports: 1, sway: 3, beacons: 1, tilt: 44 },
+  {
+    lat: 36,
+    lon: -95,
+    size: 2.35,
+    x: 0.36,
+    y: -0.12,
+    arcs: 0.55,
+    airports: 1,
+    sway: 3,
+    beacons: 1,
+    tilt: 44,
+  },
   // Model: the continent, swaying slowly around it.
-  { lat: 33, lon: -96, size: 0.85, x: 0.32, y: 0, arcs: 0.6, airports: 0.9, sway: 14, beacons: 0.6, tilt: 10 },
+  {
+    lat: 33,
+    lon: -96,
+    size: 0.85,
+    x: 0.32,
+    y: 0,
+    arcs: 0.6,
+    airports: 0.9,
+    sway: 14,
+    beacons: 0.6,
+    tilt: 10,
+  },
   // Hand-off: the whole planet behind the links, still swinging around the US, never past it.
-  { lat: 30, lon: -97, size: 0.5, x: 0, y: 0.3, arcs: 0.75, airports: 1, sway: 22, beacons: 0.55, tilt: 6 },
+  {
+    lat: 30,
+    lon: -97,
+    size: 0.5,
+    x: 0,
+    y: 0.3,
+    arcs: 0.75,
+    airports: 1,
+    sway: 22,
+    beacons: 0.55,
+    tilt: 6,
+  },
 ];
 /**
  * Phones: the globe sits in the top half, above the copy. Size is measured against the half-width
@@ -203,7 +269,8 @@ function Rig({
     const swing = reduced || focus ? 0 : pose.sway;
     const swayLon = Math.sin(t * SWAY_RATE) * swing;
     const swayLat = Math.sin(t * SWAY_RATE * 0.63 + 1.1) * swing * 0.18;
-    const lon = (focus?.lon ?? pose.lon) + intro.lon + swayLon + globe.dragLon + globe.pointerX * 1.6;
+    const lon =
+      (focus?.lon ?? pose.lon) + intro.lon + swayLon + globe.dragLon + globe.pointerX * 1.6;
     const lat =
       (focus?.lat ?? pose.lat) + intro.lat + swayLat + globe.dragLat + globe.pointerY * 1.2;
 
@@ -232,7 +299,8 @@ function Rig({
     // A faint camera roll with the cursor: the view banks a little, like a window seat.
     m.roll = damp(m.roll, reduced ? 0 : -globe.pointerX * 0.03, 3, dt);
     // Lean back about the faced point; the establishing shot starts flat and tips over as it lands.
-    const lean = pose.tilt * Math.min(1, Math.max(0, (intro.size - 0.2) / 0.8)) * (selecting ? 0.85 : 1);
+    const lean =
+      pose.tilt * Math.min(1, Math.max(0, (intro.size - 0.2) / 0.8)) * (selecting ? 0.85 : 1);
     m.tilt = damp(m.tilt, lean, rate, dt);
     tiltNode.rotation.x = -m.tilt * RAD;
     state.camera.rotation.z = m.roll;

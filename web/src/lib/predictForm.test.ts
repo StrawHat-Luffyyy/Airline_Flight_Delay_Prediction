@@ -11,7 +11,10 @@ const airport = (code: string) => ({
   longitude: null,
 });
 const meta = {
-  airlines: [{ code: 'AA', name: 'American' }, { code: 'DL', name: 'Delta' }],
+  airlines: [
+    { code: 'AA', name: 'American' },
+    { code: 'DL', name: 'Delta' },
+  ],
   airports: ['ATL', 'CMH', 'LAX', 'LGA', 'ORD'].map(airport),
 } as unknown as MetaResponse;
 

@@ -60,7 +60,12 @@ interface Interaction {
   selectedAirport: string | null;
 }
 
-let state: Interaction = { hover: null, hoverSource: 'globe', selected: null, selectedAirport: null };
+let state: Interaction = {
+  hover: null,
+  hoverSource: 'globe',
+  selected: null,
+  selectedAirport: null,
+};
 const listeners = new Set<() => void>();
 
 function notify(): void {

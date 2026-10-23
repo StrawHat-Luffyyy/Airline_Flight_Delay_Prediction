@@ -269,7 +269,6 @@ describe('greatCircleMiles', () => {
   });
 });
 
-
 describe('introShot', () => {
   it('starts wide and turned, and lands exactly on the framed pose', () => {
     const start = introShot(0);

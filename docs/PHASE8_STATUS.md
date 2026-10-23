@@ -71,7 +71,7 @@ Every number below was measured in this project during 8a to 8g. Nothing is esti
   - The consumer was hard-killed (`Stop-Process -Force`) after storing 316,598 flights, with 318,598 offsets committed.
   - The restart consumed exactly the 167,832 unread messages and inserted 162,632, giving 479,230 flights in total.
   - Deliveries summed to 486,430, the number of messages then on the topic. Lag was 0.
-  - The `crash-test` group was deleted afterwards. The database is still there (see §5).
+  - The `crash-test` group was deleted afterwards. The database is gone as of 2026-10-24.
 - **Batch collections unchanged** before and after: `flights` 5,819,079, `delay_lookup` 36,420, `model_runs` 2, and every `stats_*` count identical.
 - **Topic state at the last check (8c re-verification):**
   - `flights.raw` end offsets were 176,248 / 185,939 / 125,243 (**487,430 messages**), with lag 0 for group `flight-stream`.
@@ -323,7 +323,8 @@ MSYS_NO_PATHCONV=1 docker compose exec kafka /opt/kafka/bin/kafka-consumer-group
 
 ### Leftover data
 - **Stale figures (fixed after 8g):** `build:stats` and `build:lookup` were re-measured on 2026-10-22 (370.8 s and 65.2 s); SCHEMA.md and BIGDATA_JUSTIFICATION.md now cite `docs/measurements/batch-runs-2026-10-22.json` with the full range of saved runs.
-- **`flight_delay_crash_test`** (MongoDB) is still present: 479,230 unscored `stream_flights` documents plus `stream_stats`, left from the 8c crash test. The bash guard hook blocked dropping it from Claude. The user can drop it from a terminal: `docker compose exec mongo mongosh flight_delay_crash_test --eval "db.dropDatabase()"`. Its Kafka group `crash-test` was already deleted.
+- **`flight_delay_crash_test`** (MongoDB), left from the 8c crash test, is gone (checked 2026-10-24; its Kafka group `crash-test` was deleted earlier).
+- **Still left from manual runs (checked 2026-10-24, kept until the user decides):** the database `flight_delay_reliability_test` (about 1 MB), the topics `reliability.raw`, `reliability.dlq`, `commitrepro.plain1`, `commitrepro.plain2` and `commitrepro.verify1`, and the consumer groups `commit-repro-plain1`, `commit-repro-plain2` and `commit-repro-verify1`. None is read by the app.
 - **`flights.raw`** holds 484,230 messages after the 8g runs: run C (all of December) plus the 5,000-event re-replay. Retention is 168 hours.
 - **`stream_stats`** in `flight_delay` holds the two producer runs since the last `stream:reset` (run C and the re-replay) plus consumer heartbeats, which expire after 6 h. The 8b to 8d run records, including the pre-fix `achievedRate: 11`, were cleared by the 8g resets.
 

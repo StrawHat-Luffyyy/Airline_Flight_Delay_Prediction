@@ -450,10 +450,7 @@ export function HandoffChapter({ sectionRef }: { sectionRef: Ref<HTMLElement> })
                 index === 4 ? 'col-span-2 lg:col-span-1' : '',
               ].join(' ');
               return (
-                <li
-                  key={page.to}
-                  className={`border-rule ${rules}`}
-                >
+                <li key={page.to} className={`border-rule ${rules}`}>
                   <Link
                     to={page.to}
                     className={`handoff-link group relative flex h-full flex-col gap-4 py-4 sm:gap-5 sm:py-5 lg:min-h-[11.5rem] lg:py-6 ${pad}`}

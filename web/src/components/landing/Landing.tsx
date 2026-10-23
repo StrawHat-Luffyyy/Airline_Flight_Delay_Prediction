@@ -21,13 +21,7 @@ import {
   RoutesChapter,
   VolumeChapter,
 } from './Chapters';
-import {
-  AirportDetails,
-  GlobeControls,
-  GlobeLegend,
-  GlobeTooltip,
-  RouteDetails,
-} from './GlobeHud';
+import { AirportDetails, GlobeControls, GlobeLegend, GlobeTooltip, RouteDetails } from './GlobeHud';
 import { Hero } from './Hero';
 import { useAirportNetwork, useAirportStats } from './useAirportStats';
 import { useRouteRankings } from './useRouteRankings';
@@ -213,11 +207,7 @@ export function Landing() {
             reduced={reduced}
           />
           {interactive ? (
-            <GlobeTooltip
-              arcs={arcs}
-              airports={airportsByCode}
-              airportStats={airportStats}
-            />
+            <GlobeTooltip arcs={arcs} airports={airportsByCode} airportStats={airportStats} />
           ) : null}
           <RouteDetails arcs={rankedArcs} airports={airportsByCode} />
           <AirportDetails
