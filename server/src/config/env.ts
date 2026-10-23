@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 import { fromRepoRoot } from '../paths.js';
 
@@ -62,8 +63,36 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
-export function parseEnv(source: Record<string, string | undefined>): Env {
-  const result = envSchema.safeParse(source);
+/**
+ * MONGODB_URI may instead come from the file MONGODB_URI_FILE names (a Docker secret mounted under
+ * /run/secrets in the production compose file), so the credentials never sit in the container's
+ * environment where `docker inspect` shows them. Errors name the variable, never the value.
+ */
+function resolveSecretFiles(
+  source: Record<string, string | undefined>,
+  readFile: (path: string) => string,
+): Record<string, string | undefined> {
+  const file = source.MONGODB_URI_FILE;
+  if (file === undefined || file === '') return source;
+  if (source.MONGODB_URI !== undefined && source.MONGODB_URI !== '') {
+    throw new Error(
+      'Invalid environment configuration:\nset either MONGODB_URI or MONGODB_URI_FILE, not both',
+    );
+  }
+  let value: string;
+  try {
+    value = readFile(file);
+  } catch {
+    throw new Error(`Invalid environment configuration:\nMONGODB_URI_FILE: cannot read ${file}`);
+  }
+  return { ...source, MONGODB_URI: value.trim() };
+}
+
+export function parseEnv(
+  source: Record<string, string | undefined>,
+  readFile: (path: string) => string = (path) => readFileSync(path, 'utf8'),
+): Env {
+  const result = envSchema.safeParse(resolveSecretFiles(source, readFile));
   if (result.success) return result.data;
 
   const details = result.error.issues

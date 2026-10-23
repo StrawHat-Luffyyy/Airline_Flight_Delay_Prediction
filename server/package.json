@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "esbuild server=src/server.ts probe-worker=src/stream/status/probe-worker.ts --bundle --platform=node --format=esm --target=node20 --packages=external --sourcemap --outdir=dist",
+    "build": "esbuild server=src/server.ts probe-worker=src/stream/status/probe-worker.ts consume=src/stream/consume-cli.ts kafka-init=src/stream/kafka-init-cli.ts --bundle --platform=node --format=esm --target=node20 --packages=external --sourcemap --outdir=dist",
     "start": "node --enable-source-maps dist/server.js",
     "start:dev": "tsx src/server.ts",
     "test": "vitest run",
