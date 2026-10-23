@@ -381,43 +381,107 @@ Because no commit is believed until the broker confirms it, the consumer no long
 - **Check classification:** the check counts a commit as "while down" only if it completed after `docker compose stop` returned. A first run counted from when the stop was issued. It reported 2 commits "believed" that the broker, still shutting down, had in fact stored: the consumer resumed right after them.
 - **Cost:** one more broker round trip per batch, with no measurable cost. Draining 60,000 pre-filled events (isolated environment, scorer refusing every flight, so mostly the Kafka and MongoDB path) ran at 1,970/s with confirmation and 1,890/s without: one run each, a difference within run-to-run noise.
 
+### Final version validated: outages R8 to R10 and repeated benchmarks (2026-10-23)
+
+These runs use the committed fix (`a3fd8c6`: up to three read-backs per commit). The environment was isolated, with a 28 s broker outage at about 15,000 stored, as in R1 to R7.
+
+| Run | Resumed after broker start | Stored | Delivered twice | Commit failures detected                                                                               | Committed vs end offsets after the run       |
+| --- | -------------------------- | ------ | --------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------- |
+| R8  | 16.1 s                     | 60,000 | 0               | 3 ("not confirmed", one per partition)                                                                 | not recorded (see below)                     |
+| R9  | 15.9 s                     | 60,000 | 36              | 3                                                                                                      | not recorded                                 |
+| R10 | 14.7 s                     | 60,000 | 0               | 0: no batch was in flight when the broker stopped (the consumer was keeping pace, 1,320 small batches) | 1,080,000 = 1,080,000 on 3 partitions, lag 0 |
+
+- **No data lost, no duplicate documents.** All 60,000 flights were stored in every run. The redelivered flights are counted in `deliveries`; the consumer's own counter agrees (R9: 36 and 36).
+- **Failures are detected and handled.** In R8 and R9 the commits made while the broker stopped failed loudly ("reading it back failed (Local: Timed out)"), and the batches backed off. R10 had no commit in flight to fail, so it shows recovery and offset correctness, not detection.
+- **Unconfirmed is not the same as lost.** In R8 and R10 no batch came back after the restart, so those unconfirmed commits had reached the broker as it shut down. In R9, 36 flights came back and were absorbed by the upsert.
+- **Offsets.** In R10 the group's committed offsets equal the log-end offsets on every partition. For R8 and R9 the same check printed nothing: in Git Bash the container path was rewritten to a Windows path. This was fixed for R10 (`MSYS_NO_PATHCONV=1`), and R8 and R9 were not rerun.
+
+**Throughput, five runs per configuration** (`commit-confirm-throughput.json`). Each run replays 60,000 events with no consumer running, then one consumer drains them; confirmed and baseline runs alternate.
+
+| Configuration                     | Runs (events/s)                   | Median | Mean ± sd   | Without the highest run            |
+| --------------------------------- | --------------------------------- | ------ | ----------- | ---------------------------------- |
+| Confirmed (read-back)             | 4,076; 2,107; 2,009; 2,064; 2,049 | 2,064  | 2,461 ± 903 | 2,009 to 2,107 (mean 2,057, sd 40) |
+| Baseline (`commitOffsets()` only) | 2,011; 1,966; 2,002; 2,470; 2,077 | 2,011  | 2,105 ± 208 | 1,966 to 2,077 (mean 2,014, sd 46) |
+
+- **The read-back has no measurable cost.** The medians differ by 53/s in favour of the confirmed version, well inside the run-to-run spread.
+- **Run-to-run variability is the larger effect.** Most runs agree within about 2% (coefficient of variation without each configuration's highest run). One run per configuration was much faster: 4,076/s and 2,470/s. Their logs show the same 124 batches, with no errors and no redeliveries. The cause was not found; the laptop was also in desktop use. A single drain run on this machine can therefore be off by up to 2x.
+- These rates are below the 2,442/s of run C (full December) because the isolated environment refuses every flight at the scorer. That makes the per-batch work different, so the two are not comparable.
+
+### Kafka client upgrades
+
+The read-back exists because of a defect in `@confluentinc/kafka-javascript`, so it has to be rechecked whenever that client changes.
+
+**Status on 2026-10-23:**
+
+- **Installed:** the client is pinned exactly to 1.11.0, which is the latest release on npm.
+- **Raw mode still reproduces the defect on 1.11.0:** 28 of 28 commits were believed while the broker was stopped. Confirmed mode passes (`commit-check-raw.json`, `commit-check-confirmed.json`; both record `clientVersion`).
+- **Upstream `master` (read on GitHub the same day) is unchanged:**
+  - `commitOffsets()` still goes through `commitCb`;
+  - `commitCb` still calls librdkafka's `commitAsync`;
+  - the offset-commit callback is still marked TODO;
+  - the changelog's newest entry is 1.11.0 and mentions no commit fix.
+
+  **The workaround remains necessary.**
+
+**Guard.** `server/src/stream/client-version.ts` records the version last verified (`COMMIT_CHECK_VERIFIED_CLIENT`). `client-version.test.ts` fails, and prints the steps below, when:
+
+- the pinned or installed client differs from it;
+- the dependency is not pinned to an exact version.
+
+The test was checked to fail by setting the constant to 1.12.0. So an upgrade cannot pass `npm test` (or CI) until the check has been run.
+
+**After every client upgrade**, with the broker up:
+
+```bash
+npm run stream:commit-check -- --mode raw --yes --out docs/measurements/commit-check-raw.json
+npm run stream:commit-check -- --mode confirmed --yes --out docs/measurements/commit-check-confirmed.json
+```
+
+- **`confirmed` must pass.** If it fails, do not upgrade.
+- **If `raw` passes,** it still reproduces the defect: keep the read-back.
+- **If `raw` fails with "defect not reproduced",** the client now reports commit results itself. The read-back is then redundant but harmless; remove it only as a deliberate change.
+- **Then** update `COMMIT_CHECK_VERIFIED_CLIENT` and commit the two reports.
+
 ### Remaining Kafka risks
 
-- **The confirmation reads the committed offset, not the commit's own result.** If the client is upgraded, re-run `stream:commit-check` in both modes. If a release delivers commit errors to `commitOffsets()` itself, the read-back becomes redundant but still harmless.
+- **The confirmation reads the committed offset, not the commit's own result.** It depends on the client's current behaviour; a test now blocks any client upgrade until `stream:commit-check` has been run in both modes (see Kafka client upgrades).
 - **A commit can succeed and still be reported as failed.** This happens when the read-back times out after the broker stored the commit. The batch is then delivered once more, and the upsert absorbs it.
-- **Few runs.** Three resume times at 10 s and two at 30 s, each on one machine; the gap is consistent but the spread is small evidence.
+- **Few runs, one machine.** Resume after a broker restart, with a 10 s session timeout: 14.7 to 19.8 s across seven runs (R3, R5 to R10). With 30 s: 36.9 and 39.1 s (two runs). Drain throughput varies by up to 2x between single runs (see the repeated benchmarks).
+- **R8 and R9 lack an offset check.** It returned nothing there; R10 has it.
 - **The status reads `live` for up to 15 s of a stall.** By design (the stall window): in R6 it read `live` for about 10 s after Kafka came back and before the first new batch.
 - **Unchanged from before:** single broker with replication factor 1 (no fault tolerance); the native `fetchOffsets` crash in the Kafka client (contained in the probe process); the consumer was never tested in a crash of the client itself.
 
 ## Raw evidence
 
-| File                                                                                                       | What it holds                                                                                                                               |
-| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/measurements/run-a-500.json`                                                                         | `stream:measure` report and checks, run A                                                                                                   |
-| `docs/measurements/run-b-2000.json`                                                                        | run B                                                                                                                                       |
-| `docs/measurements/run-c-unthrottled.json`                                                                 | run C, all of December                                                                                                                      |
-| `docs/measurements/run-c-rereplay-5000.json`                                                               | the 5,000-event re-replay after run C (`timing` is null: it stored nothing new)                                                             |
-| `docs/measurements/run-d-crash-before-restart.json`                                                        | run D after the hard kill, before the restart                                                                                               |
-| `docs/measurements/run-d-crash-after-restart.json`                                                         | run D after the restart                                                                                                                     |
-| `docs/measurements/reliability-r1-redelivery.json`, `reliability-r1-status.json`                           | R1 (isolated): 16,000 redelivered after an outage, and the status series that showed the validation fallbacks and the first stall detection |
-| `docs/measurements/reliability-r2-outage.json`, `reliability-r3-*.json`, `reliability-r4-*.json`           | R2 to R4 (isolated): resume times by session timeout, and the status series verifying the stall state                                       |
-| `docs/measurements/reliability-r5-outage.json`, `reliability-r6-outage.json`, `reliability-r6-status.json` | R5 and R6 (isolated, 10 s): resume times, the consumer's redelivery warnings, and the status series                                         |
-| `docs/measurements/commit-check-raw.json`, `commit-check-confirmed.json`                                   | `stream:commit-check`: every commit made during an outage, with and without the read-back confirmation                                      |
-| `docs/measurements/commit-repro-prototype.json`                                                            | the first reproductions, before `stream:commit-check` existed                                                                               |
-| `docs/measurements/reliability-r7-outage.json`                                                             | R7 (isolated): the real consumer with confirmed commits through a broker outage, with its error and warning lines                           |
-| `docs/measurements/reliability-r5-probe-console-lost.json`                                                 | the probe in an API whose console was killed: its process log and status every 2 s through a broker restart                                 |
-| `docs/measurements/run-h1-one-consumer.json`, `run-h2-two-consumers.json`                                  | runs H1 and H2: one against two consumers, 150,000 events unthrottled                                                                       |
-| `docs/measurements/run-h2-partitions.json`                                                                 | run H2: messages per partition and per consumer                                                                                             |
-| `docs/measurements/run-g-kafka-restart.json`                                                               | run G (Kafka stopped about 28 s under load): checks and counts after recovery                                                               |
-| `docs/measurements/run-g-kafka-restart-status.json`                                                        | run G: `GET /api/stream/status` every 2 s through the outage (`stream:watch`)                                                               |
-| `docs/measurements/run-f-kill-attempt-1.json`, `run-f-kill-attempt-2.json`                                 | run F: `stream:measure` right after each hard kill (written vs committed)                                                                   |
-| `docs/measurements/run-f-midbatch-final.json`, `run-f-midbatch-deliveries.json`                            | run F after recovery: checks, and flights grouped by `deliveries` with each consumer's heartbeat                                            |
-| `docs/measurements/run-e-1200.json`, `run-e-1200-steady.json`                                              | run E at 1,200/s: the whole run, and only the flights produced after the start-up backlog drained (`stream:measure --from`)                 |
-| `docs/measurements/run-e-1200-lag.json`                                                                    | run E: consumer lag, flights stored and throughput every 2 s (`stream:watch`)                                                               |
-| `docs/measurements/run-e-host-load.json`                                                                   | host load right after run E                                                                                                                 |
-| `docs/measurements/run-d-crash-consumer.json`                                                              | run D: the state printed at the kill, the restarted consumer's final counters, and each run's `--idle-exit`                                 |
-| `docs/measurements/verify-status.json`                                                                     | `stream:verify-status`: 35 checks with endpoint and recomputed values                                                                       |
-| `docs/measurements/batch-collections-before.txt`, `-after.txt`                                             | collection counts in `flight_delay` before and after                                                                                        |
+| File                                                                                                        | What it holds                                                                                                                                                 |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/measurements/run-a-500.json`                                                                          | `stream:measure` report and checks, run A                                                                                                                     |
+| `docs/measurements/run-b-2000.json`                                                                         | run B                                                                                                                                                         |
+| `docs/measurements/run-c-unthrottled.json`                                                                  | run C, all of December                                                                                                                                        |
+| `docs/measurements/run-c-rereplay-5000.json`                                                                | the 5,000-event re-replay after run C (`timing` is null: it stored nothing new)                                                                               |
+| `docs/measurements/run-d-crash-before-restart.json`                                                         | run D after the hard kill, before the restart                                                                                                                 |
+| `docs/measurements/run-d-crash-after-restart.json`                                                          | run D after the restart                                                                                                                                       |
+| `docs/measurements/reliability-r1-redelivery.json`, `reliability-r1-status.json`                            | R1 (isolated): 16,000 redelivered after an outage, and the status series that showed the validation fallbacks and the first stall detection                   |
+| `docs/measurements/reliability-r2-outage.json`, `reliability-r3-*.json`, `reliability-r4-*.json`            | R2 to R4 (isolated): resume times by session timeout, and the status series verifying the stall state                                                         |
+| `docs/measurements/reliability-r5-outage.json`, `reliability-r6-outage.json`, `reliability-r6-status.json`  | R5 and R6 (isolated, 10 s): resume times, the consumer's redelivery warnings, and the status series                                                           |
+| `docs/measurements/commit-check-raw.json`, `commit-check-confirmed.json`                                    | `stream:commit-check`: every commit made during an outage, with and without the read-back confirmation                                                        |
+| `docs/measurements/commit-repro-prototype.json`                                                             | the first reproductions, before `stream:commit-check` existed                                                                                                 |
+| `docs/measurements/reliability-r8-outage.json`, `reliability-r9-outage.json`, `reliability-r10-outage.json` | R8 to R10 (isolated): the final version through a broker outage, with offsets (R10), stored documents by `deliveries`, and the consumer's errors and warnings |
+| `docs/measurements/commit-confirm-throughput.json`                                                          | five drain runs each with and without the commit read-back, with summary statistics                                                                           |
+| `docs/measurements/reliability-r7-outage.json`                                                              | R7 (isolated): the real consumer with confirmed commits through a broker outage, with its error and warning lines                                             |
+| `docs/measurements/reliability-r5-probe-console-lost.json`                                                  | the probe in an API whose console was killed: its process log and status every 2 s through a broker restart                                                   |
+| `docs/measurements/run-h1-one-consumer.json`, `run-h2-two-consumers.json`                                   | runs H1 and H2: one against two consumers, 150,000 events unthrottled                                                                                         |
+| `docs/measurements/run-h2-partitions.json`                                                                  | run H2: messages per partition and per consumer                                                                                                               |
+| `docs/measurements/run-g-kafka-restart.json`                                                                | run G (Kafka stopped about 28 s under load): checks and counts after recovery                                                                                 |
+| `docs/measurements/run-g-kafka-restart-status.json`                                                         | run G: `GET /api/stream/status` every 2 s through the outage (`stream:watch`)                                                                                 |
+| `docs/measurements/run-f-kill-attempt-1.json`, `run-f-kill-attempt-2.json`                                  | run F: `stream:measure` right after each hard kill (written vs committed)                                                                                     |
+| `docs/measurements/run-f-midbatch-final.json`, `run-f-midbatch-deliveries.json`                             | run F after recovery: checks, and flights grouped by `deliveries` with each consumer's heartbeat                                                              |
+| `docs/measurements/run-e-1200.json`, `run-e-1200-steady.json`                                               | run E at 1,200/s: the whole run, and only the flights produced after the start-up backlog drained (`stream:measure --from`)                                   |
+| `docs/measurements/run-e-1200-lag.json`                                                                     | run E: consumer lag, flights stored and throughput every 2 s (`stream:watch`)                                                                                 |
+| `docs/measurements/run-e-host-load.json`                                                                    | host load right after run E                                                                                                                                   |
+| `docs/measurements/run-d-crash-consumer.json`                                                               | run D: the state printed at the kill, the restarted consumer's final counters, and each run's `--idle-exit`                                                   |
+| `docs/measurements/verify-status.json`                                                                      | `stream:verify-status`: 35 checks with endpoint and recomputed values                                                                                         |
+| `docs/measurements/batch-collections-before.txt`, `-after.txt`                                              | collection counts in `flight_delay` before and after                                                                                                          |
 
 ## Honest limits
 

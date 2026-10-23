@@ -1,0 +1,49 @@
+{
+  "run": "R10",
+  "code": "commit read-back with up to three reads (commit.ts, a3fd8c6)",
+  "environment": "isolated: db flight_delay_reliability_test, group reliability-test, topics reliability.raw/.dlq",
+  "sessionTimeoutMs": 10000,
+  "replay": {
+    "events": 60000,
+    "rate": 1000
+  },
+  "brokerDownSeconds": 28,
+  "outage": {
+    "stopIssued": "2026-10-23T14:22:26.536Z",
+    "stopped": "2026-10-23T14:22:28.286Z",
+    "storedAtStop": 16200,
+    "startIssued": "2026-10-23T14:22:57.546Z",
+    "started": "2026-10-23T14:22:58.411Z",
+    "firstWriteAfterStart": "2026-10-23T14:23:13.122Z",
+    "resumeSecondsAfterStart": 14.711,
+    "lastWrite": "2026-10-23T14:23:46.822Z",
+    "stored": 60000,
+    "deliveries": 60000
+  },
+  "afterConsumerExit": {
+    "offsets": {
+      "partitions": 3,
+      "committed": 1080000,
+      "end": 1080000,
+      "lag": 0
+    },
+    "stream_flights": {
+      "stored": 60000,
+      "byDeliveries": [
+        {
+          "_id": 1,
+          "n": 60000
+        }
+      ],
+      "dlqStats": 1
+    }
+  },
+  "consumerFinal": {
+    "consumed": 60000,
+    "inserted": 60000,
+    "redelivered": 0,
+    "dlq": 0,
+    "batches": 1320
+  },
+  "consumerWarningsAndErrors": []
+}

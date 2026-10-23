@@ -1,0 +1,72 @@
+{
+  "run": "R9",
+  "code": "commit read-back with up to three reads (commit.ts, a3fd8c6)",
+  "environment": "isolated: db flight_delay_reliability_test, group reliability-test, topics reliability.raw/.dlq",
+  "sessionTimeoutMs": 10000,
+  "replay": {
+    "events": 60000,
+    "rate": 1000
+  },
+  "brokerDownSeconds": 28,
+  "outage": {
+    "stopIssued": "2026-10-23T14:02:31.267Z",
+    "stopped": "2026-10-23T14:02:33.109Z",
+    "storedAtStop": 16800,
+    "startIssued": "2026-10-23T14:03:02.539Z",
+    "started": "2026-10-23T14:03:03.311Z",
+    "firstWriteAfterStart": "2026-10-23T14:03:19.259Z",
+    "resumeSecondsAfterStart": 15.948,
+    "lastWrite": "2026-10-23T14:03:51.966Z",
+    "stored": 60000,
+    "deliveries": 60036
+  },
+  "afterConsumerExit": {
+    "offsets": "not recorded: the check ran a Windows-mangled container path and returned nothing (fixed for R10)",
+    "stream_flights": {
+      "stored": 60000,
+      "byDeliveries": [
+        {
+          "_id": 1,
+          "n": 59964
+        },
+        {
+          "_id": 2,
+          "n": 36
+        }
+      ]
+    }
+  },
+  "consumerFinal": {
+    "consumed": 59936,
+    "inserted": 59900,
+    "redelivered": 36,
+    "dlq": 0,
+    "batches": 1377
+  },
+  "consumerWarningsAndErrors": [
+    {
+      "time": "2026-10-23T14:02:36.746Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[1] at 231765 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+    },
+    {
+      "time": "2026-10-23T14:02:36.757Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[2] at 159084 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+    },
+    {
+      "time": "2026-10-23T14:02:36.759Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[0] at 225951 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+    },
+    {
+      "time": "2026-10-23T14:03:19.302Z",
+      "level": "warn",
+      "msg": "already-stored flights delivered again: their offsets were not committed earlier (crash, rebalance or a commit lost while the broker was down); the upserts absorb them",
+      "redelivered": 36
+    }
+  ]
+}

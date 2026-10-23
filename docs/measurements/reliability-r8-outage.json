@@ -1,0 +1,62 @@
+{
+  "run": "R8",
+  "code": "commit read-back with up to three reads (commit.ts, a3fd8c6)",
+  "environment": "isolated: db flight_delay_reliability_test, group reliability-test, topics reliability.raw/.dlq",
+  "sessionTimeoutMs": 10000,
+  "replay": {
+    "events": 60000,
+    "rate": 1000
+  },
+  "brokerDownSeconds": 28,
+  "outage": {
+    "stopIssued": "2026-10-23T13:57:41.860Z",
+    "stopped": "2026-10-23T13:57:43.630Z",
+    "storedAtStop": 16700,
+    "startIssued": "2026-10-23T13:58:12.166Z",
+    "started": "2026-10-23T13:58:12.981Z",
+    "firstWriteAfterStart": "2026-10-23T13:58:29.074Z",
+    "resumeSecondsAfterStart": 16.093,
+    "lastWrite": "2026-10-23T13:59:01.796Z",
+    "stored": 60000,
+    "deliveries": 60000
+  },
+  "afterConsumerExit": {
+    "offsets": "not recorded: the check ran a Windows-mangled container path and returned nothing (fixed for R10)",
+    "stream_flights": {
+      "stored": 60000,
+      "byDeliveries": [
+        {
+          "_id": 1,
+          "n": 60000
+        }
+      ]
+    }
+  },
+  "consumerFinal": {
+    "consumed": 59900,
+    "inserted": 59900,
+    "redelivered": 0,
+    "dlq": 0,
+    "batches": 1394
+  },
+  "consumerWarningsAndErrors": [
+    {
+      "time": "2026-10-23T13:57:47.340Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[1] at 209182 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+    },
+    {
+      "time": "2026-10-23T13:57:47.343Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[0] at 203938 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+    },
+    {
+      "time": "2026-10-23T13:57:47.344Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[2] at 143580 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+    }
+  ]
+}
