@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { logger } from '../logger.js';
 import { commitAndConfirm } from './commit.js';
 import { CommitLog, commitVerdict, type CommitMode } from './commit-check.js';
+import { installedKafkaClientVersion } from './client-version.js';
 import { ADMIN_TIMEOUT_MS, createKafka } from './kafka.js';
 
 const MESSAGES = 6_000;
@@ -143,13 +144,14 @@ async function main(): Promise<void> {
   };
   const verdict = commitVerdict(summary);
 
-  const report = { topic: name, ...summary, verdict, commits: log.commits };
+  const clientVersion = installedKafkaClientVersion();
+  const report = { topic: name, clientVersion, ...summary, verdict, commits: log.commits };
   if (values.out !== undefined) {
     // npm runs the script from server/; the path is relative to where it was typed.
     const out = resolve(process.env.INIT_CWD ?? process.cwd(), values.out);
     writeFileSync(out, `${JSON.stringify(report, null, 2)}\n`);
   }
-  logger.info({ ...summary, verdict }, 'stream:commit-check done');
+  logger.info({ clientVersion, ...summary, verdict }, 'stream:commit-check done');
   if (!verdict.ok) process.exitCode = 1;
 }
 
