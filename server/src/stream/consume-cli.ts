@@ -8,6 +8,7 @@ import { hostname } from 'node:os';
 import { env } from '../config/env.js';
 import { closeMongo, connectToMongo, getDb } from '../db/client.js';
 import { logger } from '../logger.js';
+import { logServedLookup } from '../ml/lookup-check.js';
 import { startConsumer } from './consumer.js';
 import { shouldIdleExit } from './idle-exit.js';
 import { consumerGroup, createKafka, topicNames } from './kafka.js';
@@ -40,6 +41,7 @@ async function main(): Promise<void> {
   const instanceId = `${hostname()}-${process.pid}`;
   const { predict, model } = await createPredictor(getDb());
   logger.info({ modelVersion: model.encoders.modelVersion }, 'stream:consume model loaded');
+  await logServedLookup(getDb(), model.encoders.modelVersion, logger);
   try {
     const running = await startConsumer({
       kafka: createKafka(),

@@ -2,6 +2,8 @@ import { MongoClient, type Db } from 'mongodb';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ModelRun } from '@flight-delay/shared';
 import { FEATURE_COLUMNS } from '../../src/features/feature-list.js';
+import { loadLookupFingerprint } from '../../src/features/lookup.js';
+import { checkServedLookup } from '../../src/ml/lookup-check.js';
 import { registerModelRun } from '../../src/ml/register.js';
 
 // Needs a reachable MongoDB (MONGODB_URI from vitest.config.ts); skipped when there is none.
@@ -74,11 +76,26 @@ describe('registerModelRun (MongoDB integration)', () => {
     if (!client) return context.skip();
     await registerModelRun(db, RUN);
     await registerModelRun(db, RUN);
-    const docs = await db.collection('model_runs').find().toArray();
+    const docs = await db
+      .collection('model_runs')
+      .find({ modelVersion: RUN.modelVersion })
+      .toArray();
     expect(docs).toHaveLength(1);
     expect(docs[0]).toMatchObject({ modelVersion: RUN.modelVersion, algorithm: 'lightgbm' });
     expect(docs[0]?.createdAt).toBeInstanceOf(Date);
     expect(docs[0]?.metrics).toMatchObject({ auc: 0.7 });
+  });
+
+  it('pins the delay_lookup fingerprint the run was registered against', async (context) => {
+    if (!client) return context.skip();
+    await registerModelRun(
+      db,
+      { ...RUN, modelVersion: 'pinned' },
+      { lookupFingerprint: 'f'.repeat(64) },
+    );
+    expect(await db.collection('model_runs').findOne({ modelVersion: 'pinned' })).toMatchObject({
+      lookupFingerprint: 'f'.repeat(64),
+    });
   });
 
   it('refuses a run that lists a forbidden feature', async (context) => {
@@ -99,5 +116,37 @@ describe('registerModelRun (MongoDB integration)', () => {
       }),
     ).rejects.toThrow(/feature contract/);
     expect(await db.collection('model_runs').countDocuments({ modelVersion: 'drifted' })).toBe(0);
+  });
+});
+
+describe('checkServedLookup (MongoDB integration)', () => {
+  it('reports match, then mismatch once a served rate changes, and unregistered', async (context) => {
+    if (!client) return context.skip();
+    const lookup = db.collection('delay_lookup');
+    await lookup.deleteMany({});
+    await lookup.insertMany([
+      { _id: 'full/global/' as never, scope: 'full', kind: 'global', key: '', rate: 0.19 },
+      {
+        _id: 'full/route/ORD|LAX' as never,
+        scope: 'full',
+        kind: 'route',
+        key: 'ORD|LAX',
+        rate: 0.23,
+      },
+    ]);
+    const fingerprint = await loadLookupFingerprint(db);
+    await registerModelRun(
+      db,
+      { ...RUN, modelVersion: 'served' },
+      { lookupFingerprint: fingerprint },
+    );
+
+    expect((await checkServedLookup(db, 'served')).verdict).toBe('match');
+    await lookup.updateOne({ key: 'ORD|LAX' }, { $set: { rate: 0.31 } });
+    expect(await checkServedLookup(db, 'served')).toMatchObject({
+      verdict: 'mismatch',
+      pinned: fingerprint,
+    });
+    expect((await checkServedLookup(db, 'never-registered')).verdict).toBe('unregistered');
   });
 });

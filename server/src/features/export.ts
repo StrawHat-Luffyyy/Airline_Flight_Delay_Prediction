@@ -7,7 +7,7 @@ import type { Logger } from 'pino';
 import { collections, type FlightDoc } from '../db/collections.js';
 import { RssMonitor } from '../ingest/rss.js';
 import { EXPORT_COLUMNS, FEATURE_COLUMNS } from './feature-list.js';
-import { LOOKUP_RUNS, loadLookupTable, type LookupRunDoc } from './lookup.js';
+import { LOOKUP_RUNS, loadLookupWithFingerprint, type LookupRunDoc } from './lookup.js';
 import { buildFeatureRow, lookupScopeFor } from './row.js';
 import { fromRepoRoot } from '../paths.js';
 
@@ -52,6 +52,8 @@ export interface ExportRunDoc {
   excludedNoOutcome: number;
   nullScheduledTime: number;
   peakRssMb: number;
+  /** lookupFingerprint of the delay_lookup these rows' rates came from (absent on older runs). */
+  lookupFingerprint?: string;
   error?: string;
 }
 
@@ -130,9 +132,9 @@ export async function exportTraining(
         'The latest build:lookup run did not complete. Run npm run build:lookup first.',
       );
     }
-    const lookups = await loadLookupTable(db);
+    const { table: lookups, fingerprint: lookupFingerprint } = await loadLookupWithFingerprint(db);
     logger.info(
-      { entries: lookups.size, lookupBuildId: lastLookup.buildId },
+      { entries: lookups.size, lookupBuildId: lastLookup.buildId, lookupFingerprint },
       'Loaded delay_lookup',
     );
     await train.writeLine(header);
@@ -183,6 +185,7 @@ export async function exportTraining(
       excludedUnresolvedAirport,
       excludedNoOutcome,
       peakRssMb: monitor.stop(),
+      lookupFingerprint,
     };
     await writeFile(
       join(dir, 'manifest.json'),
@@ -195,6 +198,7 @@ export async function exportTraining(
           excludedUnresolvedAirport,
           excludedNoOutcome,
           nullScheduledTime: run.nullScheduledTime,
+          lookupFingerprint,
         },
         null,
         2,

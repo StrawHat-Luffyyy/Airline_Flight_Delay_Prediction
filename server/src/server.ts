@@ -1,8 +1,9 @@
 import { createApp } from './app.js';
-import { closeMongo, connectToMongo } from './db/client.js';
+import { closeMongo, connectToMongo, getDb } from './db/client.js';
 import { retry } from './db/retry.js';
 import { env } from './config/env.js';
 import { logger } from './logger.js';
+import { logServedLookup } from './ml/lookup-check.js';
 import { DEFAULT_ARTIFACTS_DIR, loadModel, type DelayModel } from './ml/model.js';
 import { createStatusProbe } from './stream/kafka.js';
 
@@ -38,6 +39,7 @@ async function start(): Promise<void> {
       ),
   });
   const model = await loadModelOrNull();
+  if (model) await logServedLookup(getDb(), model.encoders.modelVersion, logger);
   const kafkaProbe = createStatusProbe();
   const app = createApp({ model, kafkaProbe });
   const server = app.listen(env.PORT, env.HOST, () => {
