@@ -1,0 +1,102 @@
+{
+  "run": "R9B",
+  "reruns": "R9",
+  "why": "R8 and R9 never ran their offset check (Git Bash rewrote the container path). Same scenario, rerun with the check inside the container (MSYS_NO_PATHCONV=1).",
+  "code": "commit read-back with up to three reads (commit.ts), commit 9e00fd0",
+  "environment": "isolated: db flight_delay_reliability_test, group reliability-test, topics reliability.raw/.dlq",
+  "sessionTimeoutMs": 10000,
+  "replay": {
+    "events": 60000,
+    "rate": 1000,
+    "sentRaw": 60000,
+    "sentDlq": 0
+  },
+  "brokerDownSeconds": 28,
+  "outage": {
+    "stopIssued": "2026-10-23T14:53:53.720Z",
+    "stopped": "2026-10-23T14:53:55.708Z",
+    "storedAtStop": 16000,
+    "startIssued": "2026-10-23T14:54:24.706Z",
+    "started": "2026-10-23T14:54:25.636Z",
+    "firstWriteAfterStart": "2026-10-23T14:54:41.172Z",
+    "resumeSecondsAfterStart": 15.536,
+    "lastWrite": "2026-10-23T14:55:14.247Z",
+    "stored": 60000,
+    "deliveries": 60041
+  },
+  "afterConsumerExit": {
+    "offsets": {
+      "partitions": [
+        {
+          "partition": 0,
+          "committed": 527616,
+          "end": 527616,
+          "lag": 0
+        },
+        {
+          "partition": 1,
+          "committed": 541128,
+          "end": 541128,
+          "lag": 0
+        },
+        {
+          "partition": 2,
+          "committed": 371256,
+          "end": 371256,
+          "lag": 0
+        }
+      ],
+      "allCommittedEqualEnd": true,
+      "totalLag": 0,
+      "rawOutput": "Consumer group 'reliability-test' has no active members.\n\nGROUP            TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID\nreliability-test reliability.raw 0          527616          527616          0               -               -               -\nreliability-test reliability.raw 1          541128          541128          0               -               -               -\nreliability-test reliability.raw 2          371256          371256          0               -               -               -"
+    },
+    "stream_flights": {
+      "stored": 60000,
+      "distinctIds": 60000,
+      "duplicateKeys": 0,
+      "byDeliveries": [
+        {
+          "_id": 1,
+          "n": 59959
+        },
+        {
+          "_id": 2,
+          "n": 41
+        }
+      ]
+    }
+  },
+  "consumerFinal": {
+    "consumed": 59941,
+    "inserted": 59900,
+    "redelivered": 41,
+    "dlq": 0,
+    "batches": 1253
+  },
+  "consumerWarningsAndErrors": [
+    {
+      "time": "2026-10-23T14:53:59.229Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[1] at 524611 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+    },
+    {
+      "time": "2026-10-23T14:53:59.243Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[2] at 359913 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+    },
+    {
+      "time": "2026-10-23T14:53:59.247Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[0] at 511476 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+    },
+    {
+      "time": "2026-10-23T14:54:41.211Z",
+      "level": "warn",
+      "msg": "already-stored flights delivered again: their offsets were not committed earlier (crash, rebalance or a commit lost while the broker was down); the upserts absorb them",
+      "redelivered": 41
+    }
+  ]
+}

@@ -1295,9 +1295,14 @@ Making `docker compose` asynchronous in the check exposed a misclassification: c
 **Outages on the final code** (R8 to R10, isolated, 28 s broker outage):
 - 60,000 of 60,000 stored each time, with no duplicate documents.
 - Delivered twice: 0, 36 and 0, all absorbed by the upsert.
-- Commit failures logged during each outage.
+- Commit failures logged during the outage in R8 and R9; R10 had no commit in flight when the broker stopped.
 - Resume 14.7 to 16.1 s after the broker started.
-- In R10, committed offsets equal end offsets on all partitions. The offset check of R8 and R9 printed nothing (a Git Bash path rewrite) and was fixed for R10, not rerun for R8 and R9.
+- In R10, committed offsets equal end offsets on all partitions. The offset check of R8 and R9 printed nothing (a Git Bash path rewrite).
+- **Reruns R8b and R9b** (same scenario, check fixed):
+  - 3 commit failures detected each;
+  - committed = end offsets on all 3 partitions, lag 0;
+  - 60,000 sent = stored = distinct ids, with 0 flights stored twice under different ids;
+  - 0 and 41 delivered twice, absorbed.
 
 **Throughput, five drain runs each:**
 - Confirmed: median 2,064/s. Baseline: median 2,011/s.

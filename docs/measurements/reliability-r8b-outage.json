@@ -1,0 +1,92 @@
+{
+  "run": "R8B",
+  "reruns": "R8",
+  "why": "R8 and R9 never ran their offset check (Git Bash rewrote the container path). Same scenario, rerun with the check inside the container (MSYS_NO_PATHCONV=1).",
+  "code": "commit read-back with up to three reads (commit.ts), commit 9e00fd0",
+  "environment": "isolated: db flight_delay_reliability_test, group reliability-test, topics reliability.raw/.dlq",
+  "sessionTimeoutMs": 10000,
+  "replay": {
+    "events": 60000,
+    "rate": 1000,
+    "sentRaw": 60000,
+    "sentDlq": 0
+  },
+  "brokerDownSeconds": 28,
+  "outage": {
+    "stopIssued": "2026-10-23T14:48:56.517Z",
+    "stopped": "2026-10-23T14:48:58.572Z",
+    "storedAtStop": 16700,
+    "startIssued": "2026-10-23T14:49:27.122Z",
+    "started": "2026-10-23T14:49:28.141Z",
+    "firstWriteAfterStart": "2026-10-23T14:49:42.773Z",
+    "resumeSecondsAfterStart": 14.632,
+    "lastWrite": "2026-10-23T14:50:15.592Z",
+    "stored": 60000,
+    "deliveries": 60000
+  },
+  "afterConsumerExit": {
+    "offsets": {
+      "partitions": [
+        {
+          "partition": 0,
+          "committed": 505632,
+          "end": 505632,
+          "lag": 0
+        },
+        {
+          "partition": 1,
+          "committed": 518581,
+          "end": 518581,
+          "lag": 0
+        },
+        {
+          "partition": 2,
+          "committed": 355787,
+          "end": 355787,
+          "lag": 0
+        }
+      ],
+      "allCommittedEqualEnd": true,
+      "totalLag": 0,
+      "rawOutput": "Consumer group 'reliability-test' has no active members.\n\nGROUP            TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID\nreliability-test reliability.raw 0          505632          505632          0               -               -               -\nreliability-test reliability.raw 1          518581          518581          0               -               -               -\nreliability-test reliability.raw 2          355787          355787          0               -               -               -"
+    },
+    "stream_flights": {
+      "stored": 60000,
+      "distinctIds": 60000,
+      "duplicateKeys": 0,
+      "byDeliveries": [
+        {
+          "_id": 1,
+          "n": 60000
+        }
+      ]
+    }
+  },
+  "consumerFinal": {
+    "consumed": 59900,
+    "inserted": 59900,
+    "redelivered": 0,
+    "dlq": 0,
+    "batches": 1270
+  },
+  "consumerWarningsAndErrors": [
+    {
+      "time": "2026-10-23T14:49:02.150Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[0] at 489730 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+    },
+    {
+      "time": "2026-10-23T14:49:02.163Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[1] at 502293 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+    },
+    {
+      "time": "2026-10-23T14:49:02.165Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[2] at 344677 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+    }
+  ]
+}
