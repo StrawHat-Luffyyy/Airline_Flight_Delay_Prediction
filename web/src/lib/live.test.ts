@@ -8,6 +8,7 @@ import {
   plural,
   readable,
   spanOf,
+  throughputNote,
 } from './live';
 
 const base = {
@@ -112,6 +113,31 @@ describe('metricRows', () => {
     expect(row(emptyRows, 'recall').window?.value).toBe('—');
     expect(row(emptyRows, 'rocAuc').window?.value).toBe('—');
     expect(row(emptyRows, 'precision').totals).toBeNull();
+  });
+});
+
+describe('throughputNote', () => {
+  it('says idle when nothing is arriving and nothing is waiting', () => {
+    expect(throughputNote({ fresh: true, throughput: 0, lag: 0 })).toBe(
+      'idle: no events arriving, consumer caught up',
+    );
+  });
+
+  it('says catching up while messages are waiting, whatever the rate', () => {
+    expect(throughputNote({ fresh: true, throughput: 2400, lag: 16478 })).toBe('catching up');
+    expect(throughputNote({ fresh: true, throughput: 0, lag: 1 })).toBe('catching up');
+  });
+
+  it('says nothing while events flow with no backlog', () => {
+    expect(throughputNote({ fresh: true, throughput: 1000, lag: 0 })).toBeNull();
+  });
+
+  it('says nothing when the lag is unknown or the consumer is not running', () => {
+    expect(throughputNote({ fresh: true, throughput: 0, lag: null })).toBeNull();
+    expect(throughputNote({ fresh: true, throughput: null, lag: 0 })).toBeNull();
+    // A stopped consumer is not catching up, and its last rate is not "idle".
+    expect(throughputNote({ fresh: false, throughput: 0, lag: 500 })).toBeNull();
+    expect(throughputNote({ fresh: false, throughput: 0, lag: 0 })).toBeNull();
   });
 });
 

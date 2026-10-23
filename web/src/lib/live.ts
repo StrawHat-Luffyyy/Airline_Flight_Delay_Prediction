@@ -133,6 +133,26 @@ export interface GroupPair {
   totals?: StreamTotalsGroup;
 }
 
+/**
+ * A short reading of the consumer's rate against its backlog, for the throughput tile: a rate of
+ * 0 is idle only when nothing is waiting. Null when there is nothing to add: events flowing with
+ * no backlog, lag unknown, or no live consumer (a stopped one is neither idle nor catching up).
+ */
+export function throughputNote({
+  fresh,
+  throughput,
+  lag,
+}: {
+  fresh: boolean;
+  throughput: number | null;
+  lag: number | null;
+}): string | null {
+  if (!fresh || lag === null || throughput === null) return null;
+  if (lag > 0) return 'catching up';
+  if (throughput === 0) return 'idle: no events arriving, consumer caught up';
+  return null;
+}
+
 /** Window and totals groups matched by (modelVersion, threshold), in first-seen order. */
 export function pairGroups(
   windowGroups: readonly StreamWindowGroup[],
