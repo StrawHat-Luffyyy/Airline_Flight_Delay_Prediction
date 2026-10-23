@@ -1,4 +1,9 @@
-import type { Evaluation, ModelMetricsResponse } from '@flight-delay/shared';
+import type {
+  Evaluation,
+  ModelMetricsResponse,
+  ModelRun,
+  OperatingPoint,
+} from '@flight-delay/shared';
 import type { ReactNode } from 'react';
 import type { ApiError } from '../api/client';
 import { useFeatureImportance, useModelMetrics } from '../api/hooks';
@@ -7,6 +12,7 @@ import { QueryState } from '../components/QueryState';
 import { Note, PageHeader, Section } from '../components/ui';
 import { formatDate, formatInteger, formatPercent, monthName } from '../lib/format';
 import { ALGORITHM_LABELS, featureLabel } from '../lib/labels';
+import { flaggedShare, liftOverBaseRate } from '../lib/selection';
 
 function modelHint(error: ApiError): string | undefined {
   if (error.code === 'MODEL_NOT_REGISTERED') {
@@ -75,7 +81,13 @@ function comparisonColumns(chosen: string): BoardColumn<ModelRow>[] {
       align: 'right',
       cell: (row) => <span className="font-medium text-ink">{fixed3(row.test.auc)}</span>,
     },
-    { id: 'pr', header: 'PR-AUC', align: 'right', cell: (row) => fixed3(row.test.prAuc) },
+    {
+      id: 'pr',
+      header: 'PR-AUC',
+      align: 'right',
+      className: HIDE_ON_MOBILE,
+      cell: (row) => fixed3(row.test.prAuc),
+    },
     {
       id: 'precision',
       header: 'Precision',
@@ -91,7 +103,123 @@ function comparisonColumns(chosen: string): BoardColumn<ModelRow>[] {
       cell: (row) => fixed3(row.test.recall),
     },
     { id: 'f1', header: 'F1', align: 'right', cell: (row) => fixed3(row.test.f1) },
+    {
+      id: 'flagged',
+      header: 'Share flagged',
+      align: 'right',
+      className: HIDE_ON_MOBILE,
+      cell: (row) => formatPercent(flaggedShare(row.test.confusion)),
+    },
+    {
+      id: 'lift',
+      header: 'Lift',
+      align: 'right',
+      cell: (row) => formatLift(liftOverBaseRate(row.test.confusion)),
+    },
   ];
+}
+
+const formatLift = (value: number | null) => (value === null ? '—' : `${value.toFixed(2)}×`);
+
+/** What a flag is worth at the deployed threshold, in words, from the test confusion. */
+function ThresholdVerdict({ run }: { run: ModelMetricsResponse }) {
+  const { confusion } = run.metrics;
+  const share = flaggedShare(confusion);
+  const lift = liftOverBaseRate(confusion);
+  const baseRate = run.classBalance.testDelayRate;
+  const n = (text: string) => <span className="num text-ink">{text}</span>;
+  return (
+    <div className="max-w-[65ch] space-y-3 text-[14px] leading-relaxed text-ink-2">
+      <p>
+        At the deployed threshold ({n(run.threshold.value.toFixed(3))}) the model flags{' '}
+        {n(formatPercent(share))} of test flights as delayed, while {n(formatPercent(baseRate))}{' '}
+        actually were. Of the flagged flights {n(formatPercent(run.metrics.precision))} were
+        delayed: a lift of only {n(formatLift(lift))} over the base rate. The threshold maximises
+        F1, so it buys recall ({n(formatPercent(run.metrics.recall))} of delays caught) by flagging
+        widely, and a single flag says little more than the base rate does.
+      </p>
+    </div>
+  );
+}
+
+interface PointRow extends OperatingPoint {
+  deployed: boolean;
+}
+
+const pointColumns: BoardColumn<PointRow>[] = [
+  {
+    id: 'rule',
+    header: 'Flag',
+    rowHeader: true,
+    cell: (row) => (
+      <span className="font-sans">
+        {row.deployed ? 'Deployed threshold' : `Top ${row.rule.replace('top ', '')}`}
+      </span>
+    ),
+  },
+  {
+    id: 'share',
+    header: 'Share flagged',
+    align: 'right',
+    cell: (row) => formatPercent(row.flaggedShare),
+  },
+  {
+    id: 'minScore',
+    header: 'Lowest score',
+    align: 'right',
+    className: HIDE_ON_MOBILE,
+    cell: (row) => fixed3(row.minScore),
+  },
+  {
+    id: 'precision',
+    header: 'Precision',
+    align: 'right',
+    cell: (row) => fixed3(row.precision),
+  },
+  { id: 'recall', header: 'Recall', align: 'right', cell: (row) => fixed3(row.recall) },
+  {
+    id: 'lift',
+    header: 'Lift',
+    align: 'right',
+    cell: (row) => <span className="font-medium text-ink">{formatLift(row.lift)}</span>,
+  },
+];
+
+function OperatingPoints({ points }: { points: ModelRun['operatingPoints'] }) {
+  if (points === undefined) {
+    return (
+      <Note>
+        Not computed for this model yet. Run ml/train.py --operating-points, then npm run
+        ml:register.
+      </Note>
+    );
+  }
+  const rows: PointRow[] = [
+    ...points.points.map((point) => ({ ...point, deployed: false })),
+    { ...points.deployed, deployed: true },
+  ].sort((a, b) => a.flaggedShare - b.flaggedShare);
+  return (
+    <>
+      <Board
+        rows={rows}
+        getKey={(row) => row.rule}
+        columns={pointColumns}
+        caption="Precision, recall and lift on September validation if the model flagged its top-scored flights"
+        showRank={false}
+        selectedKey={points.deployed.rule}
+        animate={false}
+      />
+      <div className="mt-3">
+        <Note>
+          Computed on September validation only ({formatInteger(points.rows)} flights,{' '}
+          {formatPercent(points.baseRate)} delayed), with the scores of the January to August model
+          the threshold was chosen on. No test or December data. Like every validation figure it is
+          slightly optimistic (see Training setup). Flagging fewer flights raises precision and lift
+          but catches fewer delays.
+        </Note>
+      </div>
+    </>
+  );
 }
 
 function ConfusionMatrix({ confusion }: { confusion: Evaluation['confusion'] }) {
@@ -266,7 +394,7 @@ function ModelOverview() {
         <div className="space-y-10">
           <Section
             title="Three models, one held-out test set"
-            note={`Precision, recall, F1 and PR-AUC are on the test months (${run.testRange.from} to ${run.testRange.to}) at each model's own threshold. The baseline predicts the majority class, so it never flags a delay.`}
+            note={`Precision, recall, F1, PR-AUC, share flagged and lift are on the test months (${run.testRange.from} to ${run.testRange.to}) at each model's own threshold. Lift is precision divided by the share actually delayed. The baseline predicts the majority class, so it never flags a delay.`}
           >
             <Board
               rows={modelRows(run)}
@@ -293,6 +421,17 @@ function ModelOverview() {
               <Facts run={run} />
             </Section>
           </div>
+
+          <Section title="What a flag is worth">
+            <ThresholdVerdict run={run} />
+          </Section>
+
+          <Section
+            title="Other cut-offs, on September validation"
+            note="The same scores, flagging only the highest-scored flights."
+          >
+            <OperatingPoints points={run.operatingPoints} />
+          </Section>
 
           <Section title="Why the ceiling">
             <Ceiling run={run} />

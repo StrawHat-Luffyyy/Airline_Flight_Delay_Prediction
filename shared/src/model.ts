@@ -22,6 +22,35 @@ const ModelResultSchema = z.object({
   testFitModel: EvaluationSchema.optional(),
 });
 
+const OperatingPointSchema = z.object({
+  /** "top 10%" ... or "deployed threshold". */
+  rule: z.string(),
+  /** Lowest score flagged under this rule. */
+  minScore: z.number(),
+  flagged: z.number(),
+  flaggedShare: z.number(),
+  precision: z.number(),
+  recall: z.number(),
+  /** precision / baseRate. */
+  lift: z.number(),
+});
+export type OperatingPoint = z.infer<typeof OperatingPointSchema>;
+
+/**
+ * Precision, recall and lift if the model flagged its top N% of flights, on September validation
+ * only. Written by `ml/train.py --operating-points` to ml/artifacts/operating-points.json.
+ */
+export const OperatingPointsSchema = z.object({
+  modelVersion: z.string().min(1),
+  computedOn: z.string(),
+  scores: z.string(),
+  rows: z.number(),
+  baseRate: z.number(),
+  deployed: OperatingPointSchema,
+  points: z.array(OperatingPointSchema).min(1),
+});
+export type OperatingPoints = z.infer<typeof OperatingPointsSchema>;
+
 /**
  * One training run, as written by ml/train.py to ml/artifacts/metrics.json and stored in
  * model_runs by `npm run ml:register` (PROJECT_OVERVIEW §6.1, §7).
@@ -52,6 +81,8 @@ export const ModelRunSchema = z.object({
   }),
   durationSeconds: z.number(),
   versions: z.record(z.string(), z.string()),
+  /** Added by `npm run ml:register` from operating-points.json when present for this run. */
+  operatingPoints: OperatingPointsSchema.optional(),
 });
 export type ModelRun = z.infer<typeof ModelRunSchema>;
 

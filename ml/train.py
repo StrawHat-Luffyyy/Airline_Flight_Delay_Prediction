@@ -289,6 +289,8 @@ def main() -> None:
     test_metrics = results[chosen]["test"]
 
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
+    # Computed for the previous run; `--operating-points` recomputes them for this one.
+    (ARTIFACTS / "operating-points.json").unlink(missing_ok=True)
     (ARTIFACTS / "model.onnx").write_bytes(onnx_bytes)
     encoders_doc = {
         "modelVersion": model_version,
@@ -348,5 +350,88 @@ def main() -> None:
     )
 
 
+OPERATING_SHARES = (0.10, 0.20, 0.30, 0.50)
+
+
+def operating_point(y: np.ndarray, flagged: np.ndarray, base_rate: float) -> dict:
+    tp = int(np.sum(flagged & (y == 1)))
+    n_flagged = int(flagged.sum())
+    precision = tp / n_flagged if n_flagged else 0.0
+    return {
+        "flagged": n_flagged,
+        "flaggedShare": n_flagged / len(y),
+        "precision": precision,
+        "recall": tp / int(y.sum()),
+        "lift": precision / base_rate,
+    }
+
+
+def operating_points() -> None:
+    """
+    `python ml/train.py --operating-points`: what the SERVED run would gain at other cut-offs, on
+    September validation only (no test data). Writes ml/artifacts/operating-points.json and changes
+    no model file or threshold.
+
+    No validation probabilities were saved, and the served model was refit on Jan-Sep, so its own
+    September scores are in-sample. The honest scores are those of the Jan-Aug model the threshold
+    was chosen on: refit here with the run's parameters, seed and best iteration (deterministic),
+    and accepted only if its confusion at the deployed threshold equals the recorded one exactly.
+    """
+    started = time.time()
+    run = json.loads((ARTIFACTS / "metrics.json").read_text())
+    if run["algorithm"] != "lightgbm":
+        sys.exit("operating points are implemented for a lightgbm run only")
+    train = load(EXPORT_DIR / "train.csv", keep_id=False)
+    encoders = build_encoders(train)
+    imputation = {"scheduledTime": float(train["scheduledTime"].median())}
+    x_train, y_train = encode(train, encoders, imputation), train["label"].to_numpy()
+    fit_mask = (train["month"] != VALIDATION_MONTH).to_numpy()
+    x_fit, y_fit = x_train[fit_mask], y_train[fit_mask]
+    x_val, y_val = x_train[~fit_mask], y_train[~fit_mask]
+
+    best_iteration = run["models"]["lightgbm"]["bestIteration"]
+    log(f"refit Jan-Aug lightgbm with {best_iteration} trees to reproduce September scores")
+    p_val = lgbm(best_iteration).fit(x_fit, y_fit).predict_proba(x_val)[:, 1]
+    threshold = run["threshold"]["value"]
+    recorded = run["models"]["lightgbm"]["validation"]
+    check = evaluate(y_val, p_val, threshold)
+    reproduced = check["confusion"]
+    # The confusion pins the scores at one threshold; AUC and PR-AUC pin their whole ranking.
+    if (
+        reproduced != recorded["confusion"]
+        or abs(check["auc"] - recorded["auc"]) > 1e-9
+        or abs(check["prAuc"] - recorded["prAuc"]) > 1e-9
+    ):
+        sys.exit(f"September scores not reproduced: {check} != recorded {recorded}")
+
+    base_rate = float(y_val.mean())
+    order = np.argsort(-p_val, kind="stable")
+    points = []
+    for share in OPERATING_SHARES:
+        k = int(round(share * len(y_val)))
+        flagged = np.zeros(len(y_val), dtype=bool)
+        flagged[order[:k]] = True
+        points.append({"rule": f"top {round(share * 100)}%", "minScore": float(p_val[order[k - 1]]), **operating_point(y_val, flagged, base_rate)})
+    deployed = {"rule": "deployed threshold", "minScore": threshold, **operating_point(y_val, p_val >= threshold, base_rate)}
+
+    out = {
+        "modelVersion": run["modelVersion"],
+        "computedOn": "validation (September)",
+        "scores": (
+            "Jan-Aug LightGBM the threshold was chosen on (refit, seed and best iteration of the run). "
+            "Slightly optimistic, as all validation figures: its training rows carry out-of-fold rates "
+            "whose folds include September labels"
+        ),
+        "reproduced": {"confusion": reproduced, "auc": check["auc"], "prAuc": check["prAuc"]},
+        "rows": int(len(y_val)),
+        "baseRate": base_rate,
+        "deployed": deployed,
+        "points": points,
+        "durationSeconds": round(time.time() - started, 1),
+    }
+    (ARTIFACTS / "operating-points.json").write_text(json.dumps(out, indent=2) + "\n")
+    log(f"operating points written in {out['durationSeconds']} s (September confusion, AUC and PR-AUC reproduced)")
+
+
 if __name__ == "__main__":
-    main()
+    operating_points() if "--operating-points" in sys.argv[1:] else main()
