@@ -14,6 +14,7 @@ import {
   plural,
   readable,
   spanOf,
+  throughputNote,
   type MetricCell,
   type MetricRow,
 } from '../lib/live';
@@ -138,7 +139,7 @@ function PipelineRow({
         last heartbeat <HeartbeatAge status={status} updatedAt={updatedAt} /> · {consumer.status}
       </>
     );
-  const items: { label: string; value: string; sub: ReactNode }[] = [
+  const items: { label: string; value: string; note?: string | null; sub: ReactNode }[] = [
     {
       label: 'Flights stored',
       value: formatInteger(stored?.flights),
@@ -149,6 +150,11 @@ function PipelineRow({
     {
       label: 'Consumer throughput',
       value: consumer.throughput === null ? '—' : `${formatInteger(consumer.throughput)}/s`,
+      note: throughputNote({
+        fresh: consumer.fresh,
+        throughput: consumer.throughput,
+        lag: kafka.lag?.total ?? null,
+      }),
       sub: heartbeat,
     },
     {
@@ -182,6 +188,7 @@ function PipelineRow({
           <dd className="display-num mt-1.5 text-[clamp(1.75rem,3vw,2.5rem)] leading-[1.1]">
             <Lit value={item.value} />
           </dd>
+          {item.note ? <dd className="mt-1 text-[12px] text-ink-2">{item.note}</dd> : null}
           <dd className="num mt-1 break-words text-[11px] text-ink-3">{item.sub}</dd>
         </div>
       ))}
