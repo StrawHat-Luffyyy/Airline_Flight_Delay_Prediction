@@ -189,11 +189,14 @@ Each was committed separately; details and evidence are in `docs/STREAMING.md` a
 
 ### Kafka reliability fixes (2026-10-22 to 23)
 
-Four broker-restart runs (R1 to R4) in an isolated database, consumer group and topics; the full-December state was left as it was. Details and evidence: `docs/STREAMING.md`, "Reliability fixes after acceptance".
+Six broker-restart runs (R1 to R6) in an isolated database, consumer group and topics; the full-December state was left as it was. Details and evidence: `docs/STREAMING.md`, "Reliability fixes after acceptance".
 - **Stall detection:** `state` is `degraded` when the consumer is alive but has stored no batch for more than 15 s while messages have waited more than 15 s (verified in R4).
 - **Consistent stored counts:** refused and unscored come from one aggregation; two racing counts had made `unscored` negative and failed the response schema (R1).
 - **Faster resume:** `KAFKA_SESSION_TIMEOUT_MS`, default 10 s: resumed 17.2 s after the broker started, against 36.9 s and 39.1 s with 30 s.
 - **`--idle-exit`** counts from the first batch.
+- **Redelivery warning:** the consumer logs how many already-stored flights arrived again (R5: 40, R6: 26 + 74, each exactly the flights stored twice).
+- **Probe in an API without a console:** the probe is forked detached; reproduced the 0xC0000142 start-up failure and verified the fix through two broker restarts.
+- **More runs at 10 s:** resumed 17.2, 19.1 and 19.8 s after the broker started (R3, R5, R6).
 
 ## 2. Decisions that later steps depend on
 
@@ -325,7 +328,7 @@ MSYS_NO_PATHCONV=1 docker compose exec kafka /opt/kafka/bin/kafka-consumer-group
 
 ### Found in the follow-ups
 - **Fixed:** "live" while stalled, the slow resume after a broker restart, and `--idle-exit` counting from the start (see Kafka reliability fixes above).
-- **Failed commits are silent:** during a broker outage, offset commits fail without a log line; the redelivery that follows is correct but only visible afterwards (`deliveries`, `redelivered`).
+- **Lost commits now warn:** the consumer logs redelivered flights as they arrive. Why the client lost 16,000 commits in R1 without an error is still not traced.
 - **Reset after a hard kill:** `stream:reset` refuses until the killed member's session expires (about 45 s). That is correct, but it means a retry loop.
 - **Host load matters:** timings varied widely across the day (`build:stats` 127 to 371 s; one consumer 2,442/s in the morning, 1,736/s in the evening).
 
