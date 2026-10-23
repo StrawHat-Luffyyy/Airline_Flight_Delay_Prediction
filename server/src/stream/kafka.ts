@@ -64,8 +64,21 @@ export function createStatusProbe(): KafkaProbe {
   const extension = import.meta.url.endsWith('.ts') ? '.ts' : '.js';
   const worker = new URL(`./status/probe-worker${extension}`, import.meta.url);
   return createIsolatedProbe({
-    // execArgv carries the tsx loader into the child; stdout/stderr are shared with the API.
-    spawn: () => fork(worker, [], { execArgv: process.execArgv }),
+    // execArgv carries the tsx loader into the child. Detached: without its own console the child
+    // does not need the API's, which can be gone (its terminal closed). A non-detached child of
+    // such a process dies at start-up with 0xC0000142; reproduced on Windows by killing the
+    // parent's conhost, and fixed by this flag. It still exits when the API does: its IPC channel
+    // closes. Its output is piped back into the API's.
+    spawn: () => {
+      const child = fork(worker, [], {
+        execArgv: process.execArgv,
+        detached: true,
+        stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+      });
+      child.stdout?.pipe(process.stdout);
+      child.stderr?.pipe(process.stderr);
+      return child;
+    },
     timeoutMs: KAFKA_TIMEOUT_MS + PROBE_PROCESS_SLACK_MS,
     logger,
   });

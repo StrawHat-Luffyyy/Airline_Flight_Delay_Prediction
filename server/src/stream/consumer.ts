@@ -9,6 +9,7 @@ import type { DlqMessage } from '@flight-delay/shared';
 import type { Db } from 'mongodb';
 import type { Logger } from 'pino';
 import { handleBatch } from './consume.js';
+import { createRedeliveryWarning } from './redelivery-warning.js';
 import { scoreEvents, type Predictor } from './score.js';
 import { HEARTBEAT_INTERVAL_MS } from './status/state.js';
 import {
@@ -23,6 +24,8 @@ import {
 /** Events per eachBatch call (the client's default is 32). */
 const MAX_BATCH = 500;
 const MAX_BACKOFF_MS = 30_000;
+/** At most one redelivery warning per interval (redelivery-warning.ts). */
+const REDELIVERY_WARN_INTERVAL_MS = 10_000;
 
 /** Thrown inside a batch whose partition was reassigned before its commit. */
 class StaleBatch extends Error {}
@@ -70,6 +73,15 @@ export async function startConsumer(options: ConsumerOptions): Promise<RunningCo
   };
   const startedAt = new Date();
   let lastBatchAt = Date.now();
+  const reportRedelivery = createRedeliveryWarning({
+    intervalMs: REDELIVERY_WARN_INTERVAL_MS,
+    now: Date.now,
+    warn: (summary) =>
+      logger.warn(
+        summary,
+        'already-stored flights delivered again: their offsets were not committed earlier (crash, rebalance or a commit lost while the broker was down); the upserts absorb them',
+      ),
+  });
 
   // Malformed messages go to the DLQ through an idempotent producer, awaited before the commit.
   const dlqProducer = kafka.producer({
@@ -210,6 +222,7 @@ export async function startConsumer(options: ConsumerOptions): Promise<RunningCo
         counters.dlq += result.dlq;
         counters.batches += 1;
         lastBatchAt = Date.now();
+        reportRedelivery(result.redelivered);
       },
     });
   } catch (error) {
