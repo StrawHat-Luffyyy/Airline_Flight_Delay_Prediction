@@ -1,0 +1,42 @@
+# Caddy: TLS, the built dashboard, and /api proxied to the api service.
+# SITE_ADDRESS  host (and port) the site answers on, e.g. `localhost:8443` locally or a real domain.
+# TLS_ISSUER    `internal` (Caddy's local CA, for a local stack) or an email address, which makes
+#               Caddy obtain a public certificate via ACME for a real domain.
+{
+	admin off
+}
+
+{$SITE_ADDRESS:localhost} {
+	tls {$TLS_ISSUER:internal}
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		# Scripts only from this origin. Styles allow inline attributes (React and Motion set
+		# style="...") and the Google Fonts stylesheet; fonts come from fonts.gstatic.com.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		-Server
+	}
+
+	# The API. Caddy sets X-Forwarded-For to the client address it sees (an incoming header from
+	# an untrusted client is not passed on), and the API trusts exactly one hop (TRUST_PROXY_HOPS=1),
+	# so the /predict rate limit is per client.
+	handle /api/* {
+		reverse_proxy api:3001
+	}
+
+	# The dashboard: hashed assets cached for a year, everything else falls back to index.html
+	# (client-side routes such as /predict).
+	handle {
+		root * /srv
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		try_files {path} /index.html
+		file_server
+	}
+}

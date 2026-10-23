@@ -1,0 +1,211 @@
+# Production stack. Build and start from the repository root:
+#   docker compose -f deploy/docker-compose.prod.yml up -d --build
+# Prerequisite: the secret files in deploy/secrets/ (see deploy/README.md).
+#
+# Only Caddy is published, and on 127.0.0.1 by default (PUBLISH_HOST). MongoDB and Kafka live on
+# the internal `backend` network: no published port, no route out. The API is on both networks.
+name: flight-delay-prod
+
+x-app-env: &app-env
+  NODE_ENV: production
+  MONGODB_URI_FILE: /run/secrets/mongodb_uri
+  MONGODB_DB: flight_delay
+  PORT: '3001'
+  KAFKA_BROKERS: kafka:9092
+
+x-hardening: &hardening
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  mongo:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongo_root_password
+      MONGO_APP_DB: flight_delay
+      MONGO_APP_USER: flight_app
+    secrets:
+      - mongo_root_password
+      - mongo_app_password
+    volumes:
+      - mongo_data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - backend
+    healthcheck:
+      # ping needs no authentication.
+      test: ['CMD', 'mongosh', '--quiet', '--eval', 'db.adminCommand("ping").ok']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  kafka:
+    image: apache/kafka:4.3.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - backend
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          '/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1',
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  # Creates flights.raw and flights.dlq if missing (idempotent), then exits. Without the topics the
+  # status probe reports the broker as unreachable.
+  kafka-init:
+    build: &api-build
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: api
+    image: flight-delay-api:local
+    command: ['node', '--enable-source-maps', 'server/dist/kafka-init.js']
+    environment: *app-env
+    # The image's health check probes the API's HTTP port; this one-shot job has none.
+    healthcheck:
+      disable: true
+    secrets:
+      - mongodb_uri
+    networks:
+      - backend
+    depends_on:
+      kafka:
+        condition: service_healthy
+    <<: *hardening
+    restart: 'no'
+
+  api:
+    image: flight-delay-api:local
+    build: *api-build
+    environment:
+      <<: *app-env
+      HOST: 0.0.0.0
+      TRUST_PROXY_HOPS: '1'
+      CORS_ORIGIN: ${PUBLIC_ORIGIN:-https://localhost:8443}
+      PREDICT_RATE_LIMIT_PER_MIN: '30'
+    secrets:
+      - mongodb_uri
+    networks:
+      - backend
+      - frontend
+    depends_on:
+      mongo:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    <<: *hardening
+    restart: unless-stopped
+
+  # The Kafka speed layer's consumer: stores and scores replayed flights.
+  consumer:
+    image: flight-delay-api:local
+    build: *api-build
+    command: ['node', '--enable-source-maps', 'server/dist/consume.js']
+    environment: *app-env
+    # No HTTP port: its liveness is the heartbeat /api/stream/status reports, and the restart
+    # policy brings it back if it exits.
+    healthcheck:
+      disable: true
+    secrets:
+      - mongodb_uri
+    networks:
+      - backend
+    depends_on:
+      mongo:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    <<: *hardening
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: web
+    image: flight-delay-web:local
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost:8443}
+      TLS_ISSUER: ${TLS_ISSUER:-internal}
+    ports:
+      - '${PUBLISH_HOST:-127.0.0.1}:${HTTPS_PORT:-8443}:8443'
+      - '${PUBLISH_HOST:-127.0.0.1}:${HTTP_PORT:-8080}:80'
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - frontend
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Operations only, never started by `up` (profile `tools`): the build stage with the full source,
+  # so any npm script can run against the stack, e.g.
+  #   docker compose -f deploy/docker-compose.prod.yml run --rm tools stream:replay -- --month 12
+  # The raw CSVs are mounted read-only for ingest and replay. It connects as the app user.
+  tools:
+    profiles: ['tools']
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: build
+    image: flight-delay-tools:local
+    entrypoint: ['npm', 'run']
+    user: node
+    environment: *app-env
+    secrets:
+      - mongodb_uri
+    volumes:
+      - ../data/raw:/app/data/raw:ro
+    networks:
+      - backend
+    restart: 'no'
+
+secrets:
+  mongo_root_password:
+    file: ./secrets/mongo_root_password
+  mongo_app_password:
+    file: ./secrets/mongo_app_password
+  mongodb_uri:
+    file: ./secrets/mongodb_uri
+
+networks:
+  backend:
+    internal: true
+  frontend: {}
+
+volumes:
+  mongo_data:
+  kafka_data:
+  caddy_data:
+  caddy_config:

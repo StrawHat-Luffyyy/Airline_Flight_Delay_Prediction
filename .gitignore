@@ -22,3 +22,6 @@ __pycache__/
 # Impeccable review captures (duplicates of docs/screenshots)
 web/.impeccable/review/
 web/.impeccable/questions/
+
+# Production deployment secrets (deploy/make-secrets.sh)
+deploy/secrets/

@@ -1406,3 +1406,43 @@ These are the fixes for the confirmed P0 and P1 findings of the production audit
 
 **Formatting.** The seven unformatted `web/src` files were formatted, and `format:check` now covers `web/src` (`docs/PRETTIER_BASELINE.md`).
 
+## Production deployment (2026-10-24)
+
+The stack is Docker Compose + Caddy, in `deploy/`, built and tested locally only. It is not deployed publicly and not pushed. The runbook is `deploy/README.md`; the test record and remaining risks are in `docs/PRODUCTION_READINESS.md`.
+
+**Images.**
+- **One multi-stage `deploy/Dockerfile`** from the repository root. The build stage installs everything and builds the dashboard and four esbuild bundles: the API, the probe worker, the consumer and `kafka-init`. The consumer and `kafka-init` are new bundle entries.
+- **`api` image:** Node 22 bookworm-slim, production dependencies only, root-owned files, running as `node`.
+- **Dependency install:** `npm ci --omit=dev --omit=optional` filtered to the server workspace. Packages npm itself reports as extraneous are then removed; they come from the web workspace's vite toolchain.
+- **`--omit=peer` was rejected:** the existing lockfile flags `zod`, a direct dependency, as `peer: true`, so that flag dropped it. The lockfile has 18 such flags, all of them older than these changes.
+- **ONNX pruning:** `onnxruntime-node` ships every platform plus the CUDA and TensorRT providers (about 550 MB). The model runs on the CPU provider, so only this architecture's CPU libraries are kept. In the pruned tree the model gave Python's probability (0.148154) on the first parity row.
+- **Size:** the `api` image went from 1.44 GB to 477 MB.
+- **`web` image:** Caddy 2.10 with `web/dist`.
+- **`tools`:** the build stage itself, opt-in behind a compose profile, for batch and stream jobs.
+
+**Secrets.**
+- **`MONGODB_URI_FILE`** (new in `parseEnv`, tested) reads the connection string from a Docker secret, so no credential is in any container environment. Errors name the variable, never the value.
+- **`deploy/make-secrets.sh`** writes the three secret files and refuses to overwrite them.
+- **CR bug fixed during this work:** the script first left a trailing `\r` in each password, because Git Bash's openssl ends its output with `\r\n`. It now strips both.
+
+**MongoDB.**
+- **Users:** a root user (initdb), and `flight_app` created once by `mongo-init/10-create-app-user.sh` with `readWrite` on `flight_delay` only.
+- **Why the script handles two cases:** it works whether the entrypoint sources it or executes it. Docker Desktop bind mounts mark every file executable, so it may be executed directly.
+
+**Networks.**
+- `mongo` and `kafka` are on an internal `backend` network: no published port, no route out.
+- Only Caddy publishes ports, on `127.0.0.1` by default.
+- The app containers run read-only, with all capabilities dropped and `no-new-privileges`.
+
+**Caddy.**
+- **TLS issuer:** `TLS_ISSUER`, which is `internal` for a local CA or an email address for ACME.
+- **Headers:** HSTS and a CSP. Scripts come only from `'self'`. Styles allow inline attributes and Google Fonts, and fonts come from `fonts.gstatic.com`.
+- **Proxy:** `/api` goes to the API, which trusts exactly one hop.
+- **SPA fallback,** and a one-year cache for hashed assets.
+
+**Data load.** A `mongodump` of the dev database was restored as root: 6,985,598 documents, 0 failed, and every collection count identical to the source. The root password went from the secret into a temporary `--config` file inside the container, which was emptied afterwards. It never appeared on a command line.
+
+**Health checks.** The image's health check probes the API, so it is disabled for `consumer` and `kafka-init`, which have no HTTP port. The consumer's liveness is its heartbeat in `/api/stream/status`.
+
+**Left in the database:** the empty collection `authcheck` in the production `flight_delay`, from the app user's write test. The guard hook blocks dropping it, so it is for the user to remove.
+
