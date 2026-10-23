@@ -264,7 +264,6 @@ export function greatCircleMiles(
   return 2 * EARTH_RADIUS_MILES * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-
 /**
  * The opening camera move, as offsets on the hero pose: it starts wide and turned toward the
  * Pacific, then settles with an exponential ease. `t` is 0..1 of the shot; past 1 it holds.

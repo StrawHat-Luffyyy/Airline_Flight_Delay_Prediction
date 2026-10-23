@@ -1364,3 +1364,45 @@ Making `docker compose` asynchronous in the check exposed a misclassification: c
 
 **Unchanged:** delivery semantics, commit order, `deliveries`, the `redelivered` counter. Evidence: `already-stored-classification.json`; details and limits in `docs/STREAMING.md`.
 
+## Production hardening (2026-10-24)
+
+These are the fixes for the confirmed P0 and P1 findings of the production audit. Deployment itself (Docker Compose, Caddy, authenticated MongoDB) is the next stage and is not part of this entry.
+
+**Compiled API.**
+- **Choice:** esbuild bundles `server.ts` and the Kafka probe worker into `server/dist/`. npm packages stay external, and `@flight-delay/shared` is bundled through the tsconfig path. `start` runs `node dist/server.js`; `start:dev` keeps the tsx entry.
+- **Why not tsc emit:** `@flight-delay/shared` resolves to TypeScript source, and Node 24's type stripping cannot run imports written with `.js` extensions or parameter properties. Bundling handles both with no change to the source.
+- **Paths:** every repo-relative path now goes through `server/src/paths.ts`. `src/` and `dist/` are both two levels below the root, so one relative URL serves the source and the bundle.
+- **Evidence:** the bundle served `/api/health` (MongoDB up, model loaded, Kafka up), `/api/predict` (0.3136 for the reference flight, as in the dev server) and `/api/stream/status`.
+
+**Rate limit behind a proxy.** `TRUST_PROXY_HOPS` (default 0) sets Express `trust proxy` to a hop count. `true` was rejected: it trusts every `X-Forwarded-For` entry, so a client could forge a fresh rate-limit key. Tests cover the spoofing case.
+
+**MongoDB at startup.** The API retries the first connect 8 times over about 45 s (waits of 1, 2, 4, 8, then 10 s), then exits non-zero for its supervisor. Observed against a closed port: attempts 1 and 2 were logged as warnings.
+
+**csv-parse 6.2.1 → 7.0.3** (GHSA-8cw4-87c7-c6xx).
+- **Evidence:** parsing all three real CSVs through `csvRows` gave byte-identical records on both versions: 14, 322 and 5,819,079 rows, 0 skipped, the same sha256.
+- **Regression test:** a `__proto__` header must stay a plain field. The test fails on 6.2.1 and passes on 7.0.3.
+- **`npm audit`:** 0 vulnerabilities.
+
+**Which delay_lookup the model was trained on.**
+- **Why not buildIds:** they are random per build, so they change even when a rebuild produces identical rates.
+- **Fingerprint:** a sha256 over the full-scope rates, the only scope `/predict` reads.
+- **Where it is recorded:** `export:training` writes it to `export_runs` and the manifest. `ml:register` pins the exported value; for an older export it pins the current lookup and warns. The API, `stream:consume` and `stream:score-missing` log match, mismatch, unpinned or unregistered at startup, and never stop over it.
+- **Current state:** the served model (`lightgbm-20261013093139-12f165c2`) was re-registered with `npm run ml:register`. Its export predates fingerprints, so the pin is the lookup at registration (`7361c908…`), and startup reports a match. A backup of `model_runs` taken before the re-registration is kept outside the repo.
+- **Review:** the leakage-auditor found no must-fix item. Its four should-fix points (pin at export, transient retry, the CLI checks, a Mongo integration test) are applied.
+
+**Refused stream flights.**
+- **Retry:** `stream:score-missing --retry-refused` re-scores `UNKNOWN_ROUTE`, `UNKNOWN_CODE` and `SCORING_FAILED`. `INVALID_REQUEST` is permanent.
+- **Counting fix:** the summary now counts matched rather than modified updates, so a flight refused again with the same code is counted. The new integration test exposed this undercount.
+
+**Kafka in CI.**
+- **Broker test:** `server/tests/stream/broker.integration.test.ts` runs the real consumer against a real broker and MongoDB, with 60 events spread over 3 partitions plus 1 malformed message.
+  - Every event is stored and scored once, and the malformed one is dead-lettered.
+  - Committed offsets equal end offsets, so the commit read-back works end to end.
+  - A replay adds no documents.
+- **Where it runs:** it passed locally against the compose broker and skips without one. CI now runs a `kafka` service, with a reachability check that fails fast instead of letting the test skip.
+- **Not tested in CI:** broker restarts and kills stay manual (`stream:commit-check`, `docs/STREAMING.md`), because they need to stop the container.
+
+**Long MongoDB stalls.** Accepted and documented in `docs/STREAMING.md` (honest limits). A stall past 5 minutes ends in a redelivery, not a loss, because the commit read-back fails the batch. The driver's client-side timeout (`timeoutMS`) is still experimental, so it was not enabled.
+
+**Formatting.** The seven unformatted `web/src` files were formatted, and `format:check` now covers `web/src` (`docs/PRETTIER_BASELINE.md`).
+
