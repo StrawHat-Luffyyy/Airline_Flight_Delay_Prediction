@@ -1290,3 +1290,30 @@ Making `docker compose` asynchronous in the check exposed a misclassification: c
 
 **Recheck when the client is upgraded:** run `stream:commit-check` in both modes. If `raw` stops reproducing the defect, the client reports commit failures itself, and the read-back becomes redundant but harmless.
 
+### Kafka: final validation of the commit read-back, and an upgrade guard (2026-10-23)
+
+**Outages on the final code** (R8 to R10, isolated, 28 s broker outage):
+- 60,000 of 60,000 stored each time, with no duplicate documents.
+- Delivered twice: 0, 36 and 0, all absorbed by the upsert.
+- Commit failures logged during each outage.
+- Resume 14.7 to 16.1 s after the broker started.
+- In R10, committed offsets equal end offsets on all partitions. The offset check of R8 and R9 printed nothing (a Git Bash path rewrite) and was fixed for R10, not rerun for R8 and R9.
+
+**Throughput, five drain runs each:**
+- Confirmed: median 2,064/s. Baseline: median 2,011/s.
+- Without each configuration's highest run: 2,009 to 2,107 and 1,966 to 2,077 (coefficient of variation about 2%).
+- One unexplained fast run in each configuration: 4,076 and 2,470/s.
+- Conclusion: no measurable cost from the read-back. Single runs on this laptop can be off by up to 2x, so single-run throughput figures elsewhere in these docs carry that uncertainty.
+
+**Upgrade guard (chosen over a note in the docs alone):**
+- `COMMIT_CHECK_VERIFIED_CLIENT` holds the client version the check last verified.
+- A unit test fails when the pinned or installed client differs from it, or is not pinned exactly. Its message gives the two `stream:commit-check` commands and how to read them.
+- Docs alone would rely on someone remembering; the test makes CI refuse an unverified upgrade.
+- `stream:commit-check` writes the client version into its report.
+
+**Still necessary:**
+- On 1.11.0 (the latest release) `raw` still reproduces the defect.
+- On upstream `master` the KafkaJS `commitOffsets()` still uses `commitAsync`, and the commit callback is still a TODO.
+
+**Unchanged:** a single broker with replication factor 1. Losing the broker or its volume loses unconsumed events. The infrastructure was deliberately not redesigned (`docs/STREAMING.md`, Honest limits).
+

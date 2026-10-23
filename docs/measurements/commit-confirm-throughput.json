@@ -1,0 +1,123 @@
+{
+  "note": "Drain throughput, isolated environment: 60,000 events replayed unthrottled with no consumer running, then one consumer drains them (--idle-exit 15); rate = stored / (last firstWrittenAt - first firstWrittenAt). The scorer refuses every flight there (no route statistics), so this is mostly the Kafka and MongoDB path. Runs alternate confirmed/baseline; baseline = the same consumer with commitOffsets() only (no read-back). 2026-10-23, one laptop in desktop use.",
+  "runs": [
+    {
+      "label": "confirmed-1",
+      "stored": 60000,
+      "firstWrite": "2026-10-23T14:06:47.931Z",
+      "lastWrite": "2026-10-23T14:07:02.652Z",
+      "seconds": 14.721,
+      "perSecond": 4076
+    },
+    {
+      "label": "baseline-1",
+      "stored": 60000,
+      "firstWrite": "2026-10-23T14:08:26.294Z",
+      "lastWrite": "2026-10-23T14:08:56.123Z",
+      "seconds": 29.829,
+      "perSecond": 2011
+    },
+    {
+      "label": "confirmed-2",
+      "stored": 60000,
+      "firstWrite": "2026-10-23T14:10:57.644Z",
+      "lastWrite": "2026-10-23T14:11:26.118Z",
+      "seconds": 28.474,
+      "perSecond": 2107
+    },
+    {
+      "label": "baseline-2",
+      "stored": 60000,
+      "firstWrite": "2026-10-23T14:13:27.457Z",
+      "lastWrite": "2026-10-23T14:13:57.971Z",
+      "seconds": 30.514,
+      "perSecond": 1966
+    },
+    {
+      "label": "confirmed-3",
+      "stored": 60000,
+      "firstWrite": "2026-10-23T14:16:08.337Z",
+      "lastWrite": "2026-10-23T14:16:38.206Z",
+      "seconds": 29.869,
+      "perSecond": 2009
+    },
+    {
+      "label": "baseline-3",
+      "stored": 60000,
+      "firstWrite": "2026-10-23T14:18:48.861Z",
+      "lastWrite": "2026-10-23T14:19:18.824Z",
+      "seconds": 29.963,
+      "perSecond": 2002
+    },
+    {
+      "label": "confirmed-4",
+      "stored": 60000,
+      "firstWrite": "2026-10-23T14:27:01.216Z",
+      "lastWrite": "2026-10-23T14:27:30.280Z",
+      "seconds": 29.064,
+      "perSecond": 2064
+    },
+    {
+      "label": "baseline-4",
+      "stored": 60000,
+      "firstWrite": "2026-10-23T14:29:39.960Z",
+      "lastWrite": "2026-10-23T14:30:04.256Z",
+      "seconds": 24.296,
+      "perSecond": 2470
+    },
+    {
+      "label": "confirmed-5",
+      "stored": 60000,
+      "firstWrite": "2026-10-23T14:32:02.269Z",
+      "lastWrite": "2026-10-23T14:32:31.550Z",
+      "seconds": 29.281,
+      "perSecond": 2049
+    },
+    {
+      "label": "baseline-5",
+      "stored": 60000,
+      "firstWrite": "2026-10-23T14:34:42.006Z",
+      "lastWrite": "2026-10-23T14:35:10.893Z",
+      "seconds": 28.887,
+      "perSecond": 2077
+    }
+  ],
+  "confirmed": {
+    "n": 5,
+    "min": 2009,
+    "median": 2064,
+    "max": 4076,
+    "mean": 2461,
+    "sd": 903,
+    "cvPercent": 36.7
+  },
+  "baseline": {
+    "n": 5,
+    "min": 1966,
+    "median": 2011,
+    "max": 2470,
+    "mean": 2105,
+    "sd": 208,
+    "cvPercent": 9.9
+  },
+  "withoutEachHighestRun": {
+    "confirmed": {
+      "n": 4,
+      "min": 2009,
+      "median": 2064,
+      "max": 2107,
+      "mean": 2057,
+      "sd": 40,
+      "cvPercent": 2
+    },
+    "baseline": {
+      "n": 4,
+      "min": 1966,
+      "median": 2011,
+      "max": 2077,
+      "mean": 2014,
+      "sd": 46,
+      "cvPercent": 2.3
+    }
+  }
+}
