@@ -57,18 +57,36 @@ These are known, documented and accepted for this project. None loses an acknowl
   - **Fix:** a deployment must run `kafka:init` (blocker 6). Changing the label is a possible follow-up.
 - **The fingerprint pin was taken at registration, not at export.** The served model's export predates fingerprints. The parity check above shows that this pin equals the training lookup for the sampled rows. Exports from now on record the fingerprint themselves.
 
-## Leftover test data (nothing removed; awaiting approval)
+## Leftover test data (cleanup, 2026-10-24)
 
-None of these is read by the application; `grep` finds their names only in measurement records and in `docs/DECISIONS.md`.
+None of these was read by the application; `grep` found their names only in measurement records and in `docs/DECISIONS.md`. Each target was re-checked just before removal: its contents were unchanged and no other consumer group read the topics.
 
-| Item                                                                                                      | Where           | Contents                                                                                                                         | Safe to remove                                                                                                                                          |
-| --------------------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `flight_delay_reliability_test`                                                                           | project MongoDB | `stream_flights` 0 and `stream_stats` 0 documents; copies of `airlines` (14) and `airports` (322); `ingest_runs` (2); about 1 MB | Yes. Reliability runs R1 to R10 are finished and their results are saved in `docs/measurements/`                                                        |
-| `reliability.raw` (3 partitions, 1,470,000 messages, about 483 MB) and `reliability.dlq` (empty)          | project Kafka   | events from runs R1 to R10                                                                                                       | Yes. No consumer group uses them now                                                                                                                    |
-| `commitrepro.plain1`, `commitrepro.plain2`, `commitrepro.verify1` (6,000 messages each, about 96 KB each) | project Kafka   | first commit-loss reproductions                                                                                                  | Yes. Superseded by `stream:commit-check`, which cleans up after itself                                                                                  |
-| Consumer groups `commit-repro-plain1`, `commit-repro-plain2`, `commit-repro-verify1`                      | project Kafka   | state `Empty`, no members                                                                                                        | Yes, together with their topics                                                                                                                         |
-| Docker volume `fdp_mongo_data` (1.6 GB)                                                                   | Docker          | a MongoDB data directory, compose project `fdp`, created 2026-10-18                                                              | Probably. Its date and size match the README's clean-clone audit (1.6 GB data directory), but nothing records it, so please confirm it is yours to drop |
-| Docker volumes `fdverify_kafka_data` and `fdverify_mongo_data`                                            | Docker          | the isolated stack used for commit-check and the MongoDB hang test (topics and test database already removed)                    | Yes. Created for this verification                                                                                                                      |
-| Docker volume `fdci_root_node_modules`                                                                    | Docker          | `node_modules` of the CI replica                                                                                                 | Yes. Created for this verification                                                                                                                      |
+**Removed (with your approval):**
+
+- Kafka topics `reliability.raw` (1,470,000 messages, about 483 MB) and `reliability.dlq` (empty).
+- Kafka topics `commitrepro.plain1`, `commitrepro.plain2` and `commitrepro.verify1` (6,000 messages each).
+- The broker deletes these topics' files asynchronously.
+- Kafka consumer groups `commit-repro-plain1`, `commit-repro-plain2` and `commit-repro-verify1` (state `Empty`).
+
+**Approved but not removed.** The project's guard hook blocks these from Claude, so run them yourself:
+
+- MongoDB database `flight_delay_reliability_test`: `stream_flights` 0 and `stream_stats` 0 documents, copies of `airlines` (14) and `airports` (322), and `ingest_runs` (2). About 1 MB.
+
+  ```bash
+  docker compose exec mongo mongosh flight_delay_reliability_test --eval "db.dropDatabase()"
+  ```
+
+- Docker volumes `fdverify_kafka_data`, `fdverify_mongo_data` and `fdci_root_node_modules`. They were created for the isolated commit-check, the MongoDB hang test and the CI replica, and no container uses them.
+
+  ```bash
+  docker volume rm fdverify_kafka_data fdverify_mongo_data fdci_root_node_modules
+  ```
+
+**Kept until you confirm.** Docker volume `fdp_mongo_data` (1.6 GB) is a MongoDB data directory from compose project `fdp`, created 2026-10-18. Its date and size match the README's clean-clone audit, but nothing records it.
+
+**Verified after the removal:**
+
+- The broker lists only `flights.raw`, `flights.dlq` and `__consumer_offsets`, and only the group `flight-stream`. Its committed offsets are unchanged and its lag is 0.
+- `flight_delay` holds 5,819,079 `flights` and 479,230 `stream_flights`.
 
 **Keep:** `flight_delay` (the system of record), `flights.raw` and `flights.dlq`, the group `flight-stream`, and the volumes `2015flightdelaysandcancellations_mongo_data` and `2015flightdelaysandcancellations_kafka_data`.
