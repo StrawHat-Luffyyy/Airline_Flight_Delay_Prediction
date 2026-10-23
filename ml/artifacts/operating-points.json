@@ -1,0 +1,65 @@
+{
+  "modelVersion": "lightgbm-20261013093139-12f165c2",
+  "computedOn": "validation (September)",
+  "scores": "Jan-Aug LightGBM the threshold was chosen on (refit, seed and best iteration of the run). Slightly optimistic, as all validation figures: its training rows carry out-of-fold rates whose folds include September labels",
+  "reproduced": {
+    "confusion": {
+      "tn": 246541,
+      "fp": 155551,
+      "fn": 24130,
+      "tp": 35931
+    },
+    "auc": 0.6449475281059335,
+    "prAuc": 0.1987804602190985
+  },
+  "rows": 462153,
+  "baseRate": 0.12995912609027746,
+  "deployed": {
+    "rule": "deployed threshold",
+    "minScore": 0.20697104012783935,
+    "flagged": 191482,
+    "flaggedShare": 0.4143259916088395,
+    "precision": 0.18764688064674487,
+    "recall": 0.5982417875160254,
+    "lift": 1.4438915241427064
+  },
+  "points": [
+    {
+      "rule": "top 10%",
+      "minScore": 0.33555446354133,
+      "flagged": 46215,
+      "flaggedShare": 0.09999935086432415,
+      "precision": 0.22996862490533376,
+      "recall": 0.17695343067880986,
+      "lift": 1.7695457935411452
+    },
+    {
+      "rule": "top 20%",
+      "minScore": 0.2814670256652005,
+      "flagged": 92431,
+      "flaggedShare": 0.20000086551423446,
+      "precision": 0.21517672642295335,
+      "recall": 0.3311466675546528,
+      "lift": 1.6557261725004107
+    },
+    {
+      "rule": "top 30%",
+      "minScore": 0.24207472073113415,
+      "flagged": 138646,
+      "flaggedShare": 0.3000002163785586,
+      "precision": 0.2016718837903726,
+      "recall": 0.46554336424634957,
+      "lift": 1.5518100948930598
+    },
+    {
+      "rule": "top 50%",
+      "minScore": 0.18341218373222756,
+      "flagged": 231076,
+      "flaggedShare": 0.4999989181072069,
+      "precision": 0.1781708182589278,
+      "recall": 0.6854864221374936,
+      "lift": 1.3709758107726855
+    }
+  ],
+  "durationSeconds": 47.6
+}

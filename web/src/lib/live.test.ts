@@ -71,6 +71,12 @@ describe('metricRows', () => {
     expect(row(rows, 'baseline').totals?.value).toBe('79.4%');
   });
 
+  it('shows the share of judged flights the model flagged', () => {
+    expect(row(rows, 'flagged').totals).toEqual({ value: '43.3%', n: 469717, basis: 'judged' });
+    // 1,797 of 2,000: 89.85%, shown to one decimal as toFixed rounds it.
+    expect(row(rows, 'flagged').window?.value).toBe('89.8%');
+  });
+
   it('marks the delayed share as a delay figure', () => {
     expect(row(rows, 'baseRate').tone).toBe('delay');
     expect(row(rows, 'precision').tone).toBe('ink');

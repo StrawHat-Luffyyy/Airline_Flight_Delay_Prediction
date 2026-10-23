@@ -1,9 +1,16 @@
 import { closeMongo, connectToMongo, getDb } from '../db/client.js';
 import { logger } from '../logger.js';
-import { readModelRun, registerModelRun } from './register.js';
+import {
+  attachOperatingPoints,
+  readModelRun,
+  readOperatingPoints,
+  registerModelRun,
+} from './register.js';
 
 async function main(): Promise<void> {
-  const run = await readModelRun();
+  const points = await readOperatingPoints();
+  const metrics = await readModelRun();
+  const run = points === null ? metrics : attachOperatingPoints(metrics, points);
   await connectToMongo();
   const doc = await registerModelRun(getDb(), run);
   logger.info(

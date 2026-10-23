@@ -1,5 +1,6 @@
 import type { StreamMetricGroup, StreamTotalsGroup, StreamWindowGroup } from '@flight-delay/shared';
 import { formatInteger, formatPercent } from './format';
+import { flaggedShare } from './selection';
 
 const EM_DASH = '—';
 
@@ -68,6 +69,12 @@ const SPECS: Spec[] = [
     label: 'Majority baseline',
     hint: 'Accuracy of always answering the more common outcome',
     cell: (g) => ({ value: formatPercent(g.accuracy?.majorityBaseline), n: g.n, basis: 'judged' }),
+  },
+  {
+    id: 'flagged',
+    label: 'Share flagged',
+    hint: 'Flights the model flagged delayed; compare with the delayed share below',
+    cell: (g) => ({ value: formatPercent(flaggedShare(g)), n: g.n, basis: 'judged' }),
   },
   {
     id: 'baseRate',

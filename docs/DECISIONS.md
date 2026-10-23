@@ -1215,3 +1215,40 @@ Every run met the conservation check: rows of the month = events on `flights.raw
 - **report-writer:** wrote the docs from the evidence, and flagged the claims that were not yet in a saved file; they are now in one. It also found that `docs/BIGDATA_JUSTIFICATION.md` already quoted 137.9 s for `build:stats` from an older `stats_runs` record, while the newest record shows 214.9 s. The new 8g text no longer repeats the figure; the pre-existing occurrence is left as an open item.
 
 **Checks at the commit:** 49 test files and 412 tests pass; lint, typecheck and Prettier are clean.
+
+### Threshold analysis: share flagged, lift and operating points (2026-10-23)
+
+**Question:** how selective is the deployed threshold, measured on the whole December replay and on the batch test split? No retraining, and no change to the threshold or the model files.
+
+**Measured:**
+
+| | n | Share flagged | Precision | Recall | Base rate | Lift |
+|---|---|---|---|---|---|---|
+| December replay (`stream_flights`, flights with an outcome, independent aggregation) | 469,717 | 43.3% | 0.278 | 0.584 | 20.6% | 1.35 |
+| Batch test split, Oct-Dec (`ml/artifacts/metrics.json` confusion) | 1,411,835 | 42.8% | 0.218 | 0.582 | 16.1% | 1.36 |
+
+Lift = precision / base rate. Operating points on September validation (462,153 flights, 13.0% delayed):
+
+| Flag | Share flagged | Lowest score | Precision | Recall | Lift |
+|---|---|---|---|---|---|
+| Top 10% | 10.0% | 0.336 | 0.230 | 0.177 | 1.77 |
+| Top 20% | 20.0% | 0.281 | 0.215 | 0.331 | 1.66 |
+| Top 30% | 30.0% | 0.242 | 0.202 | 0.466 | 1.55 |
+| Deployed threshold | 41.4% | 0.207 | 0.188 | 0.598 | 1.44 |
+| Top 50% | 50.0% | 0.183 | 0.178 | 0.685 | 1.37 |
+
+**Findings:**
+- **Not "most flights", but many.** The deployed threshold flags about 43% of flights, more than twice the share actually delayed, and a flag raises the chance of a delay only about 1.35 times. The Model page says so in those terms rather than "most flights", because the numbers do not show a majority.
+- **Consistent across data.** Replay and batch test agree on share flagged (43.3% and 42.8%), recall (0.584 and 0.582) and lift (1.35 and 1.36). Precision is higher on the replay only because December was more often delayed (20.6% against 16.1% over October to December).
+- **The trade-off is smooth.** On September, flagging fewer flights raises lift from 1.37 (top 50%) to 1.77 (top 10%) and lowers recall from 0.685 to 0.177. No cut-off makes the model a sharp classifier; that is the ROC-AUC ceiling of 0.63 seen another way.
+- **Threshold kept.** It maximises F1 on validation, as recorded at training, and stays frozen. Choosing another one now, after seeing December, would tune on stream results.
+
+**How the September scores were obtained:** no validation probabilities had been saved, and the served model was refit on January to September, so its own September scores are in-sample. `python ml/train.py --operating-points` refits the January to August LightGBM with the run's parameters, seed and best iteration (157 trees, deterministic). It writes only `ml/artifacts/operating-points.json`, and only if the refit reproduces the recorded September validation exactly: the confusion at the deployed threshold, AUC 0.6449475281059335 and PR-AUC 0.1987804602190985. This is a refit of the validation model to recover its scores, not a retraining of the served model: `model.onnx`, `encoders.json`, `metrics.json` and `parity_sample.json` are unchanged. Like all validation figures these are slightly optimistic (see Phase 4, "Optimistic validation figure"). `train.py` deletes a stale `operating-points.json` when it writes a new run, and `ml:register` refuses points computed for another model.
+
+**Where it shows:**
+- **Model page:** test-set share flagged and lift in the comparison table, a plain statement of what a flag is worth, and the September operating-point table labelled as validation.
+- **Live page:** share flagged in both columns, next to the delayed share.
+- **Data path:** `operating-points.json` → `npm run ml:register` → `model_runs.operatingPoints` → `GET /api/model/metrics`. Share flagged and lift on the pages are computed from the confusion counts the API returns (`web/src/lib/selection.ts`, tested).
+
+**Review:** the leakage-auditor passed all six checks: no October to December data; out-of-sample September scores; encoders and imputation as in training; threshold unchanged; lift correct; model artifacts unchanged. Both of its optional suggestions were applied: the stricter AUC and PR-AUC reproduction check, and the optimism caveat on the page and in the JSON.
+
