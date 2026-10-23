@@ -2,7 +2,6 @@ import { once } from 'node:events';
 import { createWriteStream, type WriteStream } from 'node:fs';
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { Db, ObjectId } from 'mongodb';
 import type { Logger } from 'pino';
 import { collections, type FlightDoc } from '../db/collections.js';
@@ -10,8 +9,9 @@ import { RssMonitor } from '../ingest/rss.js';
 import { EXPORT_COLUMNS, FEATURE_COLUMNS } from './feature-list.js';
 import { LOOKUP_RUNS, loadLookupTable, type LookupRunDoc } from './lookup.js';
 import { buildFeatureRow, lookupScopeFor } from './row.js';
+import { fromRepoRoot } from '../paths.js';
 
-export const DEFAULT_EXPORT_DIR = fileURLToPath(new URL('../../../data/export', import.meta.url));
+export const DEFAULT_EXPORT_DIR = fromRepoRoot('data', 'export');
 export const EXPORT_RUNS = 'export_runs';
 const PROGRESS_EVERY = 500_000;
 

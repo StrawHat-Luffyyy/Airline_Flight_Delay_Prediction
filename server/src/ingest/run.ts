@@ -1,7 +1,6 @@
 import { createReadStream, existsSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { pipeline } from 'node:stream';
-import { fileURLToPath } from 'node:url';
 import { parse } from 'csv-parse';
 import { MongoBulkWriteError, type Collection, type Db, type Filter } from 'mongodb';
 import type { OptionalUnlessRequiredId } from 'mongodb';
@@ -18,10 +17,11 @@ import { inBatches } from './batch.js';
 import { RssMonitor } from './rss.js';
 import { transformAirlineRow, transformAirportRow } from './reference.js';
 import { REQUIRED_FLIGHT_COLUMNS, transformFlightRow, type ReferenceData } from './transform.js';
+import { fromRepoRoot } from '../paths.js';
 
 export const BATCH_SIZE = 10_000;
 const PROGRESS_EVERY_ROWS = 500_000;
-export const DEFAULT_DATA_DIR = fileURLToPath(new URL('../../../data/raw', import.meta.url));
+export const DEFAULT_DATA_DIR = fromRepoRoot('data', 'raw');
 const MALFORMED_CSV = 'malformed_csv';
 
 interface RunStats {

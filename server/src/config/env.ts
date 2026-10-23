@@ -1,8 +1,8 @@
 import dotenv from 'dotenv';
-import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
+import { fromRepoRoot } from '../paths.js';
 
-dotenv.config({ path: fileURLToPath(new URL('../../../.env', import.meta.url)), quiet: true });
+dotenv.config({ path: fromRepoRoot('.env'), quiet: true });
 
 const envSchema = z.object({
   MONGODB_URI: z.string().url(),
@@ -15,6 +15,11 @@ const envSchema = z.object({
   HOST: z.string().min(1).default('127.0.0.1'),
   // POST /api/predict requests per client IP per minute (the only write-like, CPU-bound endpoint).
   PREDICT_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(10_000).default(30),
+  // Reverse proxies in front of the API (Caddy in the production compose file: 1). Express then
+  // takes the client address from that many X-Forwarded-For entries, counted from the right, so
+  // the /predict limit is per client rather than per proxy. A hop count, never `true`: trusting
+  // every entry would let a client forge its own rate-limit key. 0 = no proxy (local default).
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(0),
   // Phase 8 speed layer (PROJECT_OVERVIEW §15). All optional: the API runs without Kafka.
   // Comma-separated host:port list. 127.0.0.1 rather than localhost: see docker-compose.yml.
   KAFKA_BROKERS: z

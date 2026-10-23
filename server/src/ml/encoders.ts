@@ -1,5 +1,4 @@
 import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import {
@@ -8,10 +7,9 @@ import {
   isForbiddenFeature,
 } from '../features/feature-list.js';
 import type { FeatureRow } from '../features/row.js';
+import { fromRepoRoot } from '../paths.js';
 
-export const DEFAULT_ENCODERS_FILE = fileURLToPath(
-  new URL('../../../ml/artifacts/encoders.json', import.meta.url),
-);
+export const DEFAULT_ENCODERS_FILE = fromRepoRoot('ml', 'artifacts', 'encoders.json');
 
 const CodeMap = z.record(z.string(), z.number().int());
 

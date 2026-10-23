@@ -16,6 +16,7 @@ describe('parseEnv', () => {
       CORS_ORIGIN: 'http://localhost:5173',
       HOST: '127.0.0.1',
       PREDICT_RATE_LIMIT_PER_MIN: 30,
+      TRUST_PROXY_HOPS: 0,
       KAFKA_BROKERS: ['127.0.0.1:9092'],
       KAFKA_CLIENT_ID: 'flight-delay',
       KAFKA_CONSUMER_GROUP: 'flight-stream',
