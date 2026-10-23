@@ -1,0 +1,57 @@
+{
+  "run": "R7",
+  "environment": "isolated: db flight_delay_reliability_test, group reliability-test, topics reliability.raw/.dlq",
+  "consumer": "commits confirmed by reading the committed offset back (commit.ts)",
+  "sessionTimeoutMs": 10000,
+  "replay": {
+    "events": 60000,
+    "rate": 1000
+  },
+  "brokerDownSeconds": 28,
+  "outage": {
+    "stopIssued": "2026-10-23T13:26:50.574Z",
+    "stopped": "2026-10-23T13:26:52.408Z",
+    "storedAtStop": 16000,
+    "startIssued": "2026-10-23T13:27:21.504Z",
+    "started": "2026-10-23T13:27:22.556Z",
+    "firstWriteAfterStart": "2026-10-23T13:27:39.615Z",
+    "resumeSecondsAfterStart": 17.059,
+    "lastWrite": "2026-10-23T13:28:12.987Z",
+    "stored": 60000,
+    "deliveries": 60041
+  },
+  "redelivered": 41,
+  "consumerWarningsAndErrors": [
+    {
+      "time": "2026-10-23T13:26:56.130Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[0] at 137748 not confirmed: reading it back failed (Local: Timed out): Local: Timed out",
+      "partition": 0,
+      "backoffMs": 1000
+    },
+    {
+      "time": "2026-10-23T13:26:56.138Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[2] at 96940 not confirmed: reading it back failed (Local: Timed out): Local: Timed out",
+      "partition": 2,
+      "backoffMs": 2000
+    },
+    {
+      "time": "2026-10-23T13:26:56.140Z",
+      "level": "error",
+      "msg": "batch failed; it will be redelivered",
+      "error": "commit of reliability.raw[1] at 141312 not confirmed: reading it back failed (Local: Timed out): Local: Timed out",
+      "partition": 1,
+      "backoffMs": 4000
+    },
+    {
+      "time": "2026-10-23T13:27:39.670Z",
+      "level": "warn",
+      "msg": "already-stored flights delivered again: their offsets were not committed earlier (crash, rebalance or a commit lost while the broker was down); the upserts absorb them",
+      "redelivered": 41,
+      "batches": 1
+    }
+  ]
+}

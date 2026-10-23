@@ -1,0 +1,67 @@
+{
+  "note": "First reproductions (2026-10-23) with a standalone script before stream:commit-check existed: 6,000 messages, batches of 100, broker stopped about 20 s. A run commitrepro.plain1 gave the same 38 of 38 resolved commits and 9,798 deliveries but did not yet record rewinds. Times are seconds since the script started; brokerDown marked from when the stop was issued.",
+  "runs": {
+    "plain2": {
+      "mode": "raw",
+      "brokerDownAt": "4.8",
+      "brokerUpAt": "27.1",
+      "commitsWhileDown": {
+        "total": 38,
+        "resolved": 38,
+        "rejected": 0,
+        "pending": 0,
+        "highestResolvedNext": 6000
+      },
+      "processed": 9798,
+      "processedTwice": 3798,
+      "processedTwiceRange": [
+        2202,
+        5999
+      ],
+      "resolvedWhileDownRange": [
+        2302,
+        6000
+      ],
+      "firstRewind": {
+        "t": 41,
+        "from": 2202,
+        "alreadyProcessedUpTo": 6000
+      },
+      "firstRejections": [],
+      "brokerCommittedOffset": 6000
+    },
+    "verify1": {
+      "mode": "confirmed (single read-back)",
+      "brokerDownAt": "4.6",
+      "brokerUpAt": "27.1",
+      "commitsWhileDown": {
+        "total": 1,
+        "resolved": 0,
+        "rejected": 1,
+        "pending": 0,
+        "highestResolvedNext": 0
+      },
+      "processed": 6100,
+      "processedTwice": 100,
+      "processedTwiceRange": [
+        2002,
+        2101
+      ],
+      "resolvedWhileDownRange": null,
+      "firstRewind": {
+        "t": 41.2,
+        "from": 2002,
+        "alreadyProcessedUpTo": 2102
+      },
+      "firstRejections": [
+        {
+          "t": 6.2,
+          "next": 2102,
+          "outcome": "rejected: Local: Timed out",
+          "down": true
+        }
+      ],
+      "brokerCommittedOffset": 6000
+    }
+  }
+}

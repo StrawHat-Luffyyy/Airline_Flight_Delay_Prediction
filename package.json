@@ -32,7 +32,8 @@
     "stream:verify-status": "npm run stream:verify-status --workspace=@flight-delay/server --",
     "stream:measure": "npm run stream:measure --workspace=@flight-delay/server --",
     "stream:watch": "npm run stream:watch --workspace=@flight-delay/server --",
-    "stream:reset": "npm run stream:reset --workspace=@flight-delay/server --"
+    "stream:reset": "npm run stream:reset --workspace=@flight-delay/server --",
+    "stream:commit-check": "npm run stream:commit-check --workspace=@flight-delay/server --"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
