@@ -1,0 +1,469 @@
+{
+  "what": "API started hidden, its conhost killed (console lost) before the probe child started; broker stopped 09:09:12Z, started 09:09:38Z",
+  "probeProcessLog": [
+    {
+      "time": "2026-10-23T09:09:43.721Z",
+      "msg": "Kafka probe process exited (code 3221225477); a new one starts on the next read"
+    },
+    {
+      "time": "2026-10-23T09:13:53.468Z",
+      "msg": "Kafka probe process exited (code 3221225477); a new one starts on the next read"
+    }
+  ],
+  "statusSeries": {
+    "url": "http://127.0.0.1:3002",
+    "everySeconds": 2,
+    "samples": [
+      {
+        "t": 0,
+        "at": "2026-10-23T09:09:02.540Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 2,
+        "at": "2026-10-23T09:09:04.551Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 4,
+        "at": "2026-10-23T09:09:06.556Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 6,
+        "at": "2026-10-23T09:09:08.565Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 8,
+        "at": "2026-10-23T09:09:10.573Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 10,
+        "at": "2026-10-23T09:09:12.577Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 12.1,
+        "at": "2026-10-23T09:09:14.590Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 14.1,
+        "at": "2026-10-23T09:09:16.600Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 16.1,
+        "at": "2026-10-23T09:09:18.601Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 18.1,
+        "at": "2026-10-23T09:09:20.606Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 20.1,
+        "at": "2026-10-23T09:09:22.613Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 22.1,
+        "at": "2026-10-23T09:09:24.613Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 24.1,
+        "at": "2026-10-23T09:09:26.628Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 26.1,
+        "at": "2026-10-23T09:09:28.631Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 28.1,
+        "at": "2026-10-23T09:09:30.637Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 30.1,
+        "at": "2026-10-23T09:09:32.638Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 32.1,
+        "at": "2026-10-23T09:09:34.647Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 34.1,
+        "at": "2026-10-23T09:09:36.650Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 36.1,
+        "at": "2026-10-23T09:09:38.658Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 38.1,
+        "at": "2026-10-23T09:09:40.672Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 40.1,
+        "at": "2026-10-23T09:09:42.680Z",
+        "state": "degraded",
+        "reason": "Kafka unreachable: Kafka admin request timed out after 1000 ms",
+        "lag": null,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 42.1,
+        "at": "2026-10-23T09:09:44.683Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 44.2,
+        "at": "2026-10-23T09:09:46.694Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 46.2,
+        "at": "2026-10-23T09:09:48.700Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 48.2,
+        "at": "2026-10-23T09:09:50.712Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 50.2,
+        "at": "2026-10-23T09:09:52.721Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 52.2,
+        "at": "2026-10-23T09:09:54.733Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 54.2,
+        "at": "2026-10-23T09:09:56.741Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 56.2,
+        "at": "2026-10-23T09:09:58.745Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 58.2,
+        "at": "2026-10-23T09:10:00.756Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 60.2,
+        "at": "2026-10-23T09:10:02.761Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 62.2,
+        "at": "2026-10-23T09:10:04.776Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 64.2,
+        "at": "2026-10-23T09:10:06.781Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 66.2,
+        "at": "2026-10-23T09:10:08.785Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 68.3,
+        "at": "2026-10-23T09:10:10.791Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 70.3,
+        "at": "2026-10-23T09:10:12.793Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 72.3,
+        "at": "2026-10-23T09:10:14.804Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 74.3,
+        "at": "2026-10-23T09:10:16.814Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 76.3,
+        "at": "2026-10-23T09:10:18.820Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 78.3,
+        "at": "2026-10-23T09:10:20.827Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 80.3,
+        "at": "2026-10-23T09:10:22.838Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 82.3,
+        "at": "2026-10-23T09:10:24.852Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 84.3,
+        "at": "2026-10-23T09:10:26.867Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 86.3,
+        "at": "2026-10-23T09:10:28.878Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 88.3,
+        "at": "2026-10-23T09:10:30.889Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 90.4,
+        "at": "2026-10-23T09:10:32.894Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 92.4,
+        "at": "2026-10-23T09:10:34.899Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 94.4,
+        "at": "2026-10-23T09:10:36.908Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 96.4,
+        "at": "2026-10-23T09:10:38.913Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      },
+      {
+        "t": 98.4,
+        "at": "2026-10-23T09:10:40.918Z",
+        "state": "idle",
+        "reason": "Consumer stopped cleanly at 2026-10-23T09:07:29.450Z",
+        "lag": 0,
+        "stored": 60000,
+        "throughput": null
+      }
+    ]
+  }
+}

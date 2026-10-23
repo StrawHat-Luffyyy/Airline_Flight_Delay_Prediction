@@ -1,0 +1,31 @@
+{
+  "run": "R5",
+  "environment": "isolated: db flight_delay_reliability_test, group reliability-test, topics reliability.raw/.dlq, API on :3002 whose console was killed before its probe started",
+  "sessionTimeoutMs": 10000,
+  "replay": {
+    "events": 60000,
+    "rate": 1000
+  },
+  "brokerDownSeconds": 28,
+  "outage": {
+    "stopIssued": "2026-10-23T09:04:31.096Z",
+    "stopped": "2026-10-23T09:04:33.112Z",
+    "storedAtStop": 17200,
+    "startIssued": "2026-10-23T09:05:03.111Z",
+    "started": "2026-10-23T09:05:04.013Z",
+    "firstWriteAfterStart": "2026-10-23T09:05:23.077Z",
+    "resumeSecondsAfterStart": 19.064,
+    "lastWrite": "2026-10-23T09:05:58.954Z",
+    "stored": 60000,
+    "deliveries": 60040
+  },
+  "redelivered": 40,
+  "consumerRedeliveryWarnings": [
+    {
+      "time": "2026-10-23T09:05:23.196Z",
+      "redelivered": 40,
+      "batches": 1,
+      "msg": "already-stored flights delivered again: their offsets were not committed earlier (crash, rebalance or a commit lost while the broker was down); the upserts absorb them"
+    }
+  ]
+}

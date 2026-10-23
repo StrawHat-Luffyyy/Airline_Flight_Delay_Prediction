@@ -290,7 +290,7 @@ The batch collections were counted before the runs (speed layer empty) and after
 
 ## Reliability fixes after acceptance (2026-10-22 to 23)
 
-Four broker-restart experiments (R1 to R4) ran in an **isolated environment**, so the accepted full-December state was not touched:
+Six broker-restart experiments (R1 to R6) ran in an **isolated environment**, so the accepted full-December state was not touched:
 - database `flight_delay_reliability_test`, consumer group `reliability-test`, topics `reliability.raw` and `reliability.dlq`;
 - a second API on port 3002;
 - only the airline and airport reference data copied in.
@@ -311,20 +311,33 @@ Every flight was refused by the scorer there (no route statistics), which does n
 | R2 | 30 s (client default) | 36.9 s | 60,000 / 60,000 | 75 | `reliability-r2-outage.json` |
 | R3 | 10 s | 17.2 s | 60,000 / 60,000 | 75 | `reliability-r3-outage.json`, `reliability-r3-status.json` |
 | R4 | 30 s (explicit) | 39.1 s | 60,000 / 60,000 | 78 | `reliability-r4-outage.json`, `reliability-r4-status.json` |
+| R5 | 10 s | 19.1 s | 60,000 / 60,000 | 40 | `reliability-r5-outage.json`, `reliability-r5-probe-console-lost.json` |
+| R6 | 10 s | 19.8 s | 60,000 / 60,000 | 100 | `reliability-r6-outage.json`, `reliability-r6-status.json` |
+
+With 10 s the consumer resumed 17.2 to 19.8 s after the broker started (3 runs); with 30 s, 36.9 and 39.1 s (2 runs), and about 42 s in run G.
 
 ### What else the runs showed
 
 - **At-least-once through an outage, at scale (R1).** The consumer kept storing messages it had already fetched for 12 s after the broker stopped, 32,800 flights in all, but only 16,800 had committed offsets. The other 16,000 could not commit.
   - When the topic was drained, exactly those 16,000 were redelivered: 16,000 flights with `deliveries` = 2, 60,000 flights for 60,000 messages, no duplicate documents (`reliability-r1-redelivery.json`).
   - The consumer logged **no warning** for the failed commits.
-- **No errors logged** by the producer or consumer in R2 to R4; every producer run completed its 60,000 sends (exit 0).
+- **No warning or error from the project's own logging** in R2 to R4; every producer run completed its 60,000 sends (exit 0). The Kafka client prints its own transport warnings (`broker transport failure`) while the broker is down, seen in the R5 and R6 consumer logs.
 - **The API's probe process crashed once per broker restart** (0xC0000005) and was replaced, so status showed Kafka reachable again within about 5 to 8 s of the broker starting (R3, R4).
+
+### Remaining risks, fixed afterwards (R5 and R6)
+
+| Risk | Fix | Verified |
+|---|---|---|
+| **Failed commits were silent.** In R1, 16,000 offsets were not committed although the client never returned a commit error, so watching commit errors cannot catch it. | The consumer notices the consequence instead: when a batch contains flights that are already stored, it logs a warning with how many (`redelivery-warning.ts`; at most one per 10 s, the rest folded into the next). | R5: one warning, `redelivered: 40`, exactly the 40 flights stored twice. R6: two warnings, 26 + 74 = 100, exactly the 100 stored twice. Unit tests. |
+| **The probe could not restart in an API that had lost its console.** | Reproduced on Windows: a process forks a child every 3 s; once its console host is killed, every child dies at start-up with 0xC0000142. `windowsHide` and ignored stdio did not help; `detached: true` did, with and without piped output. The API now forks the probe detached, with its output piped back. A detached child still exits when the API is killed (its IPC channel closes; checked). | An isolated API whose console was killed before its probe started: Kafka reachable; then, on two broker restarts (R5b and R6), the probe crashed (0xC0000005, the known client crash), was replaced, and status was reachable again within about 6 s of the broker starting (`reliability-r5-probe-console-lost.json`). |
+| **Single runs.** | Two more runs at 10 s (R5, R6). | 17.2, 19.1 and 19.8 s; see the table above. |
+| **Isolated test data left behind.** | `stream:reset` on the isolated environment. | `flight_delay_reliability_test` holds only its reference data (14 airlines, 322 airports) and ingest bookkeeping; `stream_flights` and `stream_stats` are empty, and the `reliability.*` topics have no records. The main database still holds 479,230 stream flights. |
 
 ### Remaining Kafka risks
 
-- **Failed commits are silent.** During an outage, commits of batches already being processed fail without a log line. Delivery stays correct (redelivery plus idempotent upsert), but the redelivery is only visible afterwards in `deliveries` and the consumer's `redelivered` counter.
-- **The probe could not restart from a detached process.** An API process whose launching console had been closed (an orphan of these tests) could no longer start probe children: every respawn failed with 0xC0000142, so its status said "Kafka unreachable" indefinitely. A freshly started API recovered normally after the same kind of restart. The cause (the lost console) is a hypothesis, not proven; the API kept serving everything else.
-- **Single runs.** Each resume time is one run; 10 s against 30 s was consistent across three runs, but there is no spread.
+- **Why offsets were not committed in R1 is unexplained.** The client's commit call returned no error while 16,000 offsets were lost. Redelivery and the idempotent upsert keep the data correct, and the consumer now warns when it happens, but the client's behaviour was not traced.
+- **Few runs.** Three resume times at 10 s and two at 30 s, each on one machine; the gap is consistent but the spread is small evidence.
+- **The status reads `live` for up to 15 s of a stall.** By design (the stall window): in R6 it read `live` for about 10 s after Kafka came back and before the first new batch.
 - **Unchanged from before:** single broker with replication factor 1 (no fault tolerance); the native `fetchOffsets` crash in the Kafka client (contained in the probe process); the consumer was never tested in a crash of the client itself.
 
 ## Raw evidence
@@ -339,6 +352,8 @@ Every flight was refused by the scorer there (no route statistics), which does n
 | `docs/measurements/run-d-crash-after-restart.json` | run D after the restart |
 | `docs/measurements/reliability-r1-redelivery.json`, `reliability-r1-status.json` | R1 (isolated): 16,000 redelivered after an outage, and the status series that showed the validation fallbacks and the first stall detection |
 | `docs/measurements/reliability-r2-outage.json`, `reliability-r3-*.json`, `reliability-r4-*.json` | R2 to R4 (isolated): resume times by session timeout, and the status series verifying the stall state |
+| `docs/measurements/reliability-r5-outage.json`, `reliability-r6-outage.json`, `reliability-r6-status.json` | R5 and R6 (isolated, 10 s): resume times, the consumer's redelivery warnings, and the status series |
+| `docs/measurements/reliability-r5-probe-console-lost.json` | the probe in an API whose console was killed: its process log and status every 2 s through a broker restart |
 | `docs/measurements/run-h1-one-consumer.json`, `run-h2-two-consumers.json` | runs H1 and H2: one against two consumers, 150,000 events unthrottled |
 | `docs/measurements/run-h2-partitions.json` | run H2: messages per partition and per consumer |
 | `docs/measurements/run-g-kafka-restart.json` | run G (Kafka stopped about 28 s under load): checks and counts after recovery |
