@@ -335,9 +335,56 @@ With 10 s the consumer resumed 17.2 to 19.8 s after the broker started (3 runs);
 | **Single runs.**                                                                                                                                                       | Two more runs at 10 s (R5, R6).                                                                                                                                                                                                                                                                                                                                                                      | 17.2, 19.1 and 19.8 s; see the table above.                                                                                                                                                                                                                                                                             |
 | **Isolated test data left behind.**                                                                                                                                    | `stream:reset` on the isolated environment.                                                                                                                                                                                                                                                                                                                                                          | `flight_delay_reliability_test` holds only its reference data (14 airlines, 322 airports) and ingest bookkeeping; `stream_flights` and `stream_stats` are empty, and the `reliability.*` topics have no records. The main database still holds 479,230 stream flights.                                                  |
 
+### Lost offset commits: root cause and fix (2026-10-23)
+
+**Root cause.** In `@confluentinc/kafka-javascript` 1.11.0 the KafkaJS-style `consumer.commitOffsets()` resolves when the commit is **queued**, not when the broker stores it:
+
+- `commitOffsets()` calls the native `commitCb`, which runs `KafkaConsumer::Commit`, which runs librdkafka's `commitAsync` (`src/workers.cc`, `src/kafka-consumer.cc`). The callback reports only whether queueing worked.
+- The broker's answer goes to librdkafka's offset-commit callback. The KafkaJS layer enables it (`offset_commit_cb = true`) but never listens to the `offset.commit` event it produces (`lib/kafkajs/_consumer.js`, marked TODO there). A commit that fails later is therefore dropped without an error.
+
+In R1 the consumer kept processing messages it had already fetched after the broker stopped. Every commit resolved, so it marked each batch done and moved on. The broker never stored those commits, and the 16,000 flights were delivered again after the restart.
+
+**Reproduced** with `npm run stream:commit-check -- --mode raw --yes`. It uses a throwaway topic and group: 6,000 messages in batches of 100, with the broker stopped for 20 s.
+
+- All 28 commits that completed while the broker was stopped resolved, and none was rejected.
+- After rejoining, the consumer restarted from offset 2,402, the last commit the broker had stored.
+- It delivered 3,598 messages twice: offsets 2,402 to 5,999, the range whose commits had resolved during the outage (`commit-check-raw.json`).
+- Three earlier runs with a prototype script gave the same picture: 38 of 38 commits resolved, and 3,798 messages delivered twice (`commit-repro-prototype.json`).
+
+**Fix** (`server/src/stream/commit.ts`). After each commit the consumer reads the group's committed offset back from the broker (`consumer.committed`, 5 s bound per read). The offset must reach the one just committed within three reads, 50 ms apart; the queued commit may not have been sent when the first read goes out. Otherwise the batch fails:
+
+- it is not marked processed;
+- the error is logged ("commit … not confirmed") and the heartbeat reports `failed`;
+- the consumer backs off, the client seeks back, and the batch is delivered again;
+- the idempotent upsert absorbs the second delivery, so nothing is lost and no duplicate document is written.
+
+Because no commit is believed until the broker confirms it, the consumer no longer runs ahead of its commits during an outage.
+
+**Verified:**
+
+- **`stream:commit-check -- --mode confirmed`:** 0 commits were believed while the broker was stopped. The one commit made then was rejected (`commit-check-confirmed.json`). After the restart the consumer resumed exactly after that commit: it had reached the broker as the broker shut down, so it was stored although it could not be confirmed. Nothing was delivered twice, and the final committed offset is 6,000 of 6,000.
+- **An earlier confirmed run** (single read-back, before the review fixes): 1 commit rejected, and that one batch of 100 delivered twice (`commit-repro-prototype.json`, `verify1`).
+- **R7, the real consumer through the same 28 s outage as R1 to R6** (single read-back version): three batches failed with "commit … not confirmed: reading it back failed (Local: Timed out)", one per partition. After the restart only 41 flights were delivered twice, against 16,000 in R1 and 40 to 100 in R2 to R6. All 60,000 were stored with no duplicate documents, and the consumer resumed 17.1 s after the broker started (`reliability-r7-outage.json`).
+- **`stream:smoke`** passes with the final version, including its idempotent-replay check.
+- **Unit tests:** `commit.test.ts` covers:
+  - the R1 case: the commit resolves but the broker keeps the old offset after three reads;
+  - a commit that arrives on the second read;
+  - a timed-out read-back;
+  - a refused commit;
+  - a missing partition;
+  - a non-numeric offset;
+  - an offset already past ours;
+  - integer comparison.
+
+  `commit-check.test.ts` covers the check's verdict.
+
+- **Check classification:** the check counts a commit as "while down" only if it completed after `docker compose stop` returned. A first run counted from when the stop was issued. It reported 2 commits "believed" that the broker, still shutting down, had in fact stored: the consumer resumed right after them.
+- **Cost:** one more broker round trip per batch, with no measurable cost. Draining 60,000 pre-filled events (isolated environment, scorer refusing every flight, so mostly the Kafka and MongoDB path) ran at 1,970/s with confirmation and 1,890/s without: one run each, a difference within run-to-run noise.
+
 ### Remaining Kafka risks
 
-- **Why offsets were not committed in R1 is unexplained.** The client's commit call returned no error while 16,000 offsets were lost. Redelivery and the idempotent upsert keep the data correct, and the consumer now warns when it happens, but the client's behaviour was not traced.
+- **The confirmation reads the committed offset, not the commit's own result.** If the client is upgraded, re-run `stream:commit-check` in both modes. If a release delivers commit errors to `commitOffsets()` itself, the read-back becomes redundant but still harmless.
+- **A commit can succeed and still be reported as failed.** This happens when the read-back times out after the broker stored the commit. The batch is then delivered once more, and the upsert absorbs it.
 - **Few runs.** Three resume times at 10 s and two at 30 s, each on one machine; the gap is consistent but the spread is small evidence.
 - **The status reads `live` for up to 15 s of a stall.** By design (the stall window): in R6 it read `live` for about 10 s after Kafka came back and before the first new batch.
 - **Unchanged from before:** single broker with replication factor 1 (no fault tolerance); the native `fetchOffsets` crash in the Kafka client (contained in the probe process); the consumer was never tested in a crash of the client itself.
@@ -355,6 +402,9 @@ With 10 s the consumer resumed 17.2 to 19.8 s after the broker started (3 runs);
 | `docs/measurements/reliability-r1-redelivery.json`, `reliability-r1-status.json`                           | R1 (isolated): 16,000 redelivered after an outage, and the status series that showed the validation fallbacks and the first stall detection |
 | `docs/measurements/reliability-r2-outage.json`, `reliability-r3-*.json`, `reliability-r4-*.json`           | R2 to R4 (isolated): resume times by session timeout, and the status series verifying the stall state                                       |
 | `docs/measurements/reliability-r5-outage.json`, `reliability-r6-outage.json`, `reliability-r6-status.json` | R5 and R6 (isolated, 10 s): resume times, the consumer's redelivery warnings, and the status series                                         |
+| `docs/measurements/commit-check-raw.json`, `commit-check-confirmed.json`                                   | `stream:commit-check`: every commit made during an outage, with and without the read-back confirmation                                      |
+| `docs/measurements/commit-repro-prototype.json`                                                            | the first reproductions, before `stream:commit-check` existed                                                                               |
+| `docs/measurements/reliability-r7-outage.json`                                                             | R7 (isolated): the real consumer with confirmed commits through a broker outage, with its error and warning lines                           |
 | `docs/measurements/reliability-r5-probe-console-lost.json`                                                 | the probe in an API whose console was killed: its process log and status every 2 s through a broker restart                                 |
 | `docs/measurements/run-h1-one-consumer.json`, `run-h2-two-consumers.json`                                  | runs H1 and H2: one against two consumers, 150,000 events unthrottled                                                                       |
 | `docs/measurements/run-h2-partitions.json`                                                                 | run H2: messages per partition and per consumer                                                                                             |
@@ -381,5 +431,5 @@ With 10 s the consumer resumed 17.2 to 19.8 s after the broker started (3 runs);
 - **Shared laptop.** Runs were made on a laptop also in desktop use; run E's host load was recorded (62% CPU), the others' was not, so latencies across runs are only loosely comparable.
 - **Not measured in 8g:**
   - consumer memory use;
-  - a graceful stop by a real Ctrl+C (Windows cannot send SIGINT programmatically; the same stop path ran through `--idle-exit`);
+  - a graceful stop by a real Ctrl+C under load. It was later checked once on an idle consumer: a console Ctrl+C sent with `GenerateConsoleCtrlEvent` produced "stream:consume stopped" and a final heartbeat (2026-10-23);
   - the DLQ path with real data (December has no rejects).

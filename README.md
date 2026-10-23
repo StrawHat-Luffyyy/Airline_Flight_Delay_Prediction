@@ -135,6 +135,12 @@ npm run stream:watch -- --duration 300 --url http://127.0.0.1:3001 --out lag.jso
 npm run stream:reset -- --db <MONGODB_DB> --yes
 ```
 
+**Warning: this stops and restarts the Kafka container.** `stream:commit-check` reproduces the lost offset commits found in run R1 on a throwaway topic and group, which it removes afterwards. `--mode raw` shows the client's `commitOffsets()` resolving while the broker is down. `--mode confirmed` shows the consumer's read-back check catching the same failure (see docs/STREAMING.md). Run it after upgrading the Kafka client. It exits non-zero when the expected result does not hold.
+
+```bash
+npm run stream:commit-check -- --mode confirmed --yes
+```
+
 With Kafka stopped, every other page and endpoint keeps working; the Live page and `/api/stream/status` report a degraded state instead of failing.
 
 ## Dashboard
