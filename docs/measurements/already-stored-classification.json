@@ -1,0 +1,99 @@
+{
+  "what": "Already-stored classification check (isolated: db flight_delay_reliability_test, group reliability-test, topics reliability.*). Stage 1: one consumer, two replays of the same 5,000 flights (new run, new offsets). Stage 2: consumer group rewound to the earliest offset with kafka-consumer-groups.sh --reset-offsets, the same 10,000 messages re-read. Stage 3: lastSource removed from all 5,000 documents (as stored before positions were recorded), group rewound again.",
+  "date": "2026-10-23",
+  "stages": {
+    "c1": {
+      "stage": "replay twice",
+      "consumerFinal": {
+        "consumed": 10000,
+        "inserted": 5000,
+        "redelivered": 5000
+      },
+      "totals": {
+        "warningSameMessage": 0,
+        "infoReplayOrDuplicate": 5000,
+        "infoUnknown": 0
+      },
+      "logLines": [
+        {
+          "level": "info",
+          "count": 185,
+          "batches": 1,
+          "msg": "185 flights already stored (replay or duplicate); upserts left them unchanged"
+        },
+        {
+          "level": "info",
+          "count": 4815,
+          "batches": 16,
+          "msg": "4815 flights already stored (replay or duplicate); upserts left them unchanged"
+        }
+      ]
+    },
+    "c2": {
+      "stage": "rewind: same messages re-read",
+      "consumerFinal": {
+        "consumed": 10000,
+        "inserted": 0,
+        "redelivered": 10000
+      },
+      "totals": {
+        "warningSameMessage": 10000,
+        "infoReplayOrDuplicate": 0,
+        "infoUnknown": 0
+      },
+      "logLines": [
+        {
+          "level": "warn",
+          "count": 1,
+          "batches": 1,
+          "msg": "1 flights delivered again from the same Kafka messages: their offsets were not committed earlier (crash, rebalance or a commit not confirmed); upserts left them unchanged"
+        },
+        {
+          "level": "warn",
+          "count": 9999,
+          "batches": 23,
+          "msg": "9999 flights delivered again from the same Kafka messages: their offsets were not committed earlier (crash, rebalance or a commit not confirmed); upserts left them unchanged"
+        }
+      ]
+    },
+    "c3": {
+      "stage": "rewind over documents without lastSource",
+      "consumerFinal": {
+        "consumed": 10000,
+        "inserted": 0,
+        "redelivered": 10000
+      },
+      "totals": {
+        "warningSameMessage": 0,
+        "infoReplayOrDuplicate": 5000,
+        "infoUnknown": 5000
+      },
+      "logLines": [
+        {
+          "level": "info",
+          "count": 1,
+          "batches": 1,
+          "msg": "1 flights already stored before message positions were recorded: a redelivery (offset not committed) or a replay; upserts left them unchanged"
+        },
+        {
+          "level": "info",
+          "count": 175,
+          "batches": 1,
+          "msg": "175 flights already stored (replay or duplicate); upserts left them unchanged"
+        },
+        {
+          "level": "info",
+          "count": 4825,
+          "batches": 13,
+          "msg": "4825 flights already stored (replay or duplicate); upserts left them unchanged"
+        },
+        {
+          "level": "info",
+          "count": 4999,
+          "batches": 12,
+          "msg": "4999 flights already stored before message positions were recorded: a redelivery (offset not committed) or a replay; upserts left them unchanged"
+        }
+      ]
+    }
+  }
+}

@@ -10,12 +10,13 @@ import type { Db } from 'mongodb';
 import type { Logger } from 'pino';
 import { commitAndConfirm } from './commit.js';
 import { handleBatch } from './consume.js';
-import { createRedeliveryWarning } from './redelivery-warning.js';
+import { classifyAlreadyStored } from './already-stored.js';
 import { scoreEvents, type Predictor } from './score.js';
 import { HEARTBEAT_INTERVAL_MS } from './status/state.js';
+import { createThrottledReport } from './throttled-report.js';
 import {
   ensureStreamIndexes,
-  findStoredKeys,
+  findStoredDeliveries,
   streamConsumers,
   streamFlights,
   upsertEvents,
@@ -27,7 +28,7 @@ const MAX_BATCH = 500;
 const MAX_BACKOFF_MS = 30_000;
 /** Bound on reading a commit back from the broker; longer fails the batch (redelivered). */
 const COMMIT_CONFIRM_TIMEOUT_MS = 5_000;
-/** At most one redelivery warning per interval (redelivery-warning.ts). */
+/** At most one log line per interval for each cause of already-stored flights. */
 const REDELIVERY_WARN_INTERVAL_MS = 10_000;
 
 /** Thrown inside a batch whose partition was reassigned before its commit. */
@@ -76,13 +77,33 @@ export async function startConsumer(options: ConsumerOptions): Promise<RunningCo
   };
   const startedAt = new Date();
   let lastBatchAt = Date.now();
-  const reportRedelivery = createRedeliveryWarning({
+  // Why flights were already stored (already-stored.ts). Only a re-read message is a warning: its
+  // offset was not committed. A replay of stored flights is expected and logged at info.
+  const reportRedelivered = createThrottledReport({
     intervalMs: REDELIVERY_WARN_INTERVAL_MS,
     now: Date.now,
-    warn: (summary) =>
+    report: ({ count, batches }) =>
       logger.warn(
-        summary,
-        'already-stored flights delivered again: their offsets were not committed earlier (crash, rebalance or a commit lost while the broker was down); the upserts absorb them',
+        { redelivered: count, batches },
+        `${count} flights delivered again from the same Kafka messages: their offsets were not committed earlier (crash, rebalance or a commit not confirmed); upserts left them unchanged`,
+      ),
+  });
+  const reportReplayed = createThrottledReport({
+    intervalMs: REDELIVERY_WARN_INTERVAL_MS,
+    now: Date.now,
+    report: ({ count, batches }) =>
+      logger.info(
+        { alreadyStored: count, batches },
+        `${count} flights already stored (replay or duplicate); upserts left them unchanged`,
+      ),
+  });
+  const reportUnknown = createThrottledReport({
+    intervalMs: REDELIVERY_WARN_INTERVAL_MS,
+    now: Date.now,
+    report: ({ count, batches }) =>
+      logger.info(
+        { alreadyStored: count, batches },
+        `${count} flights already stored before message positions were recorded: a redelivery (offset not committed) or a replay; upserts left them unchanged`,
       ),
   });
 
@@ -162,10 +183,10 @@ export async function startConsumer(options: ConsumerOptions): Promise<RunningCo
             batch.messages,
             { topic: batch.topic, partition: batch.partition, now: Date.now() },
             {
-              write: async (events) => {
+              write: async (events, sources) => {
                 // Score only flights not stored yet: a redelivery never re-scores, and a stored
                 // prediction never changes.
-                const stored = await findStoredKeys(
+                const stored = await findStoredDeliveries(
                   flights,
                   events.map((event) => event.key),
                 );
@@ -173,12 +194,18 @@ export async function startConsumer(options: ConsumerOptions): Promise<RunningCo
                   events.filter((event) => !stored.has(event.key)),
                   predict,
                 );
-                return upsertEvents(
+                const alreadyStored = classifyAlreadyStored(
+                  events.map((event, i) => ({ key: event.key, source: sources[i]! })),
+                  stored,
+                );
+                const written = await upsertEvents(
                   flights,
                   events,
                   new Date(),
                   new Map(scores.map((score) => [score.key, score])),
+                  sources,
                 );
+                return { ...written, alreadyStored };
               },
               sendDlq: async (messages: readonly DlqMessage[]) => {
                 await dlqProducer.send({
@@ -228,7 +255,9 @@ export async function startConsumer(options: ConsumerOptions): Promise<RunningCo
         counters.dlq += result.dlq;
         counters.batches += 1;
         lastBatchAt = Date.now();
-        reportRedelivery(result.redelivered);
+        reportRedelivered(result.alreadyStored?.sameMessage ?? 0);
+        reportReplayed(result.alreadyStored?.otherMessage ?? 0);
+        reportUnknown(result.alreadyStored?.unknown ?? 0);
       },
     });
   } catch (error) {
@@ -253,6 +282,10 @@ export async function startConsumer(options: ConsumerOptions): Promise<RunningCo
         clearInterval(heartbeat);
         // disconnect() lets the in-flight batch finish (and commit) before leaving the group.
         await consumer.disconnect();
+        // Counts still held back by the throttled reports would otherwise never be logged.
+        reportRedelivered.flush();
+        reportReplayed.flush();
+        reportUnknown.flush();
         await dlqProducer.disconnect();
         // A periodic beat still in flight must not land after (and overwrite) "stopped".
         await inFlightBeat.catch(() => undefined);

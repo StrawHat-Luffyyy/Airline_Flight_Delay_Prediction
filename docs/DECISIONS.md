@@ -1286,7 +1286,7 @@ Lift = precision / base rate. Operating points on September validation (462,153 
 
 Making `docker compose` asynchronous in the check exposed a misclassification: commits confirmed while the broker was still shutting down had been counted as made while it was down. The check now counts from when the stop has returned.
 
-**Kept:** the redelivery warning (`redelivery-warning.ts`) as a second, independent signal.
+**Kept:** the redelivery warning (`redelivery-warning.ts`, since renamed `throttled-report.ts`) as a second, independent signal.
 
 **Recheck when the client is upgraded:** run `stream:commit-check` in both modes. If `raw` stops reproducing the defect, the client reports commit failures itself, and the read-back becomes redundant but harmless.
 
@@ -1344,4 +1344,23 @@ Making `docker compose` asynchronous in the check exposed a misclassification: c
 - The K1 offset check could not reach the broker from inside the container (an advertised-listener mismatch). It was fixed with an internal listener, and K1 and K2 were rerun as K1b and K2b.
 
 **Cleanup:** the disposable container was removed. Its volume `fdkilltest_kafka_data` remains, because the project's bash guard blocks Docker volume removal without the user's approval. `stream:reset` emptied the isolated database's stream collections.
+
+### Kafka: tell a redelivery from a replay of stored flights (2026-10-23)
+
+**Problem:** the consumer warned "offsets were not committed earlier" for every already-stored flight. That includes a replay, where new messages (new offsets) arrive for existing flight keys, which is expected and harmless.
+
+**Choice:** record, per flight, the newest message that wrote it (`lastSource`: topic, partition, `$max` offset).
+- A message at or before that offset in the same partition is a re-read, i.e. a redelivery: a warning.
+- A later message is a replay or duplicate: info.
+- Flights without `lastSource` (stored before) cannot be told apart reliably: info, naming both causes.
+
+**Alternatives rejected:**
+- **Compare the event's `runId` with the stored `lastRunId`.** A rewind re-reads older runs' messages too, so a different run id does not mean a new message. The first version used it for old documents, and the isolated check showed it mislabelling a rewind as a replay.
+- **Keep one message for both, at info.** That would lose the warning for the case that matters.
+
+**Bug found while verifying:**
+- The throttled reports dropped counts still held back when the consumer stopped: only 152 of 5,000 replayed flights were logged. They now flush on stop.
+- The first version also overwrote `lastSource` with an older message during a rewind; `$max` fixes this.
+
+**Unchanged:** delivery semantics, commit order, `deliveries`, the `redelivered` counter. Evidence: `already-stored-classification.json`; details and limits in `docs/STREAMING.md`.
 

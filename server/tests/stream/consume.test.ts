@@ -44,6 +44,21 @@ describe('decodeBatch', () => {
     expect(decoded.commitOffset).toBe('12');
   });
 
+  it('keeps the message each event came from, in event order, skipping dead letters', () => {
+    const decoded = decodeBatch(
+      [
+        message('10', JSON.stringify(event(1))),
+        message('11', 'bad'),
+        message('12', JSON.stringify(event(2))),
+      ],
+      ctx,
+    );
+    expect(decoded.sources).toEqual([
+      { topic: 'flights.raw', partition: 1, offset: '10' },
+      { topic: 'flights.raw', partition: 1, offset: '12' },
+    ]);
+  });
+
   it('dead-letters empty, non-JSON and schema-invalid messages with a reason and their coordinates', () => {
     const forged = { ...event(3), key: 'forged' };
     const leaked = { ...event(4), pre: { ...event(4).pre, arrDelay: 10 } };
@@ -82,7 +97,7 @@ describe('decodeBatch', () => {
   });
 
   it('commits nothing for an empty batch', () => {
-    expect(decodeBatch([], ctx)).toEqual({ events: [], dlq: [], commitOffset: null });
+    expect(decodeBatch([], ctx)).toEqual({ events: [], sources: [], dlq: [], commitOffset: null });
   });
 });
 
@@ -90,8 +105,8 @@ describe('decodeBatch', () => {
 function recorder(overrides: Partial<BatchDeps> = {}) {
   const calls: string[] = [];
   const deps: BatchDeps = {
-    async write(events) {
-      calls.push(`write:${events.length}`);
+    async write(events, sources) {
+      calls.push(`write:${events.length}@${sources.map((s) => s.offset).join(',')}`);
       return { inserted: events.length, redelivered: 0 };
     },
     async sendDlq(messages) {
@@ -115,7 +130,7 @@ describe('handleBatch', () => {
   it('writes to MongoDB, then dead-letters, then commits: never commits first', async () => {
     const { calls, deps } = recorder();
     const result = await handleBatch(batch, ctx, deps);
-    expect(calls).toEqual(['write:2', 'dlq:1', 'commit:33']);
+    expect(calls).toEqual(['write:2@30,32', 'dlq:1', 'commit:33']);
     expect(result).toEqual({ consumed: 3, inserted: 2, redelivered: 0, dlq: 1 });
   });
 
@@ -136,13 +151,13 @@ describe('handleBatch', () => {
       },
     });
     await expect(handleBatch(batch, ctx, deps)).rejects.toThrow(/timed out/);
-    expect(calls).toEqual(['write:2']);
+    expect(calls).toEqual(['write:2@30,32']);
   });
 
   it('skips the write and the DLQ when there is nothing for them, but still commits', async () => {
     const { calls, deps } = recorder();
     await handleBatch([message('40', JSON.stringify(event(9)))], ctx, deps);
-    expect(calls).toEqual(['write:1', 'commit:41']);
+    expect(calls).toEqual(['write:1@40', 'commit:41']);
     calls.length = 0;
     await handleBatch([message('41', '')], ctx, deps);
     expect(calls).toEqual(['dlq:1', 'commit:42']);

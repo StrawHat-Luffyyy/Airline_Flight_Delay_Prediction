@@ -5,6 +5,7 @@
  */
 import type { FlightEvent, FlightOutcome, PreDeparture } from '@flight-delay/shared';
 import type { AnyBulkWriteOperation, Collection, Db } from 'mongodb';
+import type { MessageSource, StoredDelivery } from './already-stored.js';
 import type { WriteResult } from './consume.js';
 import type { ScoreResult } from './score.js';
 import { HEARTBEAT_TTL_SECONDS } from './status/state.js';
@@ -42,6 +43,13 @@ export interface StreamFlightDoc {
   lastWrittenAt: Date;
   /** How many times it was delivered: above 1 means a redelivery or a repeated replay. */
   deliveries: number;
+  /**
+   * The newest Kafka message (highest offset) that wrote it, to tell a redelivery from a replay
+   * (already-stored.ts). The offset only grows (`$max`), so a rewind that re-reads an older message
+   * never moves it back. A flight's messages share one topic and partition (keyed by origin).
+   * Absent on flights stored before it was recorded.
+   */
+  lastSource?: { topic: string; partition: number; offset: number };
 }
 
 /** The consumer's own row in stream_stats: liveness and running counters for /stream/status. */
@@ -130,9 +138,12 @@ export async function upsertEvents(
   now: Date,
   /** Live scores by flight key, written with the first insert; absent = not scored. */
   scores: ReadonlyMap<string, ScoreResult> = new Map(),
+  /** The message each event came from, in the same order as `events`; recorded as lastSource. */
+  sources?: readonly MessageSource[],
 ): Promise<WriteResult> {
-  const operations: AnyBulkWriteOperation<StreamFlightDoc>[] = events.map((event) => {
+  const operations: AnyBulkWriteOperation<StreamFlightDoc>[] = events.map((event, i) => {
     const score = scores.get(event.key);
+    const source = sources?.[i];
     return {
       updateOne: {
         filter: { _id: event.key },
@@ -147,7 +158,14 @@ export async function upsertEvents(
             producedAt: new Date(event.producedAt),
             firstWrittenAt: now,
           },
-          $set: { lastRunId: event.runId, lastWrittenAt: now },
+          $set: {
+            lastRunId: event.runId,
+            lastWrittenAt: now,
+            ...(source === undefined
+              ? {}
+              : { 'lastSource.topic': source.topic, 'lastSource.partition': source.partition }),
+          },
+          ...(source === undefined ? {} : { $max: { 'lastSource.offset': Number(source.offset) } }),
           $inc: { deliveries: 1 },
         },
         upsert: true,
@@ -159,14 +177,27 @@ export async function upsertEvents(
   return { inserted: result.upsertedCount, redelivered: events.length - result.upsertedCount };
 }
 
-/** The flight keys among `keys` that are already stored (so their redelivery is not re-scored). */
-export async function findStoredKeys(
+/**
+ * The flights among `keys` that are already stored, with what last wrote them: their redelivery
+ * is not re-scored, and its cause is classified (already-stored.ts).
+ */
+export async function findStoredDeliveries(
   collection: Collection<StreamFlightDoc>,
   keys: readonly string[],
-): Promise<Set<string>> {
-  if (keys.length === 0) return new Set();
+): Promise<Map<string, StoredDelivery>> {
+  if (keys.length === 0) return new Map();
   const found = await collection
-    .find({ _id: { $in: [...new Set(keys)] } }, { projection: { _id: 1 } })
+    .find({ _id: { $in: [...new Set(keys)] } }, { projection: { _id: 1, lastSource: 1 } })
     .toArray();
-  return new Set(found.map((doc) => doc._id));
+  return new Map(
+    found.map((doc) => [
+      doc._id,
+      {
+        lastSource:
+          doc.lastSource === undefined
+            ? null
+            : { ...doc.lastSource, offset: String(doc.lastSource.offset) },
+      },
+    ]),
+  );
 }
