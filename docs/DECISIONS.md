@@ -1322,3 +1322,26 @@ Making `docker compose` asynchronous in the check exposed a misclassification: c
 
 **Unchanged:** a single broker with replication factor 1. Losing the broker or its volume loses unconsumed events. The infrastructure was deliberately not redesigned (`docs/STREAMING.md`, Honest limits).
 
+### Kafka: hard broker kill test (2026-10-23)
+
+**Question:** do messages, offsets and stored flights survive an abrupt broker crash during produce and consume, not only a graceful stop?
+
+**How:**
+- **A disposable broker** with the same image and settings as the project broker (container `fdkilltest-kafka`, volume `fdkilltest_kafka_data`, port 19092). The project broker holds the accepted December data, so it was not killed.
+- **Isolated data:** topics `killtest.*` and the database `flight_delay_reliability_test`.
+- **The kill:** `docker kill` (SIGKILL) at 16,400 to 21,600 stored, a restart 20 s later. Rates of 1,000/s and 3,000/s; four runs (K1, K2, K1b, K2b).
+
+**Result:**
+- **Conservation:** records in the topic = 60,000 acknowledged sends in every run.
+- **Offsets:** committed = end on all partitions with lag 0 (K2, K1b, K2b; not checked in K1).
+- **Stored:** 60,000 stored, 60,000 distinct ids and 0 duplicate flights in every run. In K2b, 1,344 were delivered twice and absorbed.
+- **Recovery:** the broker ran an unclean recovery, healthy about 15.7 s after start. The consumer resumed about 24.3 s after start, without restarts.
+- **Commit failures:** caught at 3,000/s (3 per run).
+- **Main data untouched:** before and after, the project broker's offsets, the `flight-stream` group and the main database (479,230 stream flights) were identical.
+
+**Limits:**
+- SIGKILL keeps the Docker VM's page cache, so this tests a process crash, not a power loss. With replication factor 1 and no forced fsync, a host crash can lose acknowledged messages; that was not tested.
+- The K1 offset check could not reach the broker from inside the container (an advertised-listener mismatch). It was fixed with an internal listener, and K1 and K2 were rerun as K1b and K2b.
+
+**Cleanup:** the disposable container was removed. Its volume `fdkilltest_kafka_data` remains, because the project's bash guard blocks Docker volume removal without the user's approval. `stream:reset` emptied the isolated database's stream collections.
+

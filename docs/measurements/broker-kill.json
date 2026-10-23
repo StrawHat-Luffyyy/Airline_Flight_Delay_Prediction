@@ -1,0 +1,444 @@
+{
+  "what": "Hard broker kill (docker kill = SIGKILL) while producing and consuming, on a DISPOSABLE single broker (container fdkilltest-kafka, volume fdkilltest_kafka_data, host port 19092, apache/kafka:4.3.1, same settings as docker-compose.yml). Topics killtest.raw (3 partitions) and killtest.dlq; group killtest; MongoDB database flight_delay_reliability_test (isolated). Each run: 60,000 December events replayed; broker killed at about 15,000 to 21,000 stored; restarted 20 s later. The project broker and its data, and the main database, were not touched (mainUntouched).",
+  "date": "2026-10-23",
+  "runs": {
+    "K1": {
+      "run": "K1",
+      "replayRate": 1000,
+      "timeline": {
+        "killIssued": "2026-10-23T15:10:23.814Z",
+        "killed": "2026-10-23T15:10:25.668Z",
+        "storedAtKill": 17200,
+        "startIssued": "2026-10-23T15:10:45.785Z",
+        "brokerHealthy": "2026-10-23T15:11:01.475Z",
+        "firstWriteAfterHealthy": "2026-10-23T15:11:09.937Z",
+        "secondsStartToHealthy": 15.7,
+        "secondsStartToFirstWrite": 24.2
+      },
+      "producer": {
+        "status": "completed",
+        "sentRaw": 60000,
+        "sentDlq": 0,
+        "achievedRate": 635
+      },
+      "topic": {
+        "recordsRetained": 60000,
+        "note": "K1 offset checks did not run (the in-container tools could not reach the broker, see K2). Inferred: stream:reset before K2 deleted K1 records up to its end, so K2 start offsets = K1 end offsets, total 60000 from 0."
+      },
+      "stream_flights": {
+        "stored": 60000,
+        "distinctIds": 60000,
+        "duplicateFlights": 0,
+        "byDeliveries": [
+          {
+            "_id": 1,
+            "n": 60000
+          }
+        ]
+      },
+      "consumerFinal": {
+        "consumed": 60000,
+        "inserted": 60000,
+        "redelivered": 0,
+        "dlq": 0,
+        "batches": 1436
+      },
+      "consumerWarningsAndErrors": []
+    },
+    "K2": {
+      "run": "K2",
+      "replayRate": 3000,
+      "timeline": {
+        "killIssued": "2026-10-23T15:17:48.409Z",
+        "killed": "2026-10-23T15:17:50.325Z",
+        "storedAtKill": 21600,
+        "startIssued": "2026-10-23T15:18:10.422Z",
+        "brokerHealthy": "2026-10-23T15:18:26.027Z",
+        "firstWriteAfterHealthy": "2026-10-23T15:18:34.606Z",
+        "secondsStartToHealthy": 15.6,
+        "secondsStartToFirstWrite": 24.2
+      },
+      "producer": {
+        "status": "completed",
+        "sentRaw": 60000,
+        "sentDlq": 0,
+        "achievedRate": 1099
+      },
+      "topic": {
+        "startOffsets": [
+          {
+            "topic": "killtest.raw",
+            "partition": 0,
+            "offset": 21984
+          },
+          {
+            "topic": "killtest.raw",
+            "partition": 1,
+            "offset": 22547
+          },
+          {
+            "topic": "killtest.raw",
+            "partition": 2,
+            "offset": 15469
+          }
+        ],
+        "endOffsets": [
+          {
+            "topic": "killtest.raw",
+            "partition": 0,
+            "offset": 43968
+          },
+          {
+            "topic": "killtest.raw",
+            "partition": 1,
+            "offset": 45094
+          },
+          {
+            "topic": "killtest.raw",
+            "partition": 2,
+            "offset": 30938
+          }
+        ],
+        "recordsRetained": 60000,
+        "dlqEnd": [
+          {
+            "topic": "killtest.dlq",
+            "partition": 0,
+            "offset": 0
+          }
+        ]
+      },
+      "consumerGroup": {
+        "partitions": [
+          {
+            "partition": 0,
+            "committed": 43968,
+            "end": 43968,
+            "lag": 0
+          },
+          {
+            "partition": 1,
+            "committed": 45094,
+            "end": 45094,
+            "lag": 0
+          },
+          {
+            "partition": 2,
+            "committed": 30938,
+            "end": 30938,
+            "lag": 0
+          }
+        ]
+      },
+      "stream_flights": {
+        "stored": 60000,
+        "distinctIds": 60000,
+        "duplicateFlights": 0,
+        "byDeliveries": [
+          {
+            "_id": 1,
+            "n": 60000
+          }
+        ]
+      },
+      "consumerFinal": {
+        "consumed": 59700,
+        "inserted": 59700,
+        "redelivered": 0,
+        "dlq": 0,
+        "batches": 272
+      },
+      "consumerWarningsAndErrors": [
+        {
+          "time": "2026-10-23T15:17:54.866Z",
+          "level": "error",
+          "msg": "batch failed; it will be redelivered",
+          "error": "commit of killtest.raw[0] at 30391 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+        },
+        {
+          "time": "2026-10-23T15:17:54.874Z",
+          "level": "error",
+          "msg": "batch failed; it will be redelivered",
+          "error": "commit of killtest.raw[1] at 31211 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+        },
+        {
+          "time": "2026-10-23T15:17:54.877Z",
+          "level": "error",
+          "msg": "batch failed; it will be redelivered",
+          "error": "commit of killtest.raw[2] at 21498 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+        }
+      ],
+      "note": "Offsets checked after the run from the state left on the volume, once the container was recreated (graceful stop) with an internal listener for the CLI tools."
+    },
+    "K1b": {
+      "run": "K1B",
+      "replayRate": 1000,
+      "timeline": {
+        "killIssued": "2026-10-23T15:26:13.333Z",
+        "killed": "2026-10-23T15:26:15.176Z",
+        "storedAtKill": 16400,
+        "startIssued": "2026-10-23T15:26:35.287Z",
+        "brokerHealthy": "2026-10-23T15:26:50.972Z",
+        "firstWriteAfterHealthy": "2026-10-23T15:26:59.643Z",
+        "secondsStartToHealthy": 15.7,
+        "secondsStartToFirstWrite": 24.4
+      },
+      "producer": {
+        "status": "completed",
+        "sentRaw": 60000,
+        "sentDlq": 0,
+        "achievedRate": 631
+      },
+      "topic": {
+        "startOffsets": [
+          {
+            "topic": "killtest.raw",
+            "partition": 0,
+            "offset": 43968
+          },
+          {
+            "topic": "killtest.raw",
+            "partition": 1,
+            "offset": 45094
+          },
+          {
+            "topic": "killtest.raw",
+            "partition": 2,
+            "offset": 30938
+          }
+        ],
+        "endOffsets": [
+          {
+            "topic": "killtest.raw",
+            "partition": 0,
+            "offset": 65952
+          },
+          {
+            "topic": "killtest.raw",
+            "partition": 1,
+            "offset": 67641
+          },
+          {
+            "topic": "killtest.raw",
+            "partition": 2,
+            "offset": 46407
+          }
+        ],
+        "recordsRetained": 60000,
+        "dlqEnd": [
+          {
+            "topic": "killtest.dlq",
+            "partition": 0,
+            "offset": 0
+          }
+        ]
+      },
+      "consumerGroup": {
+        "partitions": [
+          {
+            "partition": 0,
+            "committed": 65952,
+            "end": 65952,
+            "lag": 0
+          },
+          {
+            "partition": 1,
+            "committed": 67641,
+            "end": 67641,
+            "lag": 0
+          },
+          {
+            "partition": 2,
+            "committed": 46407,
+            "end": 46407,
+            "lag": 0
+          }
+        ]
+      },
+      "stream_flights": {
+        "stored": 60000,
+        "distinctIds": 60000,
+        "duplicateFlights": 0,
+        "byDeliveries": [
+          {
+            "_id": 1,
+            "n": 60000
+          }
+        ]
+      },
+      "consumerFinal": {
+        "consumed": 60000,
+        "inserted": 60000,
+        "redelivered": 0,
+        "dlq": 0,
+        "batches": 1463
+      },
+      "consumerWarningsAndErrors": []
+    },
+    "K2b": {
+      "run": "K2B",
+      "replayRate": 3000,
+      "timeline": {
+        "killIssued": "2026-10-23T15:30:31.378Z",
+        "killed": "2026-10-23T15:30:33.517Z",
+        "storedAtKill": 21503,
+        "startIssued": "2026-10-23T15:30:53.647Z",
+        "brokerHealthy": "2026-10-23T15:31:09.441Z",
+        "firstWriteAfterHealthy": "2026-10-23T15:31:17.935Z",
+        "secondsStartToHealthy": 15.8,
+        "secondsStartToFirstWrite": 24.3
+      },
+      "producer": {
+        "status": "completed",
+        "sentRaw": 60000,
+        "sentDlq": 0,
+        "achievedRate": 1093
+      },
+      "topic": {
+        "startOffsets": [
+          {
+            "topic": "killtest.raw",
+            "partition": 0,
+            "offset": 65952
+          },
+          {
+            "topic": "killtest.raw",
+            "partition": 1,
+            "offset": 67641
+          },
+          {
+            "topic": "killtest.raw",
+            "partition": 2,
+            "offset": 46407
+          }
+        ],
+        "endOffsets": [
+          {
+            "topic": "killtest.raw",
+            "partition": 0,
+            "offset": 87936
+          },
+          {
+            "topic": "killtest.raw",
+            "partition": 1,
+            "offset": 90188
+          },
+          {
+            "topic": "killtest.raw",
+            "partition": 2,
+            "offset": 61876
+          }
+        ],
+        "recordsRetained": 60000,
+        "dlqEnd": [
+          {
+            "topic": "killtest.dlq",
+            "partition": 0,
+            "offset": 0
+          }
+        ]
+      },
+      "consumerGroup": {
+        "partitions": [
+          {
+            "partition": 0,
+            "committed": 87936,
+            "end": 87936,
+            "lag": 0
+          },
+          {
+            "partition": 1,
+            "committed": 90188,
+            "end": 90188,
+            "lag": 0
+          },
+          {
+            "partition": 2,
+            "committed": 61876,
+            "end": 61876,
+            "lag": 0
+          }
+        ]
+      },
+      "stream_flights": {
+        "stored": 60000,
+        "distinctIds": 60000,
+        "duplicateFlights": 0,
+        "byDeliveries": [
+          {
+            "_id": 1,
+            "n": 58656
+          },
+          {
+            "_id": 2,
+            "n": 1344
+          }
+        ]
+      },
+      "consumerFinal": {
+        "consumed": 60000,
+        "inserted": 58656,
+        "redelivered": 1344,
+        "dlq": 0,
+        "batches": 139
+      },
+      "consumerWarningsAndErrors": [
+        {
+          "time": "2026-10-23T15:30:38.092Z",
+          "level": "error",
+          "msg": "batch failed; it will be redelivered",
+          "error": "commit of killtest.raw[0] at 74742 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+        },
+        {
+          "time": "2026-10-23T15:30:38.245Z",
+          "level": "error",
+          "msg": "batch failed; it will be redelivered",
+          "error": "commit of killtest.raw[1] at 76986 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+        },
+        {
+          "time": "2026-10-23T15:30:45.491Z",
+          "level": "error",
+          "msg": "batch failed; it will be redelivered",
+          "error": "commit of killtest.raw[2] at 53390 not confirmed: reading it back failed (Local: Timed out): Local: Timed out"
+        },
+        {
+          "time": "2026-10-23T15:31:17.813Z",
+          "level": "warn",
+          "msg": "already-stored flights delivered again: their offsets were not committed earlier (crash, rebalance or a commit lost while the broker was down); the upserts absorb them",
+          "redelivered": 500
+        },
+        {
+          "time": "2026-10-23T15:31:27.851Z",
+          "level": "warn",
+          "msg": "already-stored flights delivered again: their offsets were not committed earlier (crash, rebalance or a commit lost while the broker was down); the upserts absorb them",
+          "redelivered": 844
+        }
+      ]
+    }
+  },
+  "brokerRecoveryLog": [
+    "[2026-10-23 15:26:38,870] INFO Recovering 54 logs from /var/lib/kafka/data since no clean shutdown file was found",
+    "[2026-10-23 15:26:39,037] INFO [LogLoader partition=killtest.raw-1] Recovering unflushed segment 0. 0 recovered for killtest.raw-1.",
+    "[2026-10-23 15:26:39,042] INFO [LogLoader partition=killtest.raw-2] Recovering unflushed segment 0. 0 recovered for killtest.raw-2.",
+    "[2026-10-23 15:26:39,120] INFO [LogLoader partition=killtest.raw-0] Recovering unflushed segment 0. 0 recovered for killtest.raw-0.",
+    "[2026-10-23 15:30:57,189] INFO Recovering 54 logs from /var/lib/kafka/data since no clean shutdown file was found",
+    "[2026-10-23 15:30:57,404] INFO [LogLoader partition=killtest.raw-1] Recovering unflushed segment 0. 0 recovered for killtest.raw-1.",
+    "[2026-10-23 15:30:57,411] INFO [LogLoader partition=killtest.raw-2] Recovering unflushed segment 0. 0 recovered for killtest.raw-2.",
+    "[2026-10-23 15:30:57,548] INFO [LogLoader partition=killtest.raw-0] Recovering unflushed segment 0. 0 recovered for killtest.raw-0."
+  ],
+  "mainUntouched": {
+    "checkedBy": "kafka-get-offsets.sh and kafka-consumer-groups.sh on the project broker, and stream_flights count in flight_delay, before and after the test",
+    "before": [
+      "flights.raw:0:949230",
+      "flights.raw:1:989842",
+      "flights.raw:2:671818",
+      "flights.dlq:0:0",
+      "flights.raw 0 949230 949230 0",
+      "flights.raw 1 989842 989842 0",
+      "flights.raw 2 671818 671818 0",
+      "479230"
+    ],
+    "identicalAfter": true
+  },
+  "cleanup": "Disposable container removed. Its volume fdkilltest_kafka_data was left in place: the project hook blocks volume removal without the user's approval. stream:reset emptied stream_flights and stream_stats in flight_delay_reliability_test."
+}
