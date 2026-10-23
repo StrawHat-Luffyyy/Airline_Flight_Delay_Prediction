@@ -330,7 +330,7 @@ MSYS_NO_PATHCONV=1 docker compose exec kafka /opt/kafka/bin/kafka-consumer-group
 ### Found in the follow-ups
 - **Fixed:** "live" while stalled, the slow resume after a broker restart, and `--idle-exit` counting from the start (see Kafka reliability fixes above).
 - **Lost commits:** fixed (commits are confirmed by reading them back; see Kafka reliability fixes above). The redelivery warning stays as a second signal.
-- **Final version validated:** R8 to R10, no loss and no duplicate documents; R10 offsets equal end offsets. Five throughput runs per configuration show no cost, and single-run variability up to 2x.
+- **Final version validated:** R8 to R10 and the reruns R8b and R9b, with no loss and no duplicate documents. Committed offsets equal end offsets, lag 0, in R8b, R9b and R10; R8 and R9 had no working offset check. Five throughput runs per configuration show no cost, and single-run variability up to 2x.
 - **Client upgrades:** a test blocks any client change until `stream:commit-check` has been run in both modes. On 1.11.0, the latest release, the workaround is still needed.
 - **Reset after a hard kill:** `stream:reset` refuses until the killed member's session expires (about 45 s). That is correct, but it means a retry loop.
 - **Host load matters:** timings varied widely across the day (`build:stats` 127 to 371 s; one consumer 2,442/s in the morning, 1,736/s in the evening).
