@@ -1,0 +1,722 @@
+{
+  "topic": "commitcheck.1792782105691",
+  "clientVersion": "1.11.0",
+  "mode": "raw",
+  "batchSize": 100,
+  "partitions": 1,
+  "brokerCommitted": 6000,
+  "messages": 6000,
+  "delivered": 11398,
+  "distinctOffsets": 6000,
+  "deliveredTwice": 5398,
+  "deliveredTwiceRange": [602, 5999],
+  "commitsWhileDown": {
+    "total": 45,
+    "resolved": 45,
+    "rejected": 0
+  },
+  "verdict": {
+    "ok": true,
+    "failures": []
+  },
+  "commits": [
+    {
+      "t": 4.1,
+      "next": 1,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 4.3,
+      "next": 2,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 4.5,
+      "next": 102,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 4.6,
+      "next": 202,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 4.8,
+      "next": 302,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 4.9,
+      "next": 402,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 5.1,
+      "next": 502,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 5.2,
+      "next": 602,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 5.4,
+      "next": 702,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 5.6,
+      "next": 802,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 5.7,
+      "next": 902,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 5.9,
+      "next": 1002,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 6,
+      "next": 1102,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 6.2,
+      "next": 1202,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 6.4,
+      "next": 1302,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 6.5,
+      "next": 1402,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 6.7,
+      "next": 1502,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 6.8,
+      "next": 1602,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 7,
+      "next": 1702,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 7.1,
+      "next": 1802,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 7.3,
+      "next": 1902,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 7.4,
+      "next": 2002,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 7.6,
+      "next": 2102,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 7.8,
+      "next": 2202,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 7.9,
+      "next": 2302,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 8.1,
+      "next": 2402,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 8.2,
+      "next": 2502,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 8.4,
+      "next": 2602,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 8.6,
+      "next": 2702,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 8.7,
+      "next": 2802,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 8.9,
+      "next": 2902,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 9,
+      "next": 3002,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 9.2,
+      "next": 3102,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 9.3,
+      "next": 3202,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 9.5,
+      "next": 3302,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 9.7,
+      "next": 3402,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 9.8,
+      "next": 3502,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 10,
+      "next": 3602,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 10.1,
+      "next": 3702,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 10.3,
+      "next": 3802,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 10.4,
+      "next": 3902,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 10.6,
+      "next": 4002,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 10.7,
+      "next": 4102,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 10.9,
+      "next": 4202,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 11.1,
+      "next": 4302,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 11.2,
+      "next": 4402,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 11.4,
+      "next": 4502,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 11.5,
+      "next": 4602,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 11.7,
+      "next": 4702,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 11.8,
+      "next": 4802,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 12,
+      "next": 4902,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 12.2,
+      "next": 5002,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 12.3,
+      "next": 5102,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 12.5,
+      "next": 5202,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 12.7,
+      "next": 5302,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 12.8,
+      "next": 5402,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 13,
+      "next": 5502,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 13.1,
+      "next": 5602,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 13.3,
+      "next": 5702,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 13.4,
+      "next": 5802,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 13.6,
+      "next": 5902,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 13.7,
+      "next": 6000,
+      "brokerDown": true,
+      "outcome": "resolved"
+    },
+    {
+      "t": 42.1,
+      "next": 702,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 42.3,
+      "next": 802,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 42.5,
+      "next": 902,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 42.6,
+      "next": 1002,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 42.8,
+      "next": 1102,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 42.9,
+      "next": 1202,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 43.1,
+      "next": 1302,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 43.2,
+      "next": 1402,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 43.4,
+      "next": 1502,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 43.6,
+      "next": 1602,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 43.7,
+      "next": 1702,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 43.9,
+      "next": 1802,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 44,
+      "next": 1902,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 44.2,
+      "next": 2002,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 44.3,
+      "next": 2102,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 44.5,
+      "next": 2202,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 44.7,
+      "next": 2302,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 44.8,
+      "next": 2402,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 45,
+      "next": 2502,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 45.1,
+      "next": 2602,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 45.3,
+      "next": 2702,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 45.5,
+      "next": 2802,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 45.6,
+      "next": 2902,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 45.8,
+      "next": 3002,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 45.9,
+      "next": 3102,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 46.1,
+      "next": 3202,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 46.2,
+      "next": 3302,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 46.4,
+      "next": 3402,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 46.6,
+      "next": 3502,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 46.7,
+      "next": 3602,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 46.9,
+      "next": 3702,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 47,
+      "next": 3802,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 47.2,
+      "next": 3902,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 47.3,
+      "next": 4002,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 47.5,
+      "next": 4102,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 47.7,
+      "next": 4202,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 47.8,
+      "next": 4302,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 48,
+      "next": 4402,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 48.1,
+      "next": 4502,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 48.3,
+      "next": 4602,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 48.4,
+      "next": 4702,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 48.6,
+      "next": 4802,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 48.8,
+      "next": 4902,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 48.9,
+      "next": 5002,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 49.1,
+      "next": 5102,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 49.2,
+      "next": 5202,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 49.4,
+      "next": 5302,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 49.5,
+      "next": 5402,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 49.7,
+      "next": 5502,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 49.8,
+      "next": 5602,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 50,
+      "next": 5702,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 50.2,
+      "next": 5802,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 50.3,
+      "next": 5902,
+      "brokerDown": false,
+      "outcome": "resolved"
+    },
+    {
+      "t": 50.5,
+      "next": 6000,
+      "brokerDown": false,
+      "outcome": "resolved"
+    }
+  ],
+  "environment": "isolated: compose project fdverify via COMPOSE_PROJECT_NAME/COMPOSE_FILE, broker 127.0.0.1:19092 (+ in-container localhost:9092 listener); the project broker was verified unchanged before/after (flights.* offsets, flight-stream offsets, container start time)",
+  "date": "2026-10-24"
+}

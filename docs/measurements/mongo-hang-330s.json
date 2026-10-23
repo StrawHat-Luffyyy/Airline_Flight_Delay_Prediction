@@ -1,0 +1,199 @@
+{
+  "what": "MongoDB frozen with docker pause for 330 s (longer than librdkafka max.poll.interval.ms, 300 s) while the real consumer (startConsumer, commit read-back) ran with a stub predictor and a producer trickled events. Isolated stack: compose project fdverify (Kafka 127.0.0.1:19092, MongoDB 127.0.0.1:27018); the project broker and database were not touched.",
+  "date": "2026-10-24",
+  "mongoClientOptions": {
+    "serverSelectionTimeoutMS": 5000,
+    "note": "same as server/src/db/client.ts; driver defaults otherwise"
+  },
+  "result": {
+    "hangSeconds": 330,
+    "sent": 10400,
+    "endOffsetsTotal": 10400,
+    "stored": 10400,
+    "scored": 10400,
+    "deliveries": {
+      "_id": null,
+      "sum": 10400,
+      "max": 1,
+      "twice": 0
+    },
+    "consumerCounters": {
+      "consumed": 10400,
+      "inserted": 10400,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 231
+    },
+    "committedDescribe": [
+      "GROUP                TOPIC                    PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID",
+      "fdhang-1792782443855 fdhang-1792782443855.raw 0          3399            3399            0               -               -               -",
+      "fdhang-1792782443855 fdhang-1792782443855.raw 1          3472            3472            0               -               -               -",
+      "fdhang-1792782443855 fdhang-1792782443855.raw 2          3529            3529            0               -               -               -"
+    ]
+  },
+  "consumerLogSummary": [
+    {
+      "levelAndMsg": "40 heartbeat failed",
+      "count": 179,
+      "firstT": 55.2,
+      "lastT": 351.5
+    },
+    {
+      "levelAndMsg": "50 batch failed; it will be redelivered",
+      "count": 17,
+      "firstT": 66.2,
+      "lastT": 342.2
+    },
+    {
+      "levelAndMsg": "30 stream:consume stopped",
+      "count": 1,
+      "firstT": 389.1,
+      "lastT": 389.1
+    }
+  ],
+  "firstBatchFailure": {
+    "t": 66.2,
+    "error": "connection <monitor> to 127.0.0.1:27018 timed out: connection <monitor> to 127.0.0.1:27018 timed out"
+  },
+  "timeline": [
+    {
+      "t": 21.3,
+      "msg": "pausing MongoDB",
+      "storedBefore": 3550,
+      "consumed": 3550,
+      "sent": 3550
+    },
+    {
+      "t": 51.5,
+      "msg": "during pause",
+      "consumed": 3550,
+      "inserted": 3550,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 215,
+      "sent": 8900
+    },
+    {
+      "t": 81.5,
+      "msg": "during pause",
+      "consumed": 3550,
+      "inserted": 3550,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 215,
+      "sent": 10400
+    },
+    {
+      "t": 111.5,
+      "msg": "during pause",
+      "consumed": 3550,
+      "inserted": 3550,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 215,
+      "sent": 10400
+    },
+    {
+      "t": 141.6,
+      "msg": "during pause",
+      "consumed": 3550,
+      "inserted": 3550,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 215,
+      "sent": 10400
+    },
+    {
+      "t": 171.6,
+      "msg": "during pause",
+      "consumed": 3550,
+      "inserted": 3550,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 215,
+      "sent": 10400
+    },
+    {
+      "t": 201.6,
+      "msg": "during pause",
+      "consumed": 3550,
+      "inserted": 3550,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 215,
+      "sent": 10400
+    },
+    {
+      "t": 231.6,
+      "msg": "during pause",
+      "consumed": 3550,
+      "inserted": 3550,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 215,
+      "sent": 10400
+    },
+    {
+      "t": 261.6,
+      "msg": "during pause",
+      "consumed": 3550,
+      "inserted": 3550,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 215,
+      "sent": 10400
+    },
+    {
+      "t": 291.6,
+      "msg": "during pause",
+      "consumed": 3550,
+      "inserted": 3550,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 215,
+      "sent": 10400
+    },
+    {
+      "t": 321.6,
+      "msg": "during pause",
+      "consumed": 3550,
+      "inserted": 3550,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 215,
+      "sent": 10400
+    },
+    {
+      "t": 351.8,
+      "msg": "unpaused MongoDB",
+      "pausedS": 330,
+      "consumed": 3550,
+      "inserted": 3550,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 215,
+      "sent": 10400
+    },
+    {
+      "t": 351.8,
+      "msg": "producer finished",
+      "sent": 10400
+    },
+    {
+      "t": 374,
+      "msg": "caught up",
+      "stored": 10400,
+      "sent": 10400,
+      "consumed": 10400,
+      "inserted": 10400,
+      "redelivered": 0,
+      "dlq": 0,
+      "batches": 231
+    }
+  ],
+  "reading": [
+    "Pause at t=21.3 s. The driver server monitor timed out about 34 s later (first heartbeat failure t=55.2); the pool was cleared and in-flight writes were interrupted, so the first batch failed at t=66.2 instead of hanging.",
+    "17 batches failed and backed off (1 s doubling to 30 s); no rebalance, no max.poll.interval eviction (0 mentions in the consumer log).",
+    "After unpause (t=351.8) the consumer caught up by t=374: 10,400 sent = stored = scored, max deliveries 1, committed = end offsets on all 3 partitions, lag 0."
+  ]
+}
