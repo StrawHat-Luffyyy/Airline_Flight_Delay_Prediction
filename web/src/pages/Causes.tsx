@@ -28,6 +28,7 @@ import {
   Segmented,
   Swatch,
   TOOLTIP_STYLE,
+  useChartMotion,
 } from '../components/ui';
 import { formatInteger, formatMillions, formatPercent, hourLabel } from '../lib/format';
 import { CAUSE_META, CAUSE_ORDER } from '../lib/labels';
@@ -93,6 +94,7 @@ function CauseChart({
   by: CauseGrouping;
   mode: CauseMode;
 }) {
+  const chartMotion = useChartMotion();
   const data = toChartRows(rows, by);
   const height = Math.max(280, data.length * 30 + 40);
   return (
@@ -152,7 +154,7 @@ function CauseChart({
               name={CAUSE_META[key].label}
               stackId="causes"
               fill={CAUSE_META[key].color}
-              isAnimationActive={false}
+              {...chartMotion}
             />
           ))}
         </BarChart>
@@ -215,6 +217,7 @@ function CausesSection() {
 const LOW_VOLUME_SHARE = 0.05;
 
 function CascadeChart({ data }: { data: CascadeResponse }) {
+  const chartMotion = useChartMotion();
   const peak = Math.max(...data.rows.map((row) => row.totalMinutes), 0);
   const floor = peak * LOW_VOLUME_SHARE;
   const rows = data.rows.map((row) => ({
@@ -265,7 +268,7 @@ function CascadeChart({ data }: { data: CascadeResponse }) {
               dataKey="volume"
               name="Delay minutes"
               fill="rgba(255,255,255,0.1)"
-              isAnimationActive={false}
+              {...chartMotion}
             />
             <Line
               yAxisId="share"
@@ -274,7 +277,7 @@ function CascadeChart({ data }: { data: CascadeResponse }) {
               name="Late-aircraft share"
               stroke="var(--color-cause-late)"
               strokeWidth={2}
-              isAnimationActive={false}
+              {...chartMotion}
               dot={(props: { cx?: number; cy?: number; index?: number }) => {
                 const { cx, cy, index } = props;
                 const row = index === undefined ? undefined : rows[index];
@@ -350,6 +353,7 @@ function CancellationBars({ row }: { row: CancellationRow }) {
 }
 
 function CancellationsByMonth({ rows }: { rows: readonly CancellationRow[] }) {
+  const chartMotion = useChartMotion();
   const data = rows.map((row) => ({
     axis: row.label.slice(0, 3),
     name: row.label,
@@ -399,7 +403,7 @@ function CancellationsByMonth({ rows }: { rows: readonly CancellationRow[] }) {
               name={CANCELLATION_REASONS[code]}
               stackId="reasons"
               fill={REASON_COLORS[code]}
-              isAnimationActive={false}
+              {...chartMotion}
             />
           ))}
           {hasUnknown ? (
@@ -408,7 +412,7 @@ function CancellationsByMonth({ rows }: { rows: readonly CancellationRow[] }) {
               name="No reason recorded"
               stackId="reasons"
               fill={REASON_COLORS.unknown}
-              isAnimationActive={false}
+              {...chartMotion}
             />
           ) : null}
         </BarChart>

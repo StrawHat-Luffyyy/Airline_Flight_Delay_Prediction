@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { ApiError } from '../api/client';
 import { useMeta, usePredict, useRoutes } from '../api/hooks';
 import { QueryState, Skeleton } from '../components/QueryState';
+import { useTween } from '../hooks/useTween';
 import { Note, PageHeader } from '../components/ui';
 import { DatePicker } from '../components/predict/DatePicker';
 import { RouteRail, type FieldOption } from '../components/predict/FlightFields';
@@ -122,9 +123,20 @@ function pointOnArc(probability: number, radius: number) {
   };
 }
 
+/** Gauge sweep and count-up, ms. */
+const GAUGE_MS = 1100;
+
+/**
+ * The score arc. It stays mounted across predictions, so a new score sweeps from the previous one
+ * (from zero the first time) while the figure counts with it. The fill is blue below the threshold
+ * and turns amber as it crosses the white tick, so the decision is visible as it happens.
+ */
 function Gauge({ result }: { result: PredictResponse }) {
   const delayed = result.label === 'delayed';
-  const color = delayed ? 'var(--color-delayed)' : 'var(--color-ontime)';
+  const shown = useTween(result.probability, GAUGE_MS);
+  const settled = shown === result.probability;
+  const over = settled ? delayed : shown >= result.threshold;
+  const color = over ? 'var(--color-delayed)' : 'var(--color-ontime)';
   const start = pointOnArc(0, GAUGE.r);
   const end = pointOnArc(1, GAUGE.r);
   const arc = `M ${start.x} ${start.y} A ${GAUGE.r} ${GAUGE.r} 0 0 1 ${end.x} ${end.y}`;
@@ -156,8 +168,8 @@ function Gauge({ result }: { result: PredictResponse }) {
           stroke={color}
           strokeWidth={12}
           strokeLinecap="round"
-          strokeDasharray={`${Math.max(result.probability, 0.004)} 1`}
-          style={{ transition: 'stroke-dasharray 0.9s var(--ease-out-expo)' }}
+          strokeDasharray={`${Math.max(shown, 0.004)} 1`}
+          className="gauge-fill"
         />
         <line
           x1={tickInner.x}
@@ -183,9 +195,10 @@ function Gauge({ result }: { result: PredictResponse }) {
           textAnchor="middle"
           fill={color}
           fontSize={44}
-          style={{ fontFamily: 'var(--font-display)' }}
+          className="gauge-fill"
+          style={{ fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}
         >
-          {formatPercent(result.probability)}
+          {formatPercent(shown)}
         </text>
         <text x={GAUGE.cx} y={GAUGE.cy + 6} textAnchor="middle" fill="#b9b8b3" fontSize={11}>
           chance of arriving 15+ min late
@@ -197,7 +210,7 @@ function Gauge({ result }: { result: PredictResponse }) {
 
 // ---------- Factors ----------
 
-function FactorRow({ factor, scale }: { factor: TopFactor; scale: number }) {
+function FactorRow({ factor, scale, delay }: { factor: TopFactor; scale: number; delay: number }) {
   const share = Math.min(1, Math.abs(factor.impact) / scale) * 50;
   const raises = factor.impact > 0;
   const lowers = factor.impact < 0;
@@ -212,12 +225,16 @@ function FactorRow({ factor, scale }: { factor: TopFactor; scale: number }) {
       <div className="relative mt-1.5 h-2 rounded-full bg-wash" aria-hidden="true">
         <span className="absolute inset-y-0 left-1/2 w-px bg-rule-strong" />
         <span
-          className="absolute inset-y-0 rounded-full"
-          style={{
-            background: raises ? 'var(--color-delayed)' : 'var(--color-ontime)',
-            width: `${share}%`,
-            left: raises ? '50%' : `${50 - share}%`,
-          }}
+          className="factor-bar absolute inset-y-0 rounded-full"
+          style={
+            {
+              background: raises ? 'var(--color-delayed)' : 'var(--color-ontime)',
+              width: `${share}%`,
+              left: raises ? '50%' : `${50 - share}%`,
+              transformOrigin: raises ? 'left center' : 'right center',
+              '--delay': `${delay}s`,
+            } as CSSProperties
+          }
         />
       </div>
       <p className="num mt-1 text-[11px] text-ink-3">
@@ -228,7 +245,12 @@ function FactorRow({ factor, scale }: { factor: TopFactor; scale: number }) {
   );
 }
 
-function Result({ result }: { result: PredictResponse }) {
+/** Seconds after the gauge starts that each block of a new result arrives. */
+const REVEAL = { label: 0.45, facts: 0.6, factors: 0.72, factorStep: 0.07 } as const;
+
+const at = (seconds: number): CSSProperties => ({ '--delay': `${seconds}s` }) as CSSProperties;
+
+function Result({ result, run }: { result: PredictResponse; run: number }) {
   const delayed = result.label === 'delayed';
   const factors = [...result.topFactors].sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact));
   const scale = Math.max(0.01, ...factors.map((factor) => Math.abs(factor.impact)));
@@ -246,13 +268,19 @@ function Result({ result }: { result: PredictResponse }) {
       <div>
         <Gauge result={result} />
         <p
-          className={`display-num mt-2 text-center text-3xl ${
+          key={`label-${run}`}
+          className={`display-num result-in mt-2 text-center text-3xl ${
             delayed ? 'text-delayed' : 'text-ontime'
           }`}
+          style={at(REVEAL.label)}
         >
           {delayed ? 'Likely delayed' : 'Likely on time'}
         </p>
-        <p className="mx-auto mt-2 max-w-[48ch] text-center text-[13px] leading-relaxed text-ink-2">
+        <p
+          key={`why-${run}`}
+          className="result-in mx-auto mt-2 max-w-[48ch] text-center text-[13px] leading-relaxed text-ink-2"
+          style={at(REVEAL.label + 0.05)}
+        >
           The model flags a flight when the probability is at least{' '}
           <span className="num text-ink">{formatPercent(result.threshold)}</span>, a threshold
           chosen on validation data rather than 50%. This flight scored{' '}
@@ -260,7 +288,11 @@ function Result({ result }: { result: PredictResponse }) {
         </p>
       </div>
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-y border-rule py-4 sm:grid-cols-4">
+      <dl
+        key={`facts-${run}`}
+        className="result-in grid grid-cols-2 gap-x-6 gap-y-3 border-y border-rule py-4 sm:grid-cols-4"
+        style={at(REVEAL.facts)}
+      >
         {facts.map(([term, value]) => (
           <div key={term}>
             <dt className="text-[11px] text-ink-3">{term}</dt>
@@ -275,9 +307,14 @@ function Result({ result }: { result: PredictResponse }) {
           <span className="text-delayed">Amber</span> raises the probability,{' '}
           <span className="text-ontime">blue</span> lowers it, in percentage points.
         </p>
-        <ul className="space-y-4">
-          {factors.map((factor) => (
-            <FactorRow key={factor.feature} factor={factor} scale={scale} />
+        <ul key={`factors-${run}`} className="space-y-4">
+          {factors.map((factor, index) => (
+            <FactorRow
+              key={factor.feature}
+              factor={factor}
+              scale={scale}
+              delay={REVEAL.factors + index * REVEAL.factorStep}
+            />
           ))}
         </ul>
         <div className="mt-4">
@@ -342,7 +379,12 @@ function PredictForm({
   };
 
   const airlineOptions = useMemo<FieldOption[]>(
-    () => meta.airlines.map((airline) => ({ value: airline.code, code: airline.code, name: airline.name })),
+    () =>
+      meta.airlines.map((airline) => ({
+        value: airline.code,
+        code: airline.code,
+        name: airline.name,
+      })),
     [meta.airlines],
   );
   const originOptions = useMemo<FieldOption[]>(
@@ -404,7 +446,11 @@ function PredictForm({
               searchable
               searchNoun="code, airport or city"
               placeholder={destPlaceholder}
-              hint={routesReady ? `${formatInteger(destinations.length)} routes from ${form.origin}` : null}
+              hint={
+                routesReady
+                  ? `${formatInteger(destinations.length)} routes from ${form.origin}`
+                  : null
+              }
               onChange={set('dest')}
               error={errors.dest}
               disabled={!routesReady}
@@ -441,7 +487,10 @@ function PredictForm({
         />
       </div>
 
-      <div className="rise grid gap-4 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]" style={stagger(2)}>
+      <div
+        className="rise grid gap-4 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"
+        style={stagger(2)}
+      >
         <DatePicker
           label="Flight date"
           value={form.date}
@@ -532,9 +581,14 @@ export default function Predict() {
   const meta = useMeta();
   const predict = usePredict();
   const [lastBody, setLastBody] = useState<PredictRequest | null>(null);
+  // The mutation clears `data` when a new request starts; the shown result is kept here instead, so
+  // a re-score dims the previous answer in place and the gauge sweeps from it to the new one.
+  const [shown, setShown] = useState<{ result: PredictResponse; run: number } | null>(null);
   const submit = (body: PredictRequest) => {
     setLastBody(body);
-    predict.mutate(body);
+    predict.mutate(body, {
+      onSuccess: (result) => setShown((previous) => ({ result, run: (previous?.run ?? 0) + 1 })),
+    });
   };
 
   return (
@@ -562,18 +616,18 @@ export default function Predict() {
           <p className="sr-only" role="status" aria-live="polite">
             {resultSummary(predict.isPending, predict.error, predict.data)}
           </p>
-          {predict.isPending ? (
-            <div>
-              <Skeleton className="h-96" />
-            </div>
-          ) : predict.isError ? (
+          {predict.isError ? (
             <PredictError
               error={predict.error}
-              onRetry={lastBody ? () => predict.mutate(lastBody) : undefined}
+              onRetry={lastBody ? () => submit(lastBody) : undefined}
               onDismiss={() => predict.reset()}
             />
-          ) : predict.data ? (
-            <Result result={predict.data} />
+          ) : shown ? (
+            <div className="predict-result" aria-busy={predict.isPending}>
+              <Result result={shown.result} run={shown.run} />
+            </div>
+          ) : predict.isPending ? (
+            <Skeleton className="h-96" />
           ) : (
             <div className="border-y border-rule py-8 text-sm text-ink-2">
               <p className="max-w-[55ch]">

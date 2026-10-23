@@ -101,7 +101,7 @@ export function Board<T>({
           {rows.map((row, index) => {
             const key = getKey(row);
             const rank = index + 1;
-            const rowClass = `h-9 border-b border-rule hover:bg-wash ${
+            const rowClass = `h-9 border-b border-rule transition-colors duration-150 hover:bg-wash ${
               lit.has(key) ? 'lamp' : ''
             } ${selectedKey === key ? 'bg-wash' : ''}`;
             const content = (

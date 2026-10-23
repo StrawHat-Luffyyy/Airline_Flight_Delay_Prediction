@@ -128,11 +128,6 @@ components:
     textColor: "{colors.ground}"
     rounded: "{rounded.pill}"
     padding: "6px 14px"
-  select-field:
-    backgroundColor: "rgba(1, 1, 1, 0.6)"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.field}"
-    padding: "10px 36px 10px 12px"
   board-row:
     typography: "{typography.data}"
     height: "{spacing.board-row}"
@@ -162,7 +157,7 @@ Every ranking is a departure board. Airlines, airports, routes and months are ro
 
 The world is dark and quiet so the data can glow. Ink is warm off-white stepped down in three levels; colour is spent only on encoding data (the dusk palette), never on decoration. A serif (Instrument Serif) gives page titles and headline figures a printed, editorial voice; Geist carries the interface; Geist Mono with tabular figures carries board rows so digits line up like split-flap characters. Density is high but calm: 36px rows, 11-13px UI text, and generous 40px gutters between the main column and the side column.
 
-There is one moment of material: the Predict panel is the only glass surface, because scoring a flight is the one place the visitor acts rather than reads. Motion is reserved for the signature move: when a board re-sorts or refilters, rows glide to their new rank and changed rows hold an amber lamp, then fade.
+There is one moment of material: the Predict panel is the only glass surface, because scoring a flight is the one place the visitor acts rather than reads. Motion is restrained and shared. The signature move is the board's: when it re-sorts or refilters, rows glide to their new rank and changed rows hold an amber lamp, then fade. The authored moment is the Predict gauge sweeping to its score. Everything else is quiet continuity: a pill that slides between tabs and segmented options, a 6px rise as a page arrives, loaded data fading over its skeleton, popovers that unfold and fold back.
 
 **Key Characteristics:**
 - Near-black ground (#010101), warm ink stepped by three levels, hairline rules instead of cards.
@@ -268,6 +263,7 @@ Quiet, pill-shaped, ink on ground; never filled with a data colour.
 ### Segmented control
 - **Style:** a wash track (4px padding) holding pill buttons at 13px.
 - **State:** the active option inverts to ink fill with ground text; inactive options are ink-2, hovering to ink. Each option is a real button with `aria-pressed`.
+- **Motion:** one ink pill slides to the chosen option (transform and width, 320ms ease-out-expo), the same pill the page tabs use (`useSlidingIndicator`).
 
 ### Cards / Containers
 - **Corner Style:** none for content blocks; 24px only for the Predict panel.
@@ -276,9 +272,8 @@ Quiet, pill-shaped, ink on ground; never filled with a data colour.
 - **Internal Padding:** 24px above section content; the Predict panel pads 24px, 32px from sm.
 
 ### Inputs / Fields
-- **Style:** native select and date inputs at 14px, strong-hairline border, 8px radius, ground at 60% fill, 10px 36px 10px 12px padding, a drawn 12px chevron in ink-2. Labels sit above at 12px ink-2.
-- **Focus:** the border turns amber and the global 2px amber focus ring (3px offset) appears.
-- **Flight fields (Predict only, `components/predict/`):** every field is a button face that opens a custom popover; no native select or date input remains.
+- **One field everywhere:** every dropdown and date input in the app is a flight field (`components/predict/`): the Predict form and the Explorer ranking filters alike. No native select or date input remains. Labels sit above at 12px ink-2.
+- **Flight fields:** every field is a button face that opens a custom popover.
   - **Face:** the code in mono (19px on the route fields, 14px elsewhere), the name beside it in Geist, and a quieter 11px detail line (city, or flights in 2015) so nothing truncates mid-number.
   - **Shell:** 12px radius, strong-hairline border over a faint top-lit gradient; hover lifts the hairline.
   - **Focus and open:** the border turns amber with a 3px amber halo at 20%; the chevron warms and turns over.
@@ -287,7 +282,7 @@ Quiet, pill-shaped, ink on ground; never filled with a data colour.
 - **Popover** (`.flight-popover`): rendered in a portal with fixed positioning (`usePopover`), so no card, transform or overflow can clip it.
   - **Placement:** opens below, or above when there is more room there; never runs past the viewport; follows the field on scroll and resize.
   - **Surface:** near-black (#0c0c0c) with a faint amber light at the top, a strong hairline, a 14px radius, and the one drop shadow a floating surface needs.
-  - **Motion:** unfolds from the field edge in 180ms (instant under reduced motion).
+  - **Motion:** unfolds from the field edge in 180ms and folds back in 120ms (`usePresence` keeps it mounted for the exit); the calendar cross-fades its grid on a month or view change. Instant under reduced motion.
   - **Closing:** a click outside closes it.
 - **Dropdown (`FlightSelect`):**
   - **Search:** origin, destination and airline search by code, airport or city (`lib/picker.filterOptions`: exact code, then code prefix, then word start, then contains; busiest-first order kept within a rank). Matches are amber, the result count sits at the right, and an empty search says so. The search text is 16px on phones (so iOS does not zoom) and 14px from sm, underlined amber while focused.
@@ -327,7 +322,8 @@ The glass panel holds the form; the result sits beside it on the ground. The pan
 - **Route:** origin over destination, joined by a flight path (an ink ring, a dashed rail, a filled dot) in the gutter. The destination label carries the route count from the origin.
 - **Airline**, below a hairline.
 - **Date and departure hour** side by side from sm.
-- **Submit**, with a one-line reminder that only pre-departure inputs are used. The gauge is a 180-degree arc (12px stroke, rounded caps) filling amber or blue by label, with a white tick and mono label at the decision threshold and the probability set in the serif at 44px; the arc fill transitions over 900ms. Factor bars diverge from a centre hairline: amber raises, blue lowers, values in mono percentage points.
+- **Submit**, with a one-line reminder that only pre-departure inputs are used. The gauge is a 180-degree arc (12px stroke, rounded caps) filling amber or blue by label, with a white tick and mono label at the decision threshold and the probability set in the serif at 44px; Factor bars diverge from a centre hairline: amber raises, blue lowers, values in mono percentage points.
+- **Result reveal:** the gauge stays mounted across predictions and sweeps over 1.1s (ease-out-expo, `useTween`) from the previous score, or from zero the first time, while the serif figure counts with it. The fill is blue below the threshold and turns amber as it crosses the tick. The label rises in at 0.45s, the facts at 0.6s, and the factor bars grow out of the centre line from 0.72s in 70ms steps. A re-score dims the previous result to 42% in place (`aria-busy`) instead of swapping in a skeleton, so nothing shifts. Under reduced motion the final values show at once.
 
 ### Live page (Phase 8)
 The Live page (`pages/Live.tsx`) polls `/api/stream/status` every 5 s and reuses the board vocabulary rather than adding a new one.
@@ -348,7 +344,7 @@ The Live page (`pages/Live.tsx`) polls `/api/stream/status` every 5 s and reuses
 - **Side column (420px at lg):** the Kafka partition board (committed, end, lag) or a Signal Red "Kafka unreachable" block with the reason, then the consumer facts.
 
 ### Charts
-Recharts on the ground: horizontal grid lines only (rule), axis ticks 11px ink-3, tooltips on Tooltip Black with a strong-hairline border and 8px radius, no entry animation. Every chart has a `role="img"` label and its numbers also appear in an adjacent table or list.
+Recharts on the ground: horizontal grid lines only (rule), axis ticks 11px ink-3, tooltips on Tooltip Black with a strong-hairline border and 8px radius. Series ease in over 650ms when data lands and between values when a toggle changes them (`useChartMotion`); off under reduced motion. Every chart has a `role="img"` label and its numbers also appear in an adjacent table or list.
 
 ### Landing (the `/` page only)
 **Concept: night orbit over the US.** The dataset is US domestic only, so the camera lives over the lower 48: on desktop they fill the right two thirds, on phones the top half edge to edge, and the globe leans back about the framed point so the horizon curves away at the top. Only the volume chapter pulls back far enough for Alaska and Hawaii, and only the model and hand-off chapters show the planet. Everything drawn is real data; nothing is decorative geometry.
@@ -439,7 +435,7 @@ The globe re-frames per chapter (pose table in `GlobeScene.tsx`: facing lat/lon,
 - **Do** set page titles, section titles and headline figures in Instrument Serif at weight 400.
 - **Do** keep Geist Mono for figures, dates, codes and IDs, and switch names back to Geist.
 - **Do** wrap every API-backed block in QueryState so it has loading, error-with-Retry and empty states.
-- **Do** honour `prefers-reduced-motion`: no glide, no lamp, no rise, near-zero transitions, and a still globe.
+- **Do** honour `prefers-reduced-motion`: no glide, no lamp, no rise, no sweep or chart easing, near-zero transitions, and a still globe.
 - **Do** use the 2px amber focus ring (3px offset) for every interactive element.
 
 ### Don't:

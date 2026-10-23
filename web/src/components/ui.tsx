@@ -1,4 +1,6 @@
-import { useId, type ReactNode, type SelectHTMLAttributes } from 'react';
+import { useId, useRef, type ReactNode } from 'react';
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
+import { useSlidingIndicator } from '../hooks/useSlidingIndicator';
 
 export function PageHeader({ title, children }: { title: string; children?: ReactNode }) {
   return (
@@ -53,81 +55,40 @@ interface SegmentedProps<V extends string | number> {
   onChange: (value: V) => void;
 }
 
-/** A pill toggle group. Every option is a real button, so it is keyboard-operable. */
+/** A pill toggle group. Every option is a real button, so it is keyboard-operable; one ink pill
+ * slides to the chosen option. */
 export function Segmented<V extends string | number>({
   label,
   value,
   options,
   onChange,
 }: SegmentedProps<V>) {
+  const group = useRef<HTMLDivElement>(null);
+  const pill = useSlidingIndicator(group, '[aria-pressed="true"]', value);
   return (
-    <div role="group" aria-label={label} className="inline-flex gap-1 rounded-full bg-wash p-1">
-      {options.map((option) => {
-        const active = option.value === value;
-        return (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onChange(option.value)}
-            className={`rounded-full px-3.5 py-1.5 text-[13px] transition-colors ${
-              active ? 'bg-ink text-ground' : 'text-ink-2 hover:text-ink'
-            }`}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-interface SelectFieldProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'className'> {
-  label: string;
-  children: ReactNode;
-  error?: string;
-}
-
-const FIELD_CLASS =
-  'w-full appearance-none truncate rounded-lg border border-rule-strong bg-ground/60 py-2.5 pl-3 pr-9 text-sm text-ink focus-visible:border-delayed';
-
-/** A labelled native select with a drawn chevron. */
-export function SelectField({ label, children, error, id, ...rest }: SelectFieldProps) {
-  const generated = useId();
-  const fieldId = id ?? generated;
-  return (
-    <div>
-      <label htmlFor={fieldId} className="mb-1.5 block text-[12px] text-ink-2">
-        {label}
-      </label>
-      <div className="relative">
-        <select
-          id={fieldId}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? `${fieldId}-error` : undefined}
-          className={FIELD_CLASS}
-          {...rest}
-        >
-          {children}
-        </select>
-        <svg
-          viewBox="0 0 12 12"
-          className="pointer-events-none absolute right-3 top-1/2 size-3 -translate-y-1/2 text-ink-2"
-          aria-hidden="true"
-        >
-          <path d="M2 4.5 6 8l4-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
+    <div className="inline-flex rounded-full bg-wash p-1">
+      <div ref={group} role="group" aria-label={label} className="relative flex gap-1">
+        <span className="slide-pill bg-ink" style={pill} aria-hidden="true" />
+        {options.map((option) => {
+          const active = option.value === value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(option.value)}
+              className={`relative rounded-full px-3.5 py-1.5 text-[13px] transition-colors duration-200 ${
+                active ? 'text-ground' : 'text-ink-2 hover:text-ink'
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
       </div>
-      {error ? (
-        <p id={`${fieldId}-error`} className="mt-1.5 text-[12px] text-cancelled">
-          {error}
-        </p>
-      ) : null}
     </div>
   );
 }
-
-export { FIELD_CLASS };
 
 export function Swatch({ color }: { color: string }) {
   return (
@@ -150,3 +111,16 @@ export const TOOLTIP_STYLE = {
 } as const;
 
 export const AXIS_TICK = { fill: '#94938f', fontSize: 11 } as const;
+
+/**
+ * Series animation shared by every recharts chart: bars and lines ease in when data first lands
+ * and ease between values when a toggle changes them. Off under prefers-reduced-motion.
+ */
+export function useChartMotion() {
+  const reduced = usePrefersReducedMotion();
+  return {
+    isAnimationActive: !reduced,
+    animationDuration: 650,
+    animationEasing: 'ease-out',
+  } as const;
+}

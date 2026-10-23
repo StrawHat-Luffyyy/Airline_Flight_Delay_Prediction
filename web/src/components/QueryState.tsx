@@ -94,5 +94,5 @@ export function QueryState<T>({
     );
   }
   if (isEmpty?.(query.data)) return <EmptyBlock message={emptyMessage} />;
-  return <>{children(query.data)}</>;
+  return <div className="data-in">{children(query.data)}</div>;
 }
