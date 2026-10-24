@@ -162,7 +162,9 @@ function PipelineRow({
       value: formatInteger(kafka.lag?.total),
       sub: kafka.lag
         ? `messages behind · ${plural(kafka.lag.partitions.length, 'partition')}`
-        : 'Kafka unreachable',
+        : kafka.reachable
+          ? 'Kafka topics missing'
+          : 'Kafka unreachable',
     },
     {
       label: 'Dead-letter queue',
@@ -470,7 +472,11 @@ function KafkaPanel({ status, updatedAt }: { status: Status; updatedAt: number }
           />
         ) : (
           <div className="border-y border-rule py-4 text-[13px]">
-            <p className="text-cancelled">Kafka unreachable</p>
+            <p className="text-cancelled">
+              {kafka.reachable
+                ? 'Kafka is reachable, but its topics are missing'
+                : 'Kafka unreachable'}
+            </p>
             <p className="mt-1 text-ink-2">
               {kafka.reason === null ? 'No reason reported.' : readable(kafka.reason)}
             </p>

@@ -105,6 +105,10 @@ export function decideState({ metricsError, kafka, consumer }: StateInput): {
   if (!kafka.reachable) {
     return { state: 'degraded', reason: `Kafka unreachable: ${kafka.reason ?? 'unknown error'}` };
   }
+  // Reachable with a reason: the broker answered, but something it needs is missing (the topics).
+  if (kafka.reason !== null) {
+    return { state: 'degraded', reason: `Kafka is reachable, but ${kafka.reason}` };
+  }
   if (consumer.status === null) {
     return { state: 'idle', reason: 'No consumer heartbeat: start npm run stream:consume' };
   }

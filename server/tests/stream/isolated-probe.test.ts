@@ -10,7 +10,14 @@ const UP: KafkaSnapshot = {
   dlqMessages: 0,
 };
 
-type Behaviour = 'answer' | 'crash' | 'hang' | 'garbage';
+const TOPICS_MISSING: KafkaSnapshot = {
+  reachable: true,
+  reason: 'topic flights.raw does not exist: run npm run kafka:init',
+  lag: null,
+  dlqMessages: null,
+};
+
+type Behaviour = 'answer' | 'topicsMissing' | 'crash' | 'hang' | 'garbage';
 
 /** A stand-in for the forked probe process: answers, crashes (exit), hangs or sends junk. */
 function fakeChild(behaviour: () => Behaviour): ProbeChild & { sent: unknown[] } {
@@ -23,6 +30,7 @@ function fakeChild(behaviour: () => Behaviour): ProbeChild & { sent: unknown[] }
     const mode = behaviour();
     setTimeout(() => {
       if (mode === 'answer') child.emit('message', { id, snapshot: UP });
+      if (mode === 'topicsMissing') child.emit('message', { id, snapshot: TOPICS_MISSING });
       if (mode === 'garbage') child.emit('message', { id, snapshot: { reachable: 'yes' } });
       if (mode === 'crash') {
         child.connected = false;
@@ -43,6 +51,14 @@ describe('createIsolatedProbe', () => {
     const probe = createIsolatedProbe({ spawn: () => fakeChild(() => 'answer'), timeoutMs: 200 });
     expect(await probe.read()).toEqual(UP);
     expect(probe.lastKnown()).toEqual(UP);
+  });
+
+  it('passes on "reachable, topics missing" (a crossing every snapshot shape must survive)', async () => {
+    const probe = createIsolatedProbe({
+      spawn: () => fakeChild(() => 'topicsMissing'),
+      timeoutMs: 200,
+    });
+    expect(await probe.read()).toEqual(TOPICS_MISSING);
   });
 
   it('reports a crash of the probe process as unreachable, without crashing the API', async () => {

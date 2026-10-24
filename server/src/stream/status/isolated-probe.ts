@@ -36,6 +36,13 @@ const KafkaSnapshotSchema = z.union([
     }),
     dlqMessages: count.nullable(),
   }),
+  // The broker answered, but the topics do not exist yet (kafka:init has not run).
+  z.object({
+    reachable: z.literal(true),
+    reason: z.string(),
+    lag: z.null(),
+    dlqMessages: z.null(),
+  }),
   z.object({
     reachable: z.literal(false),
     reason: z.string(),

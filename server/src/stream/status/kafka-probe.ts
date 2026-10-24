@@ -59,7 +59,18 @@ export type KafkaSnapshot =
       /** Null when only the DLQ topic's offsets could not be read (the lag is still valid). */
       dlqMessages: number | null;
     }
+  /** The broker answered, but the topics do not exist yet (kafka:init has not run). */
+  | { reachable: true; reason: string; lag: null; dlqMessages: null }
   | { reachable: false; reason: string; lag: null; dlqMessages: null };
+
+/** librdkafka's ERR_UNKNOWN_TOPIC_OR_PART: the broker answered that the topic does not exist. */
+const UNKNOWN_TOPIC_OR_PART = 3;
+
+const isUnknownTopic = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  error.code === UNKNOWN_TOPIC_OR_PART;
 
 export interface KafkaProbe {
   /** At most timeoutMs; a result is reused for cacheMs. Never rejects. */
@@ -146,6 +157,15 @@ export function createKafkaProbe(options: KafkaProbeOptions): KafkaProbe {
       throw committed.reason;
     }
     if (rawEnds.status === 'rejected') {
+      // The broker answered: the client is healthy, only the topic is missing. Keep the client.
+      if (isUnknownTopic(rawEnds.reason)) {
+        return {
+          reachable: true,
+          reason: `topic ${topics.raw} does not exist: run npm run kafka:init`,
+          lag: null,
+          dlqMessages: null,
+        };
+      }
       retire(entry);
       throw rawEnds.reason;
     }

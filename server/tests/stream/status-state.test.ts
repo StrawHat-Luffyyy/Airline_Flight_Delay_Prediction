@@ -76,6 +76,22 @@ describe('decideState', () => {
     expect(result.reason).toContain('Kafka unreachable');
   });
 
+  it('is degraded, not "unreachable", when the broker answers but the topics are missing', () => {
+    const result = decideState({
+      metricsError: null,
+      kafka: {
+        reachable: true,
+        reason: 'topic flights.raw does not exist: run npm run kafka:init',
+        lag: null,
+      },
+      consumer: live,
+    });
+    expect(result.state).toBe('degraded');
+    expect(result.reason).toBe(
+      'Kafka is reachable, but topic flights.raw does not exist: run npm run kafka:init',
+    );
+  });
+
   it('is degraded when MongoDB metrics could not be read', () => {
     const result = decideState({ metricsError: 'MongoDB timed out', kafka: up, consumer: live });
     expect(result.state).toBe('degraded');

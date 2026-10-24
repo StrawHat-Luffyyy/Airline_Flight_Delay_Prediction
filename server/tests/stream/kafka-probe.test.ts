@@ -56,6 +56,40 @@ describe('createKafkaProbe', () => {
     });
   });
 
+  it('reports a reachable broker whose topic is missing, and keeps the healthy client', async () => {
+    // What the real client throws when the topic does not exist (measured against the broker).
+    const unknownTopic = Object.assign(new Error('Broker: Unknown topic or partition'), {
+      name: 'KafkaJSProtocolError',
+      code: 3,
+      type: 'ERR_UNKNOWN_TOPIC_OR_PART',
+    });
+    const admin = {
+      ...healthyAdmin(),
+      fetchOffsets: vi.fn(async () => []),
+      fetchTopicOffsets: vi.fn(async () => {
+        throw unknownTopic;
+      }),
+    } as unknown as ProbeAdmin;
+    const createAdmin = vi.fn(() => admin);
+    const probe = createKafkaProbe({
+      createAdmin,
+      groupId: 'g',
+      topics,
+      timeoutMs: 500,
+      cacheMs: 0,
+    });
+
+    expect(await probe.read()).toEqual({
+      reachable: true,
+      reason: 'topic flights.raw does not exist: run npm run kafka:init',
+      lag: null,
+      dlqMessages: null,
+    });
+    await probe.read();
+    expect(createAdmin).toHaveBeenCalledTimes(1);
+    expect(admin.disconnect).not.toHaveBeenCalled();
+  });
+
   it('never hangs: a call that never answers becomes unreachable after the timeout', async () => {
     const probe = createKafkaProbe({
       createAdmin: () => deadAdmin(() => new Promise<void>(() => undefined)),
