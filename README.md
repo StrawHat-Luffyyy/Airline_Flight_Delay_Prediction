@@ -1,106 +1,247 @@
+<div align="center">
+
 # Flight Delay Prediction
 
-A Big Data project over the 2015 US domestic flight dataset (5,819,079 flights). Raw CSVs are streamed into MongoDB, analysed with aggregation pipelines into small pre-aggregated collections, and used to train a delay model. The model is served through an Express API and shown in a React dashboard.
+**An end-to-end Big Data system over 5,819,079 US domestic flights from 2015: streaming ingestion into MongoDB, indexed aggregation pipelines, a leakage-audited LightGBM model served through ONNX in Node, a Kafka speed layer, and a React dashboard.**
 
-- **Predicts** whether a flight arrives 15 or more minutes late (US DOT definition), using only what is known before departure.
-- **Explains** delays: their causes, and where and when they concentrate (airline, airport, route, month, hour).
-- **Shows** both through a REST API and a dashboard.
-- **Streams** December 2015 through Kafka as a replay, scores each flight live and shows the result on the Live page (Phase 8, [below](#streaming-layer-phase-8)).
+[![CI](https://github.com/StrawHat-Luffyyy/Airline_Flight_Delay_Prediction/actions/workflows/ci.yml/badge.svg)](https://github.com/StrawHat-Luffyyy/Airline_Flight_Delay_Prediction/actions/workflows/ci.yml)
+![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-339933?logo=node.js&logoColor=white)
+![MongoDB 7](https://img.shields.io/badge/MongoDB-7-47A248?logo=mongodb&logoColor=white)
+![Apache Kafka 4.3](https://img.shields.io/badge/Kafka-4.3_KRaft-231F20?logo=apachekafka&logoColor=white)
+![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![LightGBM → ONNX](https://img.shields.io/badge/LightGBM-ONNX-005CED?logo=onnx&logoColor=white)
 
-The design, every measurement and the reasoning behind each choice are in [`docs/`](#documentation).
+<img src="docs/screenshots/landing-lighting-hero.png" alt="Landing page: a 3D globe of US airports and the most and least delay-prone routes" width="900" />
+
+</div>
+
+---
+
+## Contents
+
+- [What it does](#what-it-does)
+- [Engineering highlights](#engineering-highlights)
+- [Architecture](#architecture)
+- [Tech stack](#tech-stack)
+- [Project structure](#project-structure)
+- [Getting started](#getting-started)
+- [Environment variables](#environment-variables)
+- [API reference](#api-reference)
+- [The model](#the-model)
+- [Streaming layer](#streaming-layer)
+- [Dashboard](#dashboard)
+- [Testing and quality](#testing-and-quality)
+- [Measured performance](#measured-performance)
+- [Known limitations](#known-limitations)
+- [Documentation](#documentation)
+- [Troubleshooting](#troubleshooting)
+
+## What it does
+
+|              |                                                                                                                                                                   |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Predicts** | Whether a flight will arrive 15+ minutes late (the US DOT definition), using **only information known before departure**.                                         |
+| **Explains** | Where and when delays concentrate (airline, airport, route, month, hour, weekday) and what causes them (carrier, weather, NAS, security, late-arriving aircraft). |
+| **Streams**  | Replays December 2015 through Kafka, scores every flight as it arrives, and compares each prediction with what actually happened.                                 |
+| **Shows**    | All of it through a typed REST API and a seven-page React dashboard. Every number on screen comes from the database or the model, never from mock data.           |
+
+## Engineering highlights
+
+- **Bounded-memory ingestion.** 5.8 M rows (592 MB CSV) are streamed with `csv-parse` and bulk-inserted in batches of 10,000. A full load took **295 s at 353 MB peak RSS**, and every run is recorded in `ingest_runs` with read / inserted / rejected counts.
+- **Computed-pattern schema.** Eight `$group` + `$merge` pipelines pre-aggregate the 5.8 M flights into small `stats_*` collections (8 to 386,704 documents), so dashboard queries read thousands of documents, not millions. **34 of 34 measured API requests answered in under 1 s** on the full dataset.
+- **Index evidence, not guesswork.** Each representative query is run under `explain("executionStats")` twice, as a forced collection scan and with the indexes, and both plans must return identical results. Speedups range from **2.4× to 190×** ([EXPLAIN_RESULTS.md](docs/EXPLAIN_RESULTS.md)).
+- **Leakage-proof ML.** The split is by time (train Jan-Sep, test Oct-Dec). Historical-rate features come from the training months only, and training rows use **out-of-fold rates** so no row's feature includes its own label. A test fails if any post-departure field enters the feature list.
+- **One model, two runtimes.** Trained in Python (LightGBM), exported to ONNX and run in Node with `onnxruntime-node`. A parity test requires Node and Python probabilities to agree on 100 test rows **within 1e-4**.
+- **Exactly-once effect on an at-least-once stream.** The Kafka consumer upserts by a natural flight key, so redelivery is harmless. Measured: **479,230 events in = 479,230 stored = 479,230 distinct keys**, zero duplicates after a mid-batch hard kill, and a re-replay that adds nothing.
+- **Defensive against its own dependencies.** Two defects found in the Kafka client (commits reported before the broker stored them; an admin call that can crash its process after a broker restart) are handled by reading every commit back and isolating admin probes in a child process, with a reproducible check (`stream:commit-check`).
+- **One contract, end to end.** `shared/` holds zod schemas used by both the API and the dashboard. Env vars, query strings and request bodies are validated at the boundary; TypeScript is strict everywhere, with no `any`.
+- **Production-minded API.** helmet, CORS allow-list, per-IP rate limiting on `/predict` with proxy-hop-aware keys, structured pino logs, a uniform error envelope, graceful `503`s when MongoDB is down, and a 10-minute response cache.
 
 ## Architecture
 
+The system follows a **Lambda-style** layout: a batch layer for history, a speed layer for the replayed stream, and a serving layer that reads only MongoDB and the model.
+
 ```mermaid
 flowchart LR
-  csv[(flights.csv<br/>airlines.csv<br/>airports.csv)] -->|stream, batches of 10,000| ingest[ingest]
-  ingest --> flights[(MongoDB<br/>flights)]
-  flights -->|$group + $merge| stats[(stats_* collections)]
-  flights -->|train split only| lookup[(delay_lookup)]
-  flights -->|export:training| train[ml/train.py<br/>LightGBM → ONNX]
+  subgraph Sources
+    csv[("flights.csv<br/>airlines.csv<br/>airports.csv")]
+  end
+
+  subgraph Batch["Batch layer"]
+    ingest["ingest<br/>stream · batches of 10,000"]
+    flights[("flights<br/>5,819,079 docs")]
+    stats[("stats_* collections<br/>$group + $merge")]
+    lookup[("delay_lookup<br/>train split only")]
+  end
+
+  subgraph ML["Model (offline)"]
+    exportCsv["export:training"]
+    train["ml/train.py<br/>LightGBM → ONNX"]
+    artifacts[["ml/artifacts<br/>model.onnx · encoders.json"]]
+  end
+
+  subgraph Speed["Speed layer"]
+    replay["stream:replay<br/>December 2015"]
+    kafka[["Kafka<br/>flights.raw · flights.dlq"]]
+    consumer["stream:consume<br/>upsert + score"]
+    streamdb[("stream_flights")]
+  end
+
+  subgraph Serving
+    api["Express API"]
+    web["React dashboard"]
+  end
+
+  csv --> ingest --> flights
+  flights --> stats
+  flights --> lookup
+  flights --> exportCsv --> train
   lookup --> train
-  train --> artifacts[ml/artifacts<br/>model.onnx, encoders.json]
-  stats --> api[Express API]
+  train --> artifacts
+  csv --> replay --> kafka --> consumer --> streamdb
+  artifacts --> consumer
+  lookup --> consumer
+  stats --> api
   lookup --> api
   artifacts --> api
-  csv -->|stream:replay, December| kafka[[Kafka<br/>flights.raw / flights.dlq]]
-  kafka --> consumer[stream:consume<br/>scores each flight]
-  artifacts --> consumer
-  consumer --> streamdb[(stream_flights)]
   streamdb --> api
-  api --> web[React dashboard]
+  api --> web
 ```
 
-- **Batch layer.**
-  - The CSVs are streamed into the `flights` collection and never loaded into memory whole.
-  - Aggregation pipelines write small `stats_*` collections, so every dashboard query reads pre-aggregated data.
-  - `delay_lookup` holds historical delay rates from the training months only (January to September).
-- **Model.**
-  - `ml/train.py` trains a baseline, a logistic regression and LightGBM on January to September, chooses on September, and scores October to December once.
-  - The chosen model is exported to ONNX and run in Node with `onnxruntime-node`.
-  - A parity test checks that the Node inference matches Python on 100 test rows within 1e-4.
-- **Speed layer.** December is replayed from the CSV into Kafka. A consumer stores each flight once (idempotent upserts), scores it with the same predictor as `POST /api/predict`, and compares the prediction with what actually happened.
-- **Serving.**
-  - The Express API reads only MongoDB and the model; it never calls an external service.
+### Request path for a prediction
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant UI as Dashboard (Predict)
+  participant API as Express API
+  participant V as zod validation
+  participant DB as MongoDB
+  participant M as ONNX model
+
+  UI->>API: POST /api/predict { date, airline, origin, dest, schedDepHour }
+  API->>V: validate body (rate-limited per IP)
+  V-->>API: 400 VALIDATION_ERROR on bad input
+  API->>DB: route distance + scheduled time (stats_route)
+  API->>DB: historical rates (delay_lookup, full scope)
+  DB-->>API: 422 UNKNOWN_CODE / UNKNOWN_ROUTE if absent
+  API->>M: encode features (TS encoder = Python encoder)
+  M-->>API: probability
+  API-->>UI: { probability, label, threshold, modelVersion, derived, topFactors }
+```
+
+The Kafka consumer calls **the same predictor** as `POST /api/predict`, so a streamed flight and a manual prediction cannot drift apart.
 
 ## Tech stack
 
-| Area              | Technology                                                                                                          |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Database          | MongoDB 7, official `mongodb` driver 6 (no ODM)                                                                     |
-| API               | Node.js 22 (20+ supported), Express 5, zod 4, helmet, express-rate-limit, pino                                      |
-| Model             | Python 3.12 with LightGBM 4.7, scikit-learn 1.9 and onnxmltools for training; `onnxruntime-node` 1.30 for inference |
-| Streaming         | Apache Kafka 4.3 (single KRaft node), `@confluentinc/kafka-javascript` 1.11                                         |
-| Dashboard         | React 19, Vite 8, TypeScript, Tailwind CSS 4, TanStack Query, Recharts, React Three Fiber (landing globe)           |
-| Shared contract   | `shared/`: zod schemas and types used by both the API and the dashboard                                             |
-| Tests and quality | Vitest, Supertest, ESLint, Prettier, TypeScript strict                                                              |
-| Production build  | esbuild (server bundle: `npm run build:server`)                                                                     |
+| Area                 | Technology                                                                                                                       |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Database**         | MongoDB 7, official `mongodb` driver 6 (no ODM)                                                                                  |
+| **API**              | Node.js 22 (20+ supported), Express 5, zod 4, helmet, express-rate-limit, pino / pino-http                                       |
+| **Machine learning** | Python 3.12, LightGBM 4.7, scikit-learn 1.9, onnxmltools (training); `onnxruntime-node` 1.30 (inference)                         |
+| **Streaming**        | Apache Kafka 4.3 (single KRaft node), `@confluentinc/kafka-javascript` 1.11                                                      |
+| **Dashboard**        | React 19, Vite 8, Tailwind CSS 4, TanStack Query, React Router 7, Recharts, React Three Fiber + three.js (landing globe), Motion |
+| **Shared contract**  | `shared/`: zod schemas and inferred TypeScript types used by both API and dashboard                                              |
+| **Quality**          | Vitest, Supertest, ESLint, Prettier, TypeScript strict, GitHub Actions CI                                                        |
+| **Build**            | esbuild (API bundle), Vite (dashboard), npm workspaces                                                                           |
+| **Infrastructure**   | Docker Compose (MongoDB + Kafka, bound to `127.0.0.1`)                                                                           |
 
-All application code is TypeScript (strict). The only other code is the training script `ml/train.py` and the deployment's shell scripts.
+All application code is TypeScript. The only other code is the training script, `ml/train.py`.
 
-## Requirements
+## Project structure
 
-- **Node.js 20 or newer** with npm. The project is tested on Node 22 in CI.
-- **Docker Desktop** (or Docker Engine with Compose v2), for MongoDB 7 and Kafka.
-- **Python 3.12**, only to retrain the model. The trained model is committed in `ml/artifacts/`, so you can skip training.
-- About 4 GB of free disk space. Measured on the full build: the CSV is 592 MB, the MongoDB data directory 1.6 GB (`du -sh /data/db` inside the container; WiredTiger files plus journal, against 1,330 MB of collection and index storage in `db.stats()`: 937 MB data plus 393 MB indexes) and the training export 908 MB. MB here means 10^6 bytes.
+```text
+.
+├── server/                    Express API and every data job (npm workspace)
+│   ├── src/
+│   │   ├── ingest/            CSV → MongoDB streaming ingest, HHMM parsing, airport-id resolution
+│   │   ├── db/                client, indexes, explain report, retry logic
+│   │   ├── stats/             $group + $merge builders for the stats_* collections
+│   │   ├── analytics/         pure aggregation-pipeline builders behind /api/analytics
+│   │   ├── features/          feature list, holidays, delay_lookup, training export
+│   │   ├── ml/                encoders, ONNX model loading, predict service, model registry
+│   │   ├── stream/            Kafka replay, consumer, scoring, measurement and status probes
+│   │   ├── routes/            api.ts, model.ts, stream.ts
+│   │   ├── middleware/        zod validation, error envelope
+│   │   ├── config/env.ts      zod-validated environment
+│   │   ├── app.ts             Express app (helmet, CORS, rate limit, cache)
+│   │   └── server.ts          entry point
+│   └── tests/                 unit, Supertest and MongoDB/Kafka integration tests
+├── shared/src/                zod schemas + types shared by API and dashboard
+├── web/src/                   React + Vite dashboard
+│   ├── api/                   typed API client and TanStack Query hooks
+│   ├── pages/                 Overview, Causes, Explorer, Predict, Model, Live
+│   └── components/            landing globe (R3F), charts, predict form, shell
+├── ml/
+│   ├── train.py               baseline, logistic regression, LightGBM → ONNX
+│   ├── requirements.txt       pinned Python dependencies
+│   └── artifacts/             committed model.onnx, encoders.json, metrics.json, parity sample
+├── docs/                      schema, decisions, explain results, streaming evidence, screenshots
+├── .github/workflows/ci.yml   typecheck, lint, format, tests, builds, boot check
+├── docker-compose.yml         MongoDB 7 + Kafka 4.3.1
+└── PROJECT_OVERVIEW.md        the original specification
+```
 
-## Run it: from a fresh clone to the dashboard
+## Getting started
 
-Run every command from the repository root. On macOS or Linux, use `cp .env.example .env` instead of `Copy-Item`.
+### Prerequisites
 
-```powershell
-Copy-Item .env.example .env
+- **Node.js 20+** with npm (CI runs Node 22).
+- **Docker** with Compose v2, for MongoDB 7 and Kafka.
+- **Python 3.12**, only if you want to retrain. The trained model is committed in `ml/artifacts/`.
+- **About 4 GB of free disk.** Measured on the full build: the CSV is 592 MB, the MongoDB data directory 1.6 GB and the training export 908 MB.
+
+### 1. Install and start MongoDB
+
+```bash
+cp .env.example .env          # PowerShell: Copy-Item .env.example .env
 npm install
 docker compose up -d mongo
 ```
 
-Download the dataset into `data/raw/` (`flights.csv`, `airlines.csv` and `airports.csv`). The manual Kaggle download is described in [scripts/download-data.md](scripts/download-data.md).
+### 2. Get the dataset
 
-Then build the database. The steps must run in this order:
+Download the Kaggle [**2015 Flight Delays and Cancellations**](https://www.kaggle.com/datasets/usdot/flight-delays) dataset into `data/raw/` (`flights.csv`, `airlines.csv`, `airports.csv`). Steps: [scripts/download-data.md](scripts/download-data.md).
 
-| #   | Command                                  | What it does                                                                                  | Time measured here     |
-| --- | ---------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------- |
-| 1   | `npm run ingest -- --drop`               | Streams the three CSVs into MongoDB in batches of 10,000 and records the run in `ingest_runs` | 295 s, peak RSS 353 MB |
-| 2   | `npm run resolve:airport-ids -- --apply` | Maps October's numeric BTS airport ids to IATA codes. Without `--apply` it only reports       | 98 s                   |
-| 3   | `npm run build:indexes`                  | Creates the `flights` indexes (§6.2). Idempotent                                              | 121 s                  |
-| 4   | `npm run build:stats`                    | Rebuilds the pre-aggregated `stats_*` collections with `$group` + `$merge`                    | 199 s                  |
-| 5   | `npm run build:lookup`                   | Builds `delay_lookup`, the historical delay rates used as model features (train split only)   | 62 s                   |
-| 6   | `npm run ml:register`                    | Stores `ml/artifacts/metrics.json` in `model_runs`, which the Model page reads                | 4 s                    |
+### 3. Build the database
 
-Times are from the final clean-clone audit (2026-10-18): a fresh `git clone`, a new empty MongoDB volume, and only these README steps, on an i5-12450H laptop with an NVMe SSD. All six steps took 779 s in total. Earlier runs are logged in `docs/DECISIONS.md` (for example 1,007 s while other jobs shared the machine, Phase 7). The audit's console output was not saved to a file. The latest saved runs in the working database are in `docs/measurements/batch-runs-2026-10-22.json`: `build:stats` took 370.8 s and `build:lookup` 65.2 s on 2026-10-22, with the Kafka broker and the 479,230-document `stream_flights` collection loaded. Timings on this laptop vary that much with what else is running.
+Run these in order from the repository root:
 
-Start the API and the dashboard:
+| #   | Command                                  | What it does                                                                     | Measured               |
+| --- | ---------------------------------------- | -------------------------------------------------------------------------------- | ---------------------- |
+| 1   | `npm run ingest -- --drop`               | Streams the three CSVs into MongoDB in batches of 10,000                         | 295 s, 353 MB peak RSS |
+| 2   | `npm run resolve:airport-ids -- --apply` | Maps October's numeric BTS airport ids to IATA codes (dry run without `--apply`) | 98 s                   |
+| 3   | `npm run build:indexes`                  | Creates the `flights` indexes (idempotent)                                       | 121 s                  |
+| 4   | `npm run build:stats`                    | Rebuilds the pre-aggregated `stats_*` collections                                | 199 s                  |
+| 5   | `npm run build:lookup`                   | Builds `delay_lookup`, the historical-rate features (train split only)           | 62 s                   |
+| 6   | `npm run ml:register`                    | Stores `ml/artifacts/metrics.json` in `model_runs` for the Model page            | 4 s                    |
 
-```sh
+Times come from a clean-clone audit (fresh clone, empty MongoDB volume, these steps only) on an i5-12450H laptop with an NVMe SSD: **779 s end to end**. They vary with machine load; other runs are logged in [docs/DECISIONS.md](docs/DECISIONS.md).
+
+### 4. Run the app
+
+```bash
 npm run dev
 ```
 
-Open http://localhost:5173. The API listens on http://localhost:3001, and Vite proxies `/api` to it. Both bind to localhost only.
+- Dashboard: **http://localhost:5173** (Vite proxies `/api`)
+- API: **http://localhost:3001**
 
-Check that everything is up with `curl http://localhost:3001/api/health`. The expected answer is `{"status":"ok","mongo":"up","modelLoaded":true,"kafka":"down"}`. The `kafka` field is informational: it reads `"up"` when the Kafka broker is reachable and never changes the overall status.
+Both bind to localhost only. Check health:
 
-### Retraining the model (optional)
+```bash
+curl http://localhost:3001/api/health
+```
+
+```json
+{ "status": "ok", "mongo": "up", "modelLoaded": true, "kafka": "down" }
+```
+
+`kafka` is informational. It reads `"up"` once the broker runs and never changes the overall status.
+
+<details>
+<summary><b>Retrain the model (optional)</b></summary>
 
 Steps 1-5 must have run first.
 
@@ -112,125 +253,127 @@ ml/.venv/Scripts/python ml/train.py
 npm run ml:register
 ```
 
-On macOS or Linux, create the venv with `python3.12 -m venv ml/.venv` and use `ml/.venv/bin/python` in place of `ml/.venv/Scripts/python`. In the audit run, `export:training` took 330 s and `train.py` 152 s, and the retrained `metrics.json` matched the committed one exactly.
+On macOS or Linux, use `python3.12 -m venv ml/.venv` and `ml/.venv/bin/python`.
 
-- `export:training` streams the completed flights into `data/export/train.csv` and `test.csv` (git-ignored).
-- `train.py` trains a baseline, logistic regression and LightGBM on Jan-Sep. It picks the threshold and the model on September and scores Oct-Dec once. It writes `model.onnx`, `encoders.json`, `metrics.json` and `parity_sample.json` to `ml/artifacts/`.
-- Restart the API afterwards so it loads the new model.
-- `npm test` includes a parity test: the TypeScript encoder plus onnxruntime-node must match Python's probabilities on 100 test rows within 1e-4.
+- `export:training` streams completed flights into `data/export/train.csv` and `test.csv` (git-ignored). Measured: 330 s.
+- `train.py` trains a baseline, logistic regression and LightGBM on Jan-Sep, picks the model and threshold on September, then scores Oct-Dec once. Measured: 152 s; the retrained `metrics.json` matched the committed one exactly.
+- Restart the API so it loads the new model. `npm test` re-checks Node/Python parity.
 
-### Re-running parts of the pipeline
+</details>
 
-- `npm run ingest -- --drop` drops `flights` and its indexes and brings back the numeric airport ids. Run steps 2-6 again after it.
-- `npm run ingest -- --reference-only` reloads only `airlines` and `airports` (upsert by code) and never touches `flights`.
-- `npm run ingest` with no flag refuses to run when `flights` already has data. `--append` adds to it, `--limit N` loads only the first N flight rows, and `--dir PATH` reads the CSVs from another folder.
-- `npm run explain:report` runs the representative queries with `explain("executionStats")` twice, as a forced collection scan and with the indexes, and times every API endpoint. It rewrites `docs/EXPLAIN_RESULTS.md`. Run it after `build:indexes` and `build:stats`.
+<details>
+<summary><b>Re-running parts of the pipeline</b></summary>
 
-## Streaming layer (Phase 8)
+- `npm run ingest -- --drop` rebuilds `flights` from scratch; run steps 2-6 again afterwards.
+- `npm run ingest -- --reference-only` reloads only `airlines` and `airports`.
+- `npm run ingest` with no flag refuses to run when `flights` already has data. `--append` adds to it, `--limit N` loads only the first N rows, `--dir PATH` reads CSVs from another folder.
+- `npm run explain:report` re-runs the representative queries under `explain("executionStats")`, times every endpoint, and rewrites [docs/EXPLAIN_RESULTS.md](docs/EXPLAIN_RESULTS.md).
 
-An optional speed layer beside the batch pipeline. December 2015 is replayed from `flights.csv` into Kafka (`flights.raw`, 3 partitions), and a consumer writes each flight to `stream_flights` and scores it with the same predictor as `POST /api/predict`. It is a replay at a chosen rate, not a live feed. The batch steps above must have run first. The measurements are in [docs/STREAMING.md](docs/STREAMING.md).
+</details>
 
-Start MongoDB and the single-node Kafka broker:
+## Environment variables
+
+Configuration comes from `.env` and is validated with zod at startup ([server/src/config/env.ts](server/src/config/env.ts)). Validation errors name the variable, never its value. See [.env.example](.env.example).
+
+| Variable                              | Default                       | Purpose                                                                                                      |
+| ------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `MONGODB_URI`                         | _required_                    | e.g. `mongodb://localhost:27017`                                                                             |
+| `MONGODB_DB`                          | _required_                    | e.g. `flight_delay`                                                                                          |
+| `NODE_ENV`                            | _required_                    | `development`, `test` or `production`                                                                        |
+| `PORT`                                | `3001`                        | API port                                                                                                     |
+| `HOST`                                | `127.0.0.1`                   | Interface the API binds to; `0.0.0.0` exposes it on the network                                              |
+| `CORS_ORIGIN`                         | `http://localhost:5173`       | Comma-separated allowed origins; each is normalised to its origin, `*` is refused                            |
+| `PREDICT_RATE_LIMIT_PER_MIN`          | `30`                          | `POST /api/predict` requests per client IP per minute                                                        |
+| `TRUST_PROXY_HOPS`                    | `0`                           | Reverse proxies in front of the API. A hop count, never `true`, so clients cannot forge their rate-limit key |
+| `KAFKA_BROKERS`                       | `127.0.0.1:9092`              | Kafka bootstrap servers (use `127.0.0.1`, not `localhost`, on Windows)                                       |
+| `KAFKA_CLIENT_ID`                     | `flight-delay`                | Kafka client id                                                                                              |
+| `KAFKA_CONSUMER_GROUP`                | `flight-stream`               | Consumer group of `stream:consume`                                                                           |
+| `KAFKA_TOPIC_RAW` / `KAFKA_TOPIC_DLQ` | `flights.raw` / `flights.dlq` | Replayed events and the dead-letter queue                                                                    |
+| `KAFKA_SESSION_TIMEOUT_MS`            | `10000`                       | Consumer session timeout (6,000-1,800,000)                                                                   |
+| `STREAM_WINDOW_SIZE`                  | `2000`                        | Flights in the Live page's rolling window (100-20,000)                                                       |
+| `VITE_API_BASE_URL` _(web build)_     | _unset_                       | API origin when the dashboard is served from another origin; also added to the page's CSP `connect-src`      |
+
+## API reference
+
+Base path: `/api`. All inputs are validated with zod.
+
+**Conventions**
+
+- Errors share one envelope: `{ "error": { "code", "message", "details"? } }`.
+- Invalid parameters → `400 VALIDATION_ERROR`. MongoDB unavailable → `503 DATABASE_UNAVAILABLE`.
+- Analytics responses are cached in memory for 10 minutes.
+- Airport-, hour- and route-keyed results include `coverage.excludedUnresolvedFlights` (flights whose airport is still an unresolved BTS id).
+
+### Health and metadata
+
+| Method | Endpoint  | Description                                                                                                     |
+| ------ | --------- | --------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/health` | MongoDB ping, model loaded, informational `kafka: up\|down`. `503` with `status: degraded` when MongoDB is down |
+| `GET`  | `/meta`   | Row count, date range, airlines, airports, `dataQuality`                                                        |
+
+### Analytics
+
+| Method | Endpoint                        | Parameters                                                                                             |
+| ------ | ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/analytics/summary`            | Flights, delay rate, average arrival delay, cancel rate                                                |
+| `GET`  | `/analytics/causes`             | `by=overall\|airline\|airport\|month\|hour`, `limit` ≤ 100                                             |
+| `GET`  | `/analytics/delay-rate`         | `by=airline\|origin\|route\|dow\|hour`, `minFlights` (default 500), `limit` ≤ 100, `order=worst\|best` |
+| `GET`  | `/analytics/trend`              | Optional `airline` and/or `origin`, `granularity=day\|month`                                           |
+| `GET`  | `/analytics/cascade`            | Late-aircraft share of delay minutes by departure hour                                                 |
+| `GET`  | `/analytics/cancellations`      | `by=overall\|airline\|month`                                                                           |
+| `GET`  | `/analytics/delay-distribution` | Arrival-delay histogram (`$bucket`)                                                                    |
+| `GET`  | `/analytics/heatmap`            | Delay rate per (day of week, scheduled hour)                                                           |
+
+### Flights and routes
+
+| Method | Endpoint   | Parameters                                                                                                                                                                 |
+| ------ | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/routes`  | `origin` (required): destinations flown from it in 2015, busiest first                                                                                                     |
+| `GET`  | `/flights` | One of `airline`, `origin`, `route`, or `from` + `to` (YYYY-MM-DD); `dest` with `origin` or `route`; `limit` ≤ 100; keyset pagination via `cursor` = previous `nextCursor` |
+
+### Model and streaming
+
+| Method | Endpoint                    | Description                                                                                                                |
+| ------ | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/predict`                  | Score one flight (below)                                                                                                   |
+| `GET`  | `/model/metrics`            | The `model_runs` document of the deployed model                                                                            |
+| `GET`  | `/model/feature-importance` | Feature importance, sorted                                                                                                 |
+| `GET`  | `/stream/status`            | Speed-layer state (`live`, `idle`, `degraded` + reason), Kafka lag, DLQ size, live metrics with sample sizes. Always `200` |
+
+#### `POST /api/predict`
 
 ```bash
-docker compose up -d mongo kafka
+curl -X POST http://localhost:3001/api/predict \
+  -H "Content-Type: application/json" \
+  -d '{ "date": "2015-12-23", "airline": "AA", "origin": "ORD", "dest": "LAX", "schedDepHour": 17 }'
 ```
 
-Create the topics (idempotent):
+Response shape: `{ probability, label, threshold, modelVersion, derived, topFactors }`. The server derives distance, scheduled block time, calendar features and historical rates itself; the client sends only what a traveller knows.
 
-```bash
-npm run kafka:init
-```
-
-Start the consumer in its own terminal. It runs until Ctrl+C; `--idle-exit SECONDS` stops it once no batch has arrived for that long after its first batch.
-
-```bash
-npm run stream:consume
-```
-
-Replay December at 1,000 events per second. `--rate 0` is unthrottled and `--limit N` stops after N flights of the month. December sits at the end of the CSV, so the replay reads and skips the earlier months before the first event is sent.
-
-```bash
-npm run stream:replay -- --month 12 --rate 1000
-```
-
-With the API running (`npm run dev`), open the **Live** tab at http://localhost:5173/live, or read the status directly:
-
-```bash
-curl http://127.0.0.1:3001/api/stream/status
-```
-
-Check the endpoint's metrics against an independent recomputation from `stream_flights`. Stop the consumer first: a write during the check fails it.
-
-```bash
-npm run stream:verify-status
-```
-
-Measure the newest replay run (conservation, unique keys, lag, throughput, latency). It is read-only; `--out FILE` also saves the report as JSON, and `--from ISO_TIME` limits latency to flights produced from that instant.
-
-```bash
-npm run stream:measure
-```
-
-Sample consumer lag over time through the API (every 2 s for 5 minutes):
-
-```bash
-npm run stream:watch -- --duration 300 --url http://127.0.0.1:3001 --out lag.json
-```
-
-**Warning: this empties the speed layer.** `stream:reset` deletes every document in `stream_flights` and `stream_stats`, the consumer group's offsets and the messages on `flights.raw` and `flights.dlq`. It never touches the batch collections. It refuses unless `--db` names the configured `MONGODB_DB` and `--yes` is given, and while a consumer is running.
-
-```bash
-npm run stream:reset -- --db <MONGODB_DB> --yes
-```
-
-**Warning: this stops and restarts the Kafka container.** `stream:commit-check` reproduces the lost offset commits found in run R1 on a throwaway topic and group, which it removes afterwards. `--mode raw` shows the client's `commitOffsets()` resolving while the broker is down. `--mode confirmed` shows the consumer's read-back check catching the same failure (see docs/STREAMING.md). It exits non-zero when the expected result does not hold. After any Kafka client upgrade, run both modes. A unit test fails until you have, and then update `COMMIT_CHECK_VERIFIED_CLIENT` (docs/STREAMING.md, "Kafka client upgrades").
-
-```bash
-npm run stream:commit-check -- --mode confirmed --yes
-```
-
-`stream:commit-check` stops whatever `docker compose` resolves to from the repository root. To leave the project broker running, point it at a throwaway broker instead. Compose's own `COMPOSE_PROJECT_NAME` and `COMPOSE_FILE` variables select another stack, and `KAFKA_BROKERS` points the client at it. In-container tools must reach that broker on `localhost:9092`, so give it a second listener there.
-
-```bash
-COMPOSE_PROJECT_NAME=fdverify COMPOSE_FILE=/path/to/throwaway-compose.yml KAFKA_BROKERS=127.0.0.1:19092 npm run stream:commit-check -- --mode confirmed --yes
-```
-
-This is how both modes were last verified, on 2026-10-24 (`docs/measurements/commit-check-isolated-*.json`).
-
-Flights the consumer could not score keep the reason (`scoreError`). After `npm run build:stats` adds a route, or after a transient failure, score them again. `INVALID_REQUEST` refusals stay as they are.
-
-```bash
-npm run stream:score-missing -- --retry-refused
-```
-
-With Kafka stopped, every other page and endpoint keeps working; the Live page and `/api/stream/status` report a degraded state instead of failing.
-
-## Dashboard
-
-| Page     | What it shows                                                                                                                                                                                                                                                                         |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`      | Landing: a 3D globe of the real airports and the 10 most and 10 least delay-prone routes, behind a short scroll story (dataset size, routes, prediction, model). Hover a route or airport for its figures, select a route for details. Needs WebGL; without it the copy still renders |
-| Overview | KPIs, monthly delay-rate trend (train/test split marked), the month board, worst airlines, cause shares and an arrival-delay histogram                                                                                                                                                |
-| Causes   | Cause minutes by month or airline, the late-aircraft cascade by hour, and cancellation reasons                                                                                                                                                                                        |
-| Explorer | Worst/best airlines, airports and routes with a minimum-flights filter, the raw flights behind a route, and an hour × weekday heatmap                                                                                                                                                 |
-| Predict  | Score a flight (date, airline, origin, destination, hour): probability against the model's threshold, and which historical rates moved it                                                                                                                                             |
-| Model    | Baseline vs logistic regression vs LightGBM on the held-out test months, confusion matrix, training setup and feature importance                                                                                                                                                      |
-| Live     | The Kafka speed layer: state with its reason, flights stored, consumer throughput, lag and DLQ size, and live precision, recall and accuracy for the rolling window beside the whole replay, each with its sample size. Polls `/api/stream/status` every 5 s                          |
-
-Screenshots of every page, at desktop and mobile width, are in [`docs/screenshots/`](docs/screenshots/).
+| Status | Code                | When                                                      |
+| ------ | ------------------- | --------------------------------------------------------- |
+| `422`  | `UNKNOWN_CODE`      | Airline or airport not in the data                        |
+| `422`  | `UNKNOWN_ROUTE`     | Route with no 2015 flights                                |
+| `429`  | `RATE_LIMITED`      | Over `PREDICT_RATE_LIMIT_PER_MIN`; includes `Retry-After` |
+| `503`  | `MODEL_UNAVAILABLE` | No model loaded                                           |
 
 ## The model
 
-The deployed model is `lightgbm-20261013093139-12f165c2`. Its features are only what is known before departure: day of week, scheduled hour, holiday week, airline, origin, destination, distance, scheduled block time, and five historical delay rates. A test fails if any post-departure field (departure delay, taxi times, causes, cancellation and so on) appears in the feature list.
+Deployed: **`lightgbm-20261013093139-12f165c2`**, binary classifier for "arrives 15+ minutes late".
 
-| Split               | Months                                                                                                | Completed flights |
-| ------------------- | ----------------------------------------------------------------------------------------------------- | ----------------- |
-| Train               | January to September                                                                                  | 4,299,046         |
-| of which validation | September: early stopping, threshold and model choice, before the final refit on January to September | 462,153           |
-| Test (scored once)  | October to December                                                                                   | 1,411,835         |
+**Features (pre-departure only):** day of week, scheduled hour, holiday week, airline, origin, destination, distance, scheduled block time, and five smoothed historical delay rates (airline, origin, destination, origin × hour, route).
 
-Test-set results (from `ml/artifacts/metrics.json`). The threshold of 0.207 maximises F1 on September.
+```mermaid
+flowchart LR
+  subgraph Train["Train: Jan-Sep · 4,299,046 flights"]
+    f1["Folds 1-3 · out-of-fold rates"]
+    val["September · validation<br/>early stopping, threshold, model choice"]
+  end
+  test["Test: Oct-Dec · 1,411,835 flights<br/>scored once"]
+  Train -->|refit, frozen threshold 0.207| test
+```
+
+**Held-out test results** (Oct-Dec, from [ml/artifacts/metrics.json](ml/artifacts/metrics.json)); threshold 0.207 maximises F1 on September:
 
 | Model                       | ROC-AUC   | PR-AUC    | Precision | Recall    | F1        |
 | --------------------------- | --------- | --------- | --------- | --------- | --------- |
@@ -238,146 +381,174 @@ Test-set results (from `ml/artifacts/metrics.json`). The threshold of 0.207 maxi
 | Logistic regression         | 0.616     | 0.222     | 0.216     | 0.531     | 0.307     |
 | **LightGBM (deployed)**     | **0.628** | **0.235** | **0.218** | **0.582** | **0.318** |
 
-This is a modest model, and the dashboard says so. Delays depend heavily on things a pre-departure model cannot see, such as weather on the day and earlier delays of the same aircraft. At the deployed threshold it flags about 43% of flights. A flagged flight is about 1.35 times as likely to be delayed as an average one. Details are on the Model page and in `docs/STREAMING.md` (live results on the December replay).
+> [!NOTE]
+> This is an honest, modest model, and the dashboard says so. Delays depend heavily on what a pre-departure model cannot see: weather on the day and earlier delays of the same aircraft. At the deployed threshold it flags about 43% of flights, and a flagged flight is about 1.35× as likely to be delayed as an average one.
 
-## API
+**Leakage controls**
 
-Everything is under `/api`.
+- Forbidden features (departure delay, taxi times, air time, elapsed time, delay causes, cancelled, diverted) are rejected by a test.
+- `delay_lookup` rates are built from the training months only; rate = `(delayed + 50 × globalRate) / (completed + 50)`.
+- Training rows read fold-excluded rates (`fold1`-`fold3`), so no row's feature contains its own label.
+- At startup the API compares `delay_lookup` against the fingerprint registered with the model and warns on a mismatch.
 
-- Errors always have the shape `{ "error": { "code", "message", "details"? } }`.
-- Invalid parameters return `400 VALIDATION_ERROR`.
-- If MongoDB is down, data endpoints return `503 DATABASE_UNAVAILABLE`.
-- Analytics responses are cached in memory for 10 minutes.
+## Streaming layer
 
-| Method | Endpoint                        | Parameters / notes                                                                                                                                                                                                |
-| ------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/health`                       | MongoDB ping, whether the model is loaded and an informational `kafka: up\|down` (`503` with `status: degraded` when MongoDB is down)                                                                             |
-| GET    | `/meta`                         | Row count, date range, airlines, airports, `dataQuality`                                                                                                                                                          |
-| GET    | `/analytics/summary`            | Flights, delay rate, average arrival delay, cancel rate                                                                                                                                                           |
-| GET    | `/analytics/causes`             | `by=overall\|airline\|airport\|month\|hour`, `limit` ≤ 100                                                                                                                                                        |
-| GET    | `/analytics/delay-rate`         | `by=airline\|origin\|route\|dow\|hour`, `minFlights` (default 500), `limit` ≤ 100, `order=worst\|best`                                                                                                            |
-| GET    | `/analytics/trend`              | Optional `airline` and/or `origin`, `granularity=day\|month`                                                                                                                                                      |
-| GET    | `/analytics/cascade`            | Late-aircraft share of delay minutes by departure hour                                                                                                                                                            |
-| GET    | `/analytics/cancellations`      | `by=overall\|airline\|month`                                                                                                                                                                                      |
-| GET    | `/analytics/delay-distribution` | Arrival-delay histogram (`$bucket`)                                                                                                                                                                               |
-| GET    | `/analytics/heatmap`            | Delay rate per (day of week, scheduled hour) cell                                                                                                                                                                 |
-| GET    | `/routes`                       | `origin` (required): destinations flown from it in 2015 with flight counts, busiest first. The Predict form uses it, because only these routes can be scored                                                      |
-| GET    | `/flights`                      | Requires one of `airline`, `origin`, `route`, or `from` + `to` (YYYY-MM-DD); `dest` only with `origin` or `route`; `limit` ≤ 100; `cursor` = the previous page's `nextCursor`                                     |
-| POST   | `/predict`                      | Body `{ date, airline, origin, dest, schedDepHour }` → `{ probability, label, threshold, modelVersion, derived, topFactors }`                                                                                     |
-| GET    | `/model/metrics`                | The `model_runs` document of the deployed model                                                                                                                                                                   |
-| GET    | `/model/feature-importance`     | Feature importance of the deployed model, sorted                                                                                                                                                                  |
-| GET    | `/stream/status`                | Speed-layer state (`live`, `idle` or `degraded`, with a reason), Kafka lag and DLQ size, and live metrics from `stream_flights` with their sample sizes. Always `200`; Kafka being down is reported as `degraded` |
+An optional speed layer. December 2015 (479,230 flights) is replayed from the CSV into Kafka (`flights.raw`, 3 partitions) at a chosen rate. The consumer upserts each flight into `stream_flights`, scores it, and records whether the prediction matched the outcome. **It is a replay, not a live feed.**
 
-Details of the less obvious responses:
+```bash
+docker compose up -d mongo kafka
+npm run kafka:init                                   # create topics (idempotent)
+npm run stream:consume                               # terminal 1
+npm run stream:replay -- --month 12 --rate 1000      # terminal 2 (--rate 0 = unthrottled)
+```
 
-- **Coverage.** Airport-, hour- and route-keyed results carry `coverage.excludedUnresolvedFlights`: flights whose airport is still an unresolved numeric BTS id.
-- **`/predict`.** It derives distance, scheduled time, calendar features and historical rates server-side. It also:
-  - answers `422 UNKNOWN_CODE` for an airline or airport that is not in the data;
-  - answers `422 UNKNOWN_ROUTE` for a route with no 2015 flights;
-  - answers `503 MODEL_UNAVAILABLE` when no model is loaded;
-  - is rate-limited per client IP to `PREDICT_RATE_LIMIT_PER_MIN` requests per minute (default 30), answering `429 RATE_LIMITED` with `Retry-After`. Behind a reverse proxy, set `TRUST_PROXY_HOPS` so the limit is per client rather than per proxy; a forged `X-Forwarded-For` does not reset it.
+Then open **http://localhost:5173/live** or `curl http://127.0.0.1:3001/api/stream/status`.
 
-## Configuration
+**Acceptance results** ([docs/STREAMING.md](docs/STREAMING.md), evidence in `docs/measurements/`):
 
-All settings come from `.env` (development) or the container environment (production), validated with zod at startup. See `.env.example`. Errors name the variable, never its value.
+| Check                       | Result   | Key figures                                                                         |
+| --------------------------- | -------- | ----------------------------------------------------------------------------------- |
+| Conservation                | PASS     | 479,230 rows = 479,230 sent = 479,230 upserts, 0 DLQ                                |
+| Unique keys                 | PASS     | 479,230 stored = 479,230 distinct keys                                              |
+| Idempotent replay           | PASS     | Re-replaying 5,000 events leaves `stream_flights` at 479,230                        |
+| Crash recovery              | PASS     | Hard kill mid-batch: 500 uncommitted flights redelivered, 0 duplicates, lag 0       |
+| Throughput                  | Measured | Consumer 506 / 1,190 / 2,018 / 2,442 flights/s at 500 / 1,200 / 2,000 / unthrottled |
+| Latency p50 / p95           | Measured | 423 / 2,238 ms at 1,200/s steady state (about 49% of capacity)                      |
+| Status endpoint correctness | PASS     | 35 of 35 metrics match an independent recomputation                                 |
 
-| Variable                              | Default                       | Purpose                                                                                                                                                                                                                         |
-| ------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MONGODB_URI`                         | (required)                    | e.g. `mongodb://localhost:27017`                                                                                                                                                                                                |
-| `MONGODB_DB`                          | (required)                    | e.g. `flight_delay`                                                                                                                                                                                                             |
-| `PORT`                                | `3001`                        | API port; the consumer, which has no HTTP port, does not need it                                                                                                                                                                |
-| `NODE_ENV`                            | (required)                    | `development`, `test` or `production`                                                                                                                                                                                           |
-| `HOST`                                | `127.0.0.1`                   | Interface the API binds to; `0.0.0.0` exposes it on the network                                                                                                                                                                 |
-| `CORS_ORIGIN`                         | `http://localhost:5173`       | Browser origins allowed to call the API directly, comma-separated. Each is reduced to its origin, so a trailing slash is harmless; `*` is refused                                                                               |
-| `VITE_API_BASE_URL` (web build)       | (unset)                       | API origin when the dashboard is served from another origin, e.g. `http://127.0.0.1:3001` for `vite preview`. Unset, requests stay on the page's origin. Baked in at build time, and also added to the page's CSP `connect-src` |
-| `PREDICT_RATE_LIMIT_PER_MIN`          | `30`                          | `POST /api/predict` requests per client IP per minute                                                                                                                                                                           |
-| `TRUST_PROXY_HOPS`                    | `0`                           | Reverse proxies in front of the API (`1` behind one reverse proxy). A hop count, never `true`, so a client cannot forge its rate-limit key                                                                                      |
-| `KAFKA_BROKERS`                       | `127.0.0.1:9092`              | Kafka bootstrap servers (streaming layer only). Use `127.0.0.1`, not `localhost`, on Windows                                                                                                                                    |
-| `KAFKA_CLIENT_ID`                     | `flight-delay`                | Kafka client id                                                                                                                                                                                                                 |
-| `KAFKA_CONSUMER_GROUP`                | `flight-stream`               | Consumer group of `stream:consume`                                                                                                                                                                                              |
-| `KAFKA_TOPIC_RAW` / `KAFKA_TOPIC_DLQ` | `flights.raw` / `flights.dlq` | Replayed events and the dead-letter queue                                                                                                                                                                                       |
-| `KAFKA_SESSION_TIMEOUT_MS`            | `10000`                       | Consumer group session timeout; 10 s lets the consumer rejoin about 20 s sooner after a broker restart than the client's 30 s (docs/STREAMING.md)                                                                               |
-| `STREAM_WINDOW_SIZE`                  | `2000`                        | Flights in the Live page's rolling window (100 to 20,000)                                                                                                                                                                       |
+With Kafka stopped, every other page and endpoint keeps working; the Live page and `/api/stream/status` report `degraded` with a reason.
 
-## Testing and development
+<details>
+<summary><b>Operational commands</b></summary>
 
-```sh
+| Command                                                                             | Purpose                                                                                                           |
+| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `npm run stream:measure`                                                            | Read-only report on the newest run: conservation, unique keys, lag, throughput, latency (`--out FILE` saves JSON) |
+| `npm run stream:verify-status`                                                      | Checks `/api/stream/status` against a recomputation from `stream_flights` (stop the consumer first)               |
+| `npm run stream:watch -- --duration 300 --url http://127.0.0.1:3001 --out lag.json` | Samples consumer lag through the API every 2 s                                                                    |
+| `npm run stream:score-missing -- --retry-refused`                                   | Re-scores flights the consumer could not score                                                                    |
+| `npm run stream:reset -- --db <MONGODB_DB> --yes`                                   | Empties the speed layer (never touches batch collections)                                                         |
+| `npm run stream:commit-check -- --mode confirmed --yes`                             | Restarts the Kafka container to reproduce the client's commit defect on a throwaway topic                         |
+
+`stream:commit-check` is gated by a unit test: after any Kafka client upgrade, the suite fails until both modes have been re-run (see "Kafka client upgrades" in [docs/STREAMING.md](docs/STREAMING.md)).
+
+</details>
+
+## Dashboard
+
+| Page            | What it shows                                                                                                                                                             |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Landing** `/` | 3D globe of the real airports with the 10 most and 10 least delay-prone routes, behind a short scroll story. Falls back to text without WebGL and respects reduced motion |
+| **Overview**    | KPIs, monthly delay-rate trend with the train/test split marked, month board, worst airlines, cause shares, arrival-delay histogram                                       |
+| **Causes**      | Cause minutes by month or airline, the late-aircraft cascade by hour, cancellation reasons                                                                                |
+| **Explorer**    | Worst/best airlines, airports and routes with a minimum-flights filter, the raw flights behind a route, an hour × weekday heatmap                                         |
+| **Predict**     | Score a flight; shows probability against the threshold and which historical rates moved it                                                                               |
+| **Model**       | Baseline vs logistic regression vs LightGBM on the test months, confusion matrix, training setup, feature importance                                                      |
+| **Live**        | Kafka speed layer: state and reason, throughput, lag, DLQ size, rolling and whole-run precision / recall / accuracy with sample sizes. Polls every 5 s                    |
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/overview-desktop.png" alt="Overview page" /></td>
+    <td><img src="docs/screenshots/predict-result-desktop.png" alt="Predict page with a scored flight" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Overview</b></td>
+    <td align="center"><b>Predict</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/model-desktop.png" alt="Model page" /></td>
+    <td><img src="docs/screenshots/live-desktop.png" alt="Live streaming page" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Model</b></td>
+    <td align="center"><b>Live</b></td>
+  </tr>
+</table>
+
+Every page at desktop and mobile width: [docs/screenshots/](docs/screenshots/).
+
+## Testing and quality
+
+```bash
 npm run typecheck      # server, shared and web
-npm run lint           # ESLint over server, shared and web/src
-npm run format:check   # Prettier over server, shared and web/src (npm run format to fix)
-npm test               # Vitest: unit tests, plus MongoDB and Kafka integration tests
-npm run build:web      # production build of the dashboard (web/dist)
-npm run build:server   # production bundle of the API, consumer and topic init (server/dist)
-npm start              # run the built API (node server/dist/server.js); build:server first
+npm run lint           # ESLint
+npm run format:check   # Prettier (npm run format to fix)
+npm test               # Vitest: unit, API and integration tests
+npm run build:web      # dashboard production build → web/dist
+npm run build:server   # API, consumer and topic-init bundle → server/dist
+npm start              # run the built API
 ```
 
-`npm run dev` runs the API from source with tsx and reloads on change; `npm run start:dev -w @flight-delay/server` runs it from source without reloading.
+**520 tests in 63 files** (2026-10-25). Without MongoDB and Kafka running, 446 pass and the 74 integration tests skip themselves; CI provides both services so nothing skips there.
 
-- **The suite.** 503 tests in 61 files (2026-10-24). It covers:
-  - unit tests: pipeline builders, ingestion transforms, encoders, the scorer's pre-departure guarantee;
-  - API tests with Supertest;
-  - the Node/Python ONNX parity test;
-  - a guard that blocks Kafka client upgrades until `stream:commit-check` has been run.
-- **MongoDB integration tests.** They create and remove their own small databases (`flight_delay_*_test`) on the MongoDB in `vitest.config.ts`, and skip themselves when it is unreachable.
-- **Kafka integration test.** `server/tests/stream/broker.integration.test.ts` runs the real consumer against a real broker. It sends 60 events over 3 partitions plus a malformed one, checks that each event is stored once and committed offsets reach the end, and checks that a replay adds nothing. It uses its own topics and skips without a broker.
-- **Broker failures** (restarts, hard kills, a frozen MongoDB) are tested by hand, because they stop containers. The runs and their results are in `docs/STREAMING.md` and `docs/measurements/`.
-- **CI.** [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on pushes to `main` and on pull requests, with `mongo:7` and `apache/kafka:4.3.1` services. Each service has a reachability check, so integration tests cannot skip silently. The job runs:
-  - typecheck, lint, format check and all tests;
-  - both production builds;
-  - a boot of the API bundle against `/api/health`.
+| Layer                   | What is covered                                                                                                                                                               |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Unit**                | Aggregation-pipeline builders (pure functions returning `Document[]`), ingestion transforms (HHMM times, nulls), encoders, feature list, the scorer's pre-departure guarantee |
+| **API**                 | Routes through Supertest: validation, error envelope, rate limiting, health, hardening                                                                                        |
+| **ML parity**           | TypeScript encoder + `onnxruntime-node` vs Python probabilities on 100 rows, within 1e-4                                                                                      |
+| **MongoDB integration** | Seeded throwaway databases (`flight_delay_*_test`) for analytics, indexes, lookup, export, registry and stream store                                                          |
+| **Kafka integration**   | Real consumer against a real broker: 60 events over 3 partitions plus a malformed one, each stored once, offsets committed to the end, replay adds nothing                    |
+| **Failure drills**      | Broker restarts, hard kills and a frozen MongoDB, run by hand and recorded in `docs/measurements/`                                                                            |
 
-  Every step passed in a clean local replica of the workflow (fresh clone, `node:22`, the same services). The workflow has not yet run on GitHub.
+**CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs on pushes to `main` and on pull requests with `mongo:7` and `apache/kafka:4.3.1` service containers. Reachability checks fail the job instead of letting integration tests skip silently. Steps: typecheck → lint → format check → tests → both production builds → boot the API bundle and hit `/api/health`.
 
-Repository layout (npm workspaces):
+## Measured performance
 
-```
-server/   Express API, ingestion, aggregation pipelines, feature export, ONNX inference, Kafka layer
-shared/   zod schemas and TypeScript types shared by the API and the dashboard
-web/      React + Vite dashboard
-ml/       train.py (the only Python file), requirements.txt, artifacts/ (committed model)
-docs/     design decisions, schema, Big Data justification, measurements, readiness, screenshots
-```
+Representative queries on the full 5,819,079-document `flights` collection, forced collection scan vs indexed plan (medians of 3, MongoDB 7.0.43):
+
+| Query                               | Before   | After  | Speedup  | Index                                     |
+| ----------------------------------- | -------- | ------ | -------- | ----------------------------------------- |
+| Delayed flights in December (count) | 6,280 ms | 33 ms  | **190×** | `isDelayed_1_month_1` (COUNT_SCAN)        |
+| ATL departures at 17:00             | 4,614 ms | 39 ms  | **118×** | `origin_1_schedDepHour_1`                 |
+| Christmas-period flights            | 4,392 ms | 66 ms  | **66×**  | `date_1`                                  |
+| One airline over a month            | 7,037 ms | 107 ms | **66×**  | `airline_1_date_1`                        |
+| One route (LAX-SFO)                 | 4,953 ms | 178 ms | **28×**  | `route_1`                                 |
+| Cause minutes by airline, one month | 4,653 ms | 403 ms | **12×**  | `month_1_airline_1_with_causes` (partial) |
+
+Every pair was checked to return identical results. Analytics endpoints read the `stats_*` collections and answered in 5-39 ms median. Full report: [docs/EXPLAIN_RESULTS.md](docs/EXPLAIN_RESULTS.md).
 
 ## Known limitations
 
-- **The model is modest:** test ROC-AUC 0.628 and PR-AUC 0.235, against a 0.161 baseline. It uses pre-departure information only; see [The model](#the-model).
-- **The data stops at 2015.** Predictions are only meaningful for 2015 dates and for routes flown that year (`422 UNKNOWN_ROUTE` otherwise).
-- **The speed layer is a replay.** December 2015 is replayed at a chosen rate. It is not a live feed, and each event carries its outcome, which in reality would arrive hours later.
-- **Kafka is a single broker** with replication factor 1: there is no fault tolerance.
-  - **Tested:** a hard kill of the broker lost no acknowledged message.
-  - **Untested:** power loss.
-- **Kafka has no authentication or encryption.** The broker is bound to `127.0.0.1` only.
-- **The Kafka client has two known defects**, both in `@confluentinc/kafka-javascript` 1.11.0:
-  - Offset commits can be reported before the broker stores them. The consumer reads every commit back.
-  - An admin call can crash its process after a broker restart. The API isolates it in a child process; the consumer is restarted by its supervisor.
-- **One MongoDB case is untested:** a server that keeps answering health checks but hangs a single write. A fully frozen MongoDB was tested: the driver detected it and the consumer lost nothing.
-- **Throughput was measured on one laptop.** About 2.4k flights/s with live scoring in one consumer process.
-- **Local only.** The app runs on one machine through Docker Compose (MongoDB, Kafka) and `npm run dev`; there is no hosted deployment, scheduled backup or monitoring.
+- **The model is modest:** test ROC-AUC 0.628, PR-AUC 0.235 against a 0.161 baseline, by design limited to pre-departure information.
+- **The data stops at 2015.** Predictions are meaningful only for routes flown that year (`422 UNKNOWN_ROUTE` otherwise).
+- **The speed layer is a replay.** Each event carries its outcome, which in reality would arrive hours later.
+- **Kafka is a single broker** with replication factor 1 and no authentication or encryption; it is bound to `127.0.0.1`. A hard kill lost no acknowledged message; power loss is untested.
+- **Kafka client defects** in `@confluentinc/kafka-javascript` 1.11.0 are worked around, not fixed (commit read-back, child-process admin probes).
+- **One MongoDB failure mode is untested:** a server that answers health checks but hangs a single write. A fully frozen MongoDB was tested and lost nothing.
+- **Single-machine measurements.** Throughput (about 2.4k flights/s with live scoring) was measured on one laptop.
+- **Local only.** Docker Compose plus `npm run dev`; no hosted deployment, backups or monitoring.
 
 ## Documentation
 
-- [docs/BIGDATA_JUSTIFICATION.md](docs/BIGDATA_JUSTIFICATION.md): volume, variety, velocity, scalability (sharding design), and MongoDB compared with Hadoop/Spark/SQL.
-- [docs/SCHEMA.md](docs/SCHEMA.md): every collection, its fields, the indexes and why each exists.
-- [docs/EXPLAIN_RESULTS.md](docs/EXPLAIN_RESULTS.md): `explain("executionStats")` before/after indexes, plus API timings.
-- [docs/STREAMING.md](docs/STREAMING.md): the Kafka speed layer's acceptance measurements (conservation, idempotency, crash recovery, throughput, latency, metrics check) and its limits.
-- [docs/PHASE8_STATUS.md](docs/PHASE8_STATUS.md): the streaming layer's build history and open items.
-- [docs/PERF.md](docs/PERF.md): timings of `/api/stream/status` and `/api/health`, with Kafka up and stopped.
-- [docs/DECISIONS.md](docs/DECISIONS.md): decisions and measurements, phase by phase, through the production hardening and deployment.
-- [docs/FRONTEND_AUDIT.md](docs/FRONTEND_AUDIT.md): the audit of the AI Studio scaffold the dashboard replaced.
-- [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md): the original specification.
+| Document                                                       | Contents                                                                       |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)                     | The original specification                                                     |
+| [docs/SCHEMA.md](docs/SCHEMA.md)                               | Every collection, its fields and indexes, and why each exists; sharding design |
+| [docs/BIGDATA_JUSTIFICATION.md](docs/BIGDATA_JUSTIFICATION.md) | Volume, variety, velocity, scalability; MongoDB vs Hadoop / Spark / SQL        |
+| [docs/EXPLAIN_RESULTS.md](docs/EXPLAIN_RESULTS.md)             | `explain("executionStats")` before/after indexes, API timings                  |
+| [docs/STREAMING.md](docs/STREAMING.md)                         | Speed-layer acceptance measurements and limits                                 |
+| [docs/PERF.md](docs/PERF.md)                                   | `/api/stream/status` and `/api/health` timings with Kafka up and down          |
+| [docs/DECISIONS.md](docs/DECISIONS.md)                         | Design decisions and measurements, phase by phase                              |
+| [docs/PHASE8_STATUS.md](docs/PHASE8_STATUS.md)                 | Streaming-layer build history and open items                                   |
+| [docs/FRONTEND_AUDIT.md](docs/FRONTEND_AUDIT.md)               | Audit of the AI Studio scaffold the dashboard replaced                         |
 
 ## Troubleshooting
 
-- **`/api/health` says `mongo: down`.** Start MongoDB with `docker compose up -d mongo` and wait for `docker compose ps` to report it healthy.
-- **`modelLoaded: false`.** `ml/artifacts/model.onnx` or `encoders.json` is missing or invalid. The API log says why at startup.
-- **The Model page shows "not registered".** Run `npm run ml:register`.
-- **Empty charts.** Run `npm run build:stats` (step 4). The dashboard reads only the pre-aggregated collections.
-- **`npm run ingest` refuses to run.** `flights` already has data. Use `--drop` to rebuild it.
-- **`kafka: "down"`, but the broker is running.** `/api/stream/status` gives the reason. "Unknown topic or partition" means the topics do not exist yet: run `npm run kafka:init` (in production, the `kafka-init` service does this).
-- **The API log warns about `delay_lookup`.** At startup the API compares the historical rates with the ones the served model was registered against:
-  - "not registered" or "without a fingerprint": run `npm run ml:register`;
-  - "differs": `delay_lookup` was rebuilt from different flights. Retrain (export, train, register), or restore the matching data.
-- **`npm start` fails with "Cannot find module … dist/server.js".** Run `npm run build:server` first. `npm run dev` runs from source.
-- **The API logs "MongoDB not reachable yet; retrying".** It retries for about 45 s at startup, then exits so its supervisor can restart it. Check that MongoDB is running and that `MONGODB_URI` is correct.
+<details>
+<summary>Expand</summary>
 
-The dataset (`data/`), `.env` and the training export are not tracked by Git.
+- **`/api/health` reports `mongo: down`.** `docker compose up -d mongo` and wait until `docker compose ps` shows it healthy.
+- **"MongoDB not reachable yet; retrying".** The API retries for about 45 s at startup, then exits. Check `MONGODB_URI`.
+- **`modelLoaded: false`.** `ml/artifacts/model.onnx` or `encoders.json` is missing or invalid; the startup log says which.
+- **Model page says "not registered".** Run `npm run ml:register`.
+- **Empty charts.** Run `npm run build:stats`; the dashboard reads only pre-aggregated collections.
+- **`npm run ingest` refuses to run.** `flights` already has data; use `--drop` to rebuild.
+- **`kafka: "down"` while the broker runs.** `/api/stream/status` gives the reason. "Unknown topic or partition" means `npm run kafka:init` has not run.
+- **Startup warning about `delay_lookup`.** "not registered" → `npm run ml:register`; "differs" → `delay_lookup` was rebuilt from different flights, so retrain or restore the matching data.
+- **`npm start` cannot find `dist/server.js`.** Run `npm run build:server` first.
+
+</details>
+
+---
+
+<sub>The dataset (`data/`), `.env` and the training export are not tracked by Git. Every figure in this README comes from a measured run or a committed artifact in this repository.</sub>
