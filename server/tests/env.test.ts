@@ -24,6 +24,7 @@ describe('parseEnv', () => {
       KAFKA_TOPIC_DLQ: 'flights.dlq',
       STREAM_WINDOW_SIZE: 2000,
       KAFKA_SESSION_TIMEOUT_MS: 10000,
+      KAFKA_SECURITY_PROTOCOL: 'plaintext',
     });
   });
 

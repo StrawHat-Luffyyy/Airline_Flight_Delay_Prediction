@@ -1,0 +1,77 @@
+{
+  "what": "Production Kafka cluster (deploy/docker-compose.prod.yml): three KRaft brokers, SASL_SSL on every listener, StandardAuthorizer with deny-by-default, topics with replication factor 3 and min.insync.replicas=2. Security probes and a broker kill under load, run locally on 2026-10-24 (Docker Desktop, Windows).",
+  "setup": {
+    "topics": {
+      "flights.raw": {
+        "partitions": 3,
+        "replicationFactor": 3,
+        "isr": "3 of 3 on every partition",
+        "minInsyncReplicas": 2
+      },
+      "flights.dlq": {
+        "partitions": 1,
+        "replicationFactor": 3,
+        "minInsyncReplicas": 2
+      }
+    },
+    "aclsForFlightApp": [
+      "flights.raw: Read, Write, Describe",
+      "flights.dlq: Read, Write, Describe",
+      "group flight-stream: Read, Describe"
+    ],
+    "appConnection": "API and consumer as flight_app over SASL_SSL: /api/health kafka up, /api/stream/status live"
+  },
+  "securityProbes": [
+    {
+      "probe": "plaintext client to the client listener (kafka1:9092)",
+      "result": "refused: the CLI cannot speak to the TLS port (fails with 'Java heap space', the plaintext-client-on-TLS symptom)"
+    },
+    {
+      "probe": "TLS + SASL as flight_app with a wrong password",
+      "result": "refused: Authentication failed: Invalid username or password"
+    },
+    {
+      "probe": "flight_app lists topics",
+      "result": "sees only its own topics"
+    },
+    {
+      "probe": "flight_app creates a topic",
+      "result": "refused: Authorization failed"
+    },
+    {
+      "probe": "flight_app deletes flights.raw",
+      "result": "refused: TopicAuthorizationException"
+    },
+    {
+      "probe": "flight_app grants itself ACLs",
+      "result": "refused: ClusterAuthorizationException"
+    },
+    {
+      "probe": "flight_app describes another consumer group",
+      "result": "refused: GroupAuthorizationException"
+    },
+    {
+      "probe": "plaintext client to the controller listener (kafka1:9093)",
+      "result": "refused, as on the client listener"
+    }
+  ],
+  "brokerKillUnderLoad": {
+    "load": "stream:replay of 30,000 real December flights at 1,000/s (tools service, acks=all, idempotent producer)",
+    "kill": "docker kill kafka2 after 14,168 events had arrived",
+    "producer": {
+      "sentRaw": 30000,
+      "sentDlq": 0,
+      "exit": 0
+    },
+    "withKafka2Down": {
+      "endOffsetsTotal": 30000,
+      "committedTotal": 30000,
+      "lag": 0
+    },
+    "redeliveredDuringFailover": 2065,
+    "streamFlightsAfter": 479230,
+    "duplicateIds": 0,
+    "afterRestartOfKafka2": "rejoined; ISR 1,2,3 on all three partitions of flights.raw",
+    "reading": "Every acknowledged event is on the cluster (sent = end offsets) and was consumed (committed = end) while one broker was down. The 2,065 redeliveries during leader failover were absorbed by the idempotent upserts (stream_flights unchanged, no duplicates)."
+  }
+}

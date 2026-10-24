@@ -4,6 +4,11 @@
 #
 # Only Caddy is published, and on 127.0.0.1 by default (PUBLISH_HOST). MongoDB and Kafka live on
 # the internal `backend` network: no published port, no route out. The API is on both networks.
+#
+# Kafka is a three-broker KRaft cluster (each node broker and controller). Every listener is
+# SASL_SSL: TLS with the deploy/secrets CA, SASL/PLAIN users from the JAAS secret, and the
+# StandardAuthorizer denying anything without an ACL. Topics are replicated to all three brokers
+# with min.insync.replicas=2, so one broker can be down without losing acknowledged events.
 name: flight-delay-prod
 
 x-app-env: &app-env
@@ -11,7 +16,16 @@ x-app-env: &app-env
   MONGODB_URI_FILE: /run/secrets/mongodb_uri
   MONGODB_DB: flight_delay
   PORT: '3001'
-  KAFKA_BROKERS: kafka:9092
+  KAFKA_BROKERS: kafka1:9092,kafka2:9092,kafka3:9092
+  KAFKA_SECURITY_PROTOCOL: sasl_ssl
+  KAFKA_SASL_USERNAME: flight_app
+  KAFKA_SASL_PASSWORD_FILE: /run/secrets/kafka_app_password
+  KAFKA_SSL_CA_FILE: /run/secrets/kafka_ca.crt
+
+x-app-secrets: &app-secrets
+  - mongodb_uri
+  - kafka_app_password
+  - kafka_ca.crt
 
 x-hardening: &hardening
   read_only: true
@@ -47,80 +61,128 @@ services:
       start_period: 20s
     restart: unless-stopped
 
-  kafka:
+  kafka1: &kafka
     image: apache/kafka:4.3.1
-    environment:
+    environment: &kafka-env
       KAFKA_NODE_ID: 1
+      CLUSTER_ID: rQzV4ISUQy-HAf9fC5j6Dg
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: SASL_SSL://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: SASL_SSL://kafka1:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:SASL_SSL,SASL_SSL:SASL_SSL
+      KAFKA_INTER_BROKER_LISTENER_NAME: SASL_SSL
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:9093,2@kafka2:9093,3@kafka3:9093
+      # SASL/PLAIN inside TLS for clients, brokers and controllers; users in the JAAS secret.
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_SASL_MECHANISM_CONTROLLER_PROTOCOL: PLAIN
+      KAFKA_OPTS: -Djava.security.auth.login.config=/etc/kafka/secrets/kafka_server_jaas.conf
+      # TLS: the keystore holds the broker certificate (names kafka1..3); peers are verified
+      # against the CA, including the hostname.
+      KAFKA_SSL_KEYSTORE_FILENAME: broker.p12
+      KAFKA_SSL_KEYSTORE_TYPE: PKCS12
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: keystore_creds
+      KAFKA_SSL_KEY_CREDENTIALS: key_creds
+      KAFKA_SSL_TRUSTSTORE_TYPE: PEM
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/ca.crt
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: https
+      # Authorization: deny anything without an ACL; the brokers authenticate as admin.
+      KAFKA_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
+      KAFKA_SUPER_USERS: User:admin
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: 'false'
+      # Replication: every topic on all three brokers, two in sync for an acknowledged write.
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
       KAFKA_LOG_DIRS: /var/lib/kafka/data
       KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
     volumes:
-      - kafka_data:/var/lib/kafka/data
+      - kafka1_data:/var/lib/kafka/data
+      - ./secrets/kafka:/etc/kafka/secrets:ro
     networks:
       - backend
     healthcheck:
       test:
         [
           'CMD-SHELL',
-          '/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1',
+          '/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server $$(hostname):9092 --command-config /etc/kafka/secrets/admin.properties > /dev/null 2>&1',
         ]
-      interval: 10s
-      timeout: 10s
-      retries: 12
-      start_period: 20s
+      # Each check starts a JVM (1-2 s of several cores), so steady state checks every 30 s;
+      # start_interval keeps start-up detection quick.
+      interval: 30s
+      timeout: 20s
+      retries: 6
+      start_period: 90s
+      start_interval: 5s
+    hostname: kafka1
     restart: unless-stopped
 
-  # Creates flights.raw and flights.dlq if missing (idempotent), then exits. Without the topics the
-  # status probe reports the broker as unreachable.
-  kafka-init:
-    build: &api-build
-      context: ..
-      dockerfile: deploy/Dockerfile
-      target: api
-    image: flight-delay-api:local
-    command: ['node', '--enable-source-maps', 'server/dist/kafka-init.js']
-    environment: *app-env
-    # The image's health check probes the API's HTTP port; this one-shot job has none.
-    healthcheck:
-      disable: true
-    secrets:
-      - mongodb_uri
+  kafka2:
+    <<: *kafka
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: 2
+      KAFKA_ADVERTISED_LISTENERS: SASL_SSL://kafka2:9092
+    volumes:
+      - kafka2_data:/var/lib/kafka/data
+      - ./secrets/kafka:/etc/kafka/secrets:ro
+    hostname: kafka2
+
+  kafka3:
+    <<: *kafka
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: 3
+      KAFKA_ADVERTISED_LISTENERS: SASL_SSL://kafka3:9092
+    volumes:
+      - kafka3_data:/var/lib/kafka/data
+      - ./secrets/kafka:/etc/kafka/secrets:ro
+    hostname: kafka3
+
+  # One-shot: creates the topics (replication factor 3) and the app user's ACLs as admin, then
+  # exits. Idempotent. The API and the consumer start after it.
+  kafka-setup:
+    image: apache/kafka:4.3.1
+    entrypoint: ['bash', '/opt/setup/kafka-setup.sh']
+    volumes:
+      - ./kafka-setup.sh:/opt/setup/kafka-setup.sh:ro
+      - ./secrets/kafka:/etc/kafka/secrets:ro
     networks:
       - backend
     depends_on:
-      kafka:
+      kafka1:
         condition: service_healthy
-    <<: *hardening
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
     restart: 'no'
 
   api:
     image: flight-delay-api:local
-    build: *api-build
+    build: &api-build
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: api
     environment:
       <<: *app-env
       HOST: 0.0.0.0
       TRUST_PROXY_HOPS: '1'
       CORS_ORIGIN: ${PUBLIC_ORIGIN:-https://localhost:8443}
       PREDICT_RATE_LIMIT_PER_MIN: '30'
-    secrets:
-      - mongodb_uri
+    secrets: *app-secrets
     networks:
       - backend
       - frontend
     depends_on:
       mongo:
         condition: service_healthy
-      kafka-init:
+      kafka-setup:
         condition: service_completed_successfully
     <<: *hardening
     restart: unless-stopped
@@ -135,14 +197,13 @@ services:
     # policy brings it back if it exits.
     healthcheck:
       disable: true
-    secrets:
-      - mongodb_uri
+    secrets: *app-secrets
     networks:
       - backend
     depends_on:
       mongo:
         condition: service_healthy
-      kafka-init:
+      kafka-setup:
         condition: service_completed_successfully
     <<: *hardening
     restart: unless-stopped
@@ -183,8 +244,7 @@ services:
     entrypoint: ['npm', 'run']
     user: node
     environment: *app-env
-    secrets:
-      - mongodb_uri
+    secrets: *app-secrets
     volumes:
       - ../data/raw:/app/data/raw:ro
     networks:
@@ -198,6 +258,10 @@ secrets:
     file: ./secrets/mongo_app_password
   mongodb_uri:
     file: ./secrets/mongodb_uri
+  kafka_app_password:
+    file: ./secrets/kafka_app_password
+  kafka_ca.crt:
+    file: ./secrets/kafka_ca.crt
 
 networks:
   backend:
@@ -206,6 +270,8 @@ networks:
 
 volumes:
   mongo_data:
-  kafka_data:
+  kafka1_data:
+  kafka2_data:
+  kafka3_data:
   caddy_data:
   caddy_config:
