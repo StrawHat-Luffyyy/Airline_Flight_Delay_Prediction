@@ -2,6 +2,9 @@ import { MongoClient, type Db, type Document } from 'mongodb';
 import { pino } from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildLookup, loadLookupTable } from '../../src/features/lookup.js';
+import { useIntegrationTimeouts } from '../helpers/integration.js';
+
+useIntegrationTimeouts();
 
 // Needs a reachable MongoDB (MONGODB_URI from vitest.config.ts); skipped when there is none.
 const TEST_DB = 'flight_delay_lookup_test';

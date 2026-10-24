@@ -7,6 +7,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { exportTraining } from '../../src/features/export.js';
 import { EXPORT_COLUMNS } from '../../src/features/feature-list.js';
 import { buildLookup, loadLookupTable } from '../../src/features/lookup.js';
+import { useIntegrationTimeouts } from '../helpers/integration.js';
+
+useIntegrationTimeouts();
 
 // Needs a reachable MongoDB (MONGODB_URI from vitest.config.ts); skipped when there is none.
 const TEST_DB = 'flight_delay_export_test';

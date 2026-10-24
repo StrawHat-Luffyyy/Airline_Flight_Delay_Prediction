@@ -2,6 +2,9 @@ import { MongoClient, type Db, type Document } from 'mongodb';
 import { pino } from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { resolveAirportIds } from '../../src/ingest/resolve.js';
+import { useIntegrationTimeouts } from '../helpers/integration.js';
+
+useIntegrationTimeouts();
 
 // Needs a reachable MongoDB (MONGODB_URI from vitest.config.ts); skipped when there is none.
 const TEST_DB = 'flight_delay_resolve_test';

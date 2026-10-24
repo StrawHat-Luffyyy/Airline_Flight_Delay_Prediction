@@ -9,6 +9,9 @@ import {
   rollingWindowPipeline,
 } from '../../src/stream/status/queries.js';
 import { ensureStreamIndexes, streamFlights, upsertEvents } from '../../src/stream/store.js';
+import { useIntegrationTimeouts } from '../helpers/integration.js';
+
+useIntegrationTimeouts();
 
 // Needs a reachable MongoDB (MONGODB_URI from vitest.config.ts); skipped when there is none.
 const TEST_DB = 'flight_delay_stream_status_test';

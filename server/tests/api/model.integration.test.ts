@@ -10,6 +10,9 @@ import {
 import { createApp } from '../../src/app.js';
 import { DEFAULT_ARTIFACTS_DIR, loadModel, type DelayModel } from '../../src/ml/model.js';
 import { readModelRun, registerModelRun } from '../../src/ml/register.js';
+import { useIntegrationTimeouts } from '../helpers/integration.js';
+
+useIntegrationTimeouts();
 
 // Needs a reachable MongoDB (MONGODB_URI from vitest.config.ts) and ml/artifacts; skipped otherwise.
 const TEST_DB = 'flight_delay_model_test';

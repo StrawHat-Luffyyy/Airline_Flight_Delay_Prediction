@@ -18,6 +18,9 @@ import {
 import { createApp } from '../../src/app.js';
 import type { CancellationReason, DelayCauses, FlightDoc } from '../../src/db/collections.js';
 import { buildStats } from '../../src/stats/build.js';
+import { useIntegrationTimeouts } from '../helpers/integration.js';
+
+useIntegrationTimeouts();
 
 // Needs a reachable MongoDB (MONGODB_URI from vitest.config.ts); skipped when there is none.
 const TEST_DB = 'flight_delay_analytics_test';

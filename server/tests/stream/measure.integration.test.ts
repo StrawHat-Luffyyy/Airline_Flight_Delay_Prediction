@@ -1,6 +1,9 @@
 import { MongoClient, type Db } from 'mongodb';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runStatsPipeline } from '../../src/stream/measure.js';
+import { useIntegrationTimeouts } from '../helpers/integration.js';
+
+useIntegrationTimeouts();
 
 // Needs a reachable MongoDB 7+ (MONGODB_URI from vitest.config.ts); skipped when there is none.
 const TEST_DB = 'flight_delay_stream_measure_test';

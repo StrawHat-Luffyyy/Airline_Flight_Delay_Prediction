@@ -5,6 +5,9 @@ import { FEATURE_COLUMNS } from '../../src/features/feature-list.js';
 import { loadLookupFingerprint } from '../../src/features/lookup.js';
 import { checkServedLookup } from '../../src/ml/lookup-check.js';
 import { registerModelRun } from '../../src/ml/register.js';
+import { useIntegrationTimeouts } from '../helpers/integration.js';
+
+useIntegrationTimeouts();
 
 // Needs a reachable MongoDB (MONGODB_URI from vitest.config.ts); skipped when there is none.
 const TEST_DB = 'flight_delay_register_test';
