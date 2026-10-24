@@ -7,7 +7,6 @@ import { fork } from 'node:child_process';
 import { KafkaJS } from '@confluentinc/kafka-javascript';
 import { env } from '../config/env.js';
 import { logger } from '../logger.js';
-import { kafkaClientConfig } from './kafka-config.js';
 import {
   KAFKA_CACHE_MS,
   KAFKA_TIMEOUT_MS,
@@ -20,19 +19,14 @@ import { createIsolatedProbe } from './status/isolated-probe.js';
 export const ADMIN_TIMEOUT_MS = 10_000;
 
 export function createKafka(): KafkaJS.Kafka {
-  const config = kafkaClientConfig({
-    brokers: env.KAFKA_BROKERS,
-    clientId: env.KAFKA_CLIENT_ID,
-    timeoutMs: ADMIN_TIMEOUT_MS,
-    securityProtocol: env.KAFKA_SECURITY_PROTOCOL,
-    ...(env.KAFKA_SASL_USERNAME !== undefined && env.KAFKA_SASL_PASSWORD !== undefined
-      ? { sasl: { username: env.KAFKA_SASL_USERNAME, password: env.KAFKA_SASL_PASSWORD } }
-      : {}),
-    ...(env.KAFKA_SSL_CA_FILE === undefined ? {} : { caFile: env.KAFKA_SSL_CA_FILE }),
-  });
   return new KafkaJS.Kafka({
-    ...config,
-    kafkaJS: { ...config.kafkaJS, brokers: env.KAFKA_BROKERS, logLevel: KafkaJS.logLevel.WARN },
+    kafkaJS: {
+      brokers: env.KAFKA_BROKERS,
+      clientId: env.KAFKA_CLIENT_ID,
+      connectionTimeout: ADMIN_TIMEOUT_MS,
+      requestTimeout: ADMIN_TIMEOUT_MS,
+      logLevel: KafkaJS.logLevel.WARN,
+    },
   });
 }
 

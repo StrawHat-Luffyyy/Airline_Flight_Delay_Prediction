@@ -1,6 +1,6 @@
 /**
  * Where the dashboard sends API requests. Unset, paths stay relative (`/api/...`): the Vite dev
- * proxy and the Caddy stack serve the API on the page's own origin. Set at build time, it is the
+ * proxy (or a reverse proxy in front of both) serves the API on the page's own origin. Set at build time, it is the
  * API's origin when that is another host, e.g. `http://127.0.0.1:3001` for a `vite preview` build.
  *
  * Only the origin is kept: every client path already starts with `/api`, so a configured trailing

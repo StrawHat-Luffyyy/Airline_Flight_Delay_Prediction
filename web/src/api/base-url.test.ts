@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { apiUrl, parseApiBaseUrl } from './base-url';
 
 describe('parseApiBaseUrl (VITE_API_BASE_URL)', () => {
-  it('is empty when unset, so requests stay same-origin (Vite proxy, Caddy)', () => {
+  it('is empty when unset, so requests stay same-origin (the Vite proxy)', () => {
     expect(parseApiBaseUrl(undefined)).toBe('');
     expect(parseApiBaseUrl('')).toBe('');
     expect(parseApiBaseUrl('  ')).toBe('');

@@ -23,5 +23,3 @@ __pycache__/
 web/.impeccable/review/
 web/.impeccable/questions/
 
-# Production deployment secrets (deploy/make-secrets.sh)
-deploy/secrets/

@@ -21,7 +21,7 @@ describe('contentSecurityPolicy', () => {
     expect(policy.get('default-src')).toEqual(["'self'"]);
   });
 
-  it('keeps the Caddy policy for fonts, styles and the WebGL globe', () => {
+  it('allows the fonts, styles and the WebGL globe the dashboard needs', () => {
     const policy = directives(contentSecurityPolicy(''));
     expect(policy.get('style-src')).toEqual([
       "'self'",
@@ -33,7 +33,7 @@ describe('contentSecurityPolicy', () => {
     expect(policy.get('object-src')).toEqual(["'none'"]);
   });
 
-  it('leaves out frame-ancestors, which a <meta> policy ignores (the Caddyfile sends X-Frame-Options)', () => {
+  it('leaves out frame-ancestors, which a <meta> policy ignores', () => {
     expect(directives(contentSecurityPolicy('')).has('frame-ancestors')).toBe(false);
   });
 });

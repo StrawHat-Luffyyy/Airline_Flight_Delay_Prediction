@@ -1457,3 +1457,24 @@ A cloud deployment (Vercel + Render) was prepared and then dropped: the project 
   - The bug fixed: a trailing slash (`https://dashboard.example.org/`) made the API echo a value the browser never matches, which blocked every request.
   - `*` and other non-http(s) values are refused.
 - **`PORT` defaults to 3001.** Only the API listens. Before this change, a consumer started without `PORT` failed env validation.
+
+## Deployment removed (2026-10-24)
+
+The user decided to keep the code fixes and remove the deployment work. This supersedes "Production deployment (2026-10-24)" above and the secure-Kafka parts of the production stack.
+
+**Removed:**
+- `deploy/`: the Docker Compose production stack, Caddy, the Dockerfile, the secrets script and the MongoDB init script.
+- `.dockerignore` and `.gitattributes`.
+- `docs/PRODUCTION_READINESS.md`, `docs/measurements/kafka-secure-cluster.json` and `docs/screenshots/deploy-predict-desktop.jpg`.
+- The README's deployment section.
+- Two code features that only the production stack used:
+  - `MONGODB_URI_FILE` (reading the MongoDB URI from a Docker secret);
+  - Kafka SASL/TLS client support (`KAFKA_SECURITY_PROTOCOL`, `KAFKA_SASL_*`, `KAFKA_SSL_CA_FILE`, `server/src/stream/kafka-config.ts`). The dev broker is plaintext, so `createKafka` is back to its earlier form.
+- Not committed and also discarded: the monitor and webhook alerts, the backup service, the consumer health check, and per-service log rotation.
+- Local cleanup: the production containers, the three production images, the generated secrets and an interrupted partial backup. The production Docker volumes are left for the user to remove, because the project's guard hook blocks volume removal.
+
+**Kept:**
+- The production build bundle (`npm run build:server`, `npm start`).
+- `TRUST_PROXY_HOPS`, the MongoDB connect retry, csv-parse 7, the `delay_lookup` fingerprint check, and `--retry-refused`.
+- The missing-topic status fix, the realistic integration-test timeouts, and the CI Kafka service with its bundle boot step.
+- The other session's committed config fixes (CORS origin list, optional `PORT`, `VITE_API_BASE_URL`, the CSP `<meta>` tag). Their comments no longer refer to the deleted Caddyfile.

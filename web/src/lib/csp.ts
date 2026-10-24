@@ -1,9 +1,10 @@
 /**
  * The dashboard's Content-Security-Policy, injected as a <meta> tag into the built index.html
- * (vite.config.ts), so a build served by any static server (`vite preview`, not only Caddy) carries
- * it, including a build-time API origin. It matches deploy/Caddyfile, plus the API origin
- * in connect-src when the API is on another host. `frame-ancestors` is ignored in a <meta> policy,
- * so framing is refused by the X-Frame-Options header instead (deploy/Caddyfile).
+ * (vite.config.ts), so a build served by any static server (`vite preview`, for one) carries it,
+ * including a build-time API origin: scripts from this origin only, inline style attributes and
+ * Google Fonts, plus the API origin in connect-src when the API is on another host.
+ * `frame-ancestors` is ignored in a <meta> policy; refusing framing needs an X-Frame-Options or
+ * CSP header from whatever serves the page.
  */
 export function contentSecurityPolicy(apiOrigin: string): string {
   return [

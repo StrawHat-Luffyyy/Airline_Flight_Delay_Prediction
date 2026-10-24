@@ -24,7 +24,6 @@ describe('parseEnv', () => {
       KAFKA_TOPIC_DLQ: 'flights.dlq',
       STREAM_WINDOW_SIZE: 2000,
       KAFKA_SESSION_TIMEOUT_MS: 10000,
-      KAFKA_SECURITY_PROTOCOL: 'plaintext',
     });
   });
 
@@ -84,43 +83,6 @@ describe('parseEnv', () => {
   it('needs no PORT, which processes without an HTTP port (the consumer) do not set', () => {
     expect(parseEnv({ ...valid, PORT: undefined }).PORT).toBe(3001);
     expect(parseEnv({ ...valid, PORT: '10000' }).PORT).toBe(10000);
-  });
-
-  it('reads MONGODB_URI from the file MONGODB_URI_FILE names (a Docker secret), trimmed', () => {
-    const rest = { ...valid, MONGODB_URI: undefined };
-    const files: Record<string, string> = {
-      '/run/secrets/mongodb_uri': 'mongodb://mongo:27017/flight_delay\n',
-    };
-    const parsed = parseEnv({ ...rest, MONGODB_URI_FILE: '/run/secrets/mongodb_uri' }, (path) => {
-      const content = files[path];
-      if (content === undefined) throw new Error('ENOENT');
-      return content;
-    });
-    expect(parsed.MONGODB_URI).toBe('mongodb://mongo:27017/flight_delay');
-  });
-
-  it('refuses both MONGODB_URI and MONGODB_URI_FILE, and never echoes a secret it could not use', () => {
-    expect(() =>
-      parseEnv({ ...valid, MONGODB_URI_FILE: '/run/secrets/mongodb_uri' }, () => 'x'),
-    ).toThrow(/either MONGODB_URI or MONGODB_URI_FILE/);
-    const rest = { ...valid, MONGODB_URI: undefined };
-    let message = '';
-    try {
-      parseEnv({ ...rest, MONGODB_URI_FILE: '/missing' }, () => {
-        throw new Error('ENOENT');
-      });
-    } catch (error) {
-      message = (error as Error).message;
-    }
-    expect(message).toMatch(/MONGODB_URI_FILE: cannot read \/missing/);
-    expect(() =>
-      parseEnv({ ...rest, MONGODB_URI_FILE: '/bad' }, () => 'not a url with p4ssw0rd'),
-    ).toThrow(/MONGODB_URI/);
-    try {
-      parseEnv({ ...rest, MONGODB_URI_FILE: '/bad' }, () => 'not a url with p4ssw0rd');
-    } catch (error) {
-      expect((error as Error).message).not.toContain('p4ssw0rd');
-    }
   });
 
   it('rejects an invalid PORT and an unknown NODE_ENV', () => {

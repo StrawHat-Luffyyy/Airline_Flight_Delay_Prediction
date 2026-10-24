@@ -6,7 +6,6 @@ A Big Data project over the 2015 US domestic flight dataset (5,819,079 flights).
 - **Explains** delays: their causes, and where and when they concentrate (airline, airport, route, month, hour).
 - **Shows** both through a REST API and a dashboard.
 - **Streams** December 2015 through Kafka as a replay, scores each flight live and shows the result on the Live page (Phase 8, [below](#streaming-layer-phase-8)).
-- **Deploys** as a Docker Compose stack behind Caddy, with TLS and an authenticated MongoDB ([Production deployment](#production-deployment)).
 
 The design, every measurement and the reasoning behind each choice are in [`docs/`](#documentation).
 
@@ -43,7 +42,6 @@ flowchart LR
 - **Speed layer.** December is replayed from the CSV into Kafka. A consumer stores each flight once (idempotent upserts), scores it with the same predictor as `POST /api/predict`, and compares the prediction with what actually happened.
 - **Serving.**
   - The Express API reads only MongoDB and the model; it never calls an external service.
-  - In production, Caddy serves the built dashboard and proxies `/api` to it.
 
 ## Tech stack
 
@@ -56,14 +54,14 @@ flowchart LR
 | Dashboard         | React 19, Vite 8, TypeScript, Tailwind CSS 4, TanStack Query, Recharts, React Three Fiber (landing globe)           |
 | Shared contract   | `shared/`: zod schemas and types used by both the API and the dashboard                                             |
 | Tests and quality | Vitest, Supertest, ESLint, Prettier, TypeScript strict                                                              |
-| Production        | Docker Compose, Caddy 2.10, esbuild (server bundle)                                                                 |
+| Production build  | esbuild (server bundle: `npm run build:server`)                                                                     |
 
 All application code is TypeScript (strict). The only other code is the training script `ml/train.py` and the deployment's shell scripts.
 
 ## Requirements
 
 - **Node.js 20 or newer** with npm. The project is tested on Node 22 in CI.
-- **Docker Desktop** (or Docker Engine with Compose v2), for MongoDB 7 and Kafka, and for the production stack.
+- **Docker Desktop** (or Docker Engine with Compose v2), for MongoDB 7 and Kafka.
 - **Python 3.12**, only to retrain the model. The trained model is committed in `ml/artifacts/`, so you can skip training.
 - About 4 GB of free disk space. Measured on the full build: the CSV is 592 MB, the MongoDB data directory 1.6 GB (`du -sh /data/db` inside the container; WiredTiger files plus journal, against 1,330 MB of collection and index storage in `db.stats()`: 937 MB data plus 393 MB indexes) and the training export 908 MB. MB here means 10^6 bytes.
 
@@ -283,24 +281,23 @@ Details of the less obvious responses:
 
 All settings come from `.env` (development) or the container environment (production), validated with zod at startup. See `.env.example`. Errors name the variable, never its value.
 
-| Variable                              | Default                           | Purpose                                                                                                                                                                                                                         |
-| ------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MONGODB_URI`                         | (required, or `MONGODB_URI_FILE`) | e.g. `mongodb://localhost:27017`                                                                                                                                                                                                |
-| `MONGODB_URI_FILE`                    | (unset)                           | Path to a file holding `MONGODB_URI`, e.g. a Docker secret. Use it instead of `MONGODB_URI`, so credentials stay out of the environment; setting both is an error                                                               |
-| `MONGODB_DB`                          | (required)                        | e.g. `flight_delay`                                                                                                                                                                                                             |
-| `PORT`                                | `3001`                            | API port; the consumer, which has no HTTP port, does not need it                                                                                                                                                                |
-| `NODE_ENV`                            | (required)                        | `development`, `test` or `production`                                                                                                                                                                                           |
-| `HOST`                                | `127.0.0.1`                       | Interface the API binds to; `0.0.0.0` exposes it on the network                                                                                                                                                                 |
-| `CORS_ORIGIN`                         | `http://localhost:5173`           | Browser origins allowed to call the API directly, comma-separated. Each is reduced to its origin, so a trailing slash is harmless; `*` is refused                                                                               |
-| `VITE_API_BASE_URL` (web build)       | (unset)                           | API origin when the dashboard is served from another origin, e.g. `http://127.0.0.1:3001` for `vite preview`. Unset, requests stay on the page's origin. Baked in at build time, and also added to the page's CSP `connect-src` |
-| `PREDICT_RATE_LIMIT_PER_MIN`          | `30`                              | `POST /api/predict` requests per client IP per minute                                                                                                                                                                           |
-| `TRUST_PROXY_HOPS`                    | `0`                               | Reverse proxies in front of the API (`1` behind Caddy). A hop count, never `true`, so a client cannot forge its rate-limit key                                                                                                  |
-| `KAFKA_BROKERS`                       | `127.0.0.1:9092`                  | Kafka bootstrap servers (streaming layer only). Use `127.0.0.1`, not `localhost`, on Windows                                                                                                                                    |
-| `KAFKA_CLIENT_ID`                     | `flight-delay`                    | Kafka client id                                                                                                                                                                                                                 |
-| `KAFKA_CONSUMER_GROUP`                | `flight-stream`                   | Consumer group of `stream:consume`                                                                                                                                                                                              |
-| `KAFKA_TOPIC_RAW` / `KAFKA_TOPIC_DLQ` | `flights.raw` / `flights.dlq`     | Replayed events and the dead-letter queue                                                                                                                                                                                       |
-| `KAFKA_SESSION_TIMEOUT_MS`            | `10000`                           | Consumer group session timeout; 10 s lets the consumer rejoin about 20 s sooner after a broker restart than the client's 30 s (docs/STREAMING.md)                                                                               |
-| `STREAM_WINDOW_SIZE`                  | `2000`                            | Flights in the Live page's rolling window (100 to 20,000)                                                                                                                                                                       |
+| Variable                              | Default                       | Purpose                                                                                                                                                                                                                         |
+| ------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MONGODB_URI`                         | (required)                    | e.g. `mongodb://localhost:27017`                                                                                                                                                                                                |
+| `MONGODB_DB`                          | (required)                    | e.g. `flight_delay`                                                                                                                                                                                                             |
+| `PORT`                                | `3001`                        | API port; the consumer, which has no HTTP port, does not need it                                                                                                                                                                |
+| `NODE_ENV`                            | (required)                    | `development`, `test` or `production`                                                                                                                                                                                           |
+| `HOST`                                | `127.0.0.1`                   | Interface the API binds to; `0.0.0.0` exposes it on the network                                                                                                                                                                 |
+| `CORS_ORIGIN`                         | `http://localhost:5173`       | Browser origins allowed to call the API directly, comma-separated. Each is reduced to its origin, so a trailing slash is harmless; `*` is refused                                                                               |
+| `VITE_API_BASE_URL` (web build)       | (unset)                       | API origin when the dashboard is served from another origin, e.g. `http://127.0.0.1:3001` for `vite preview`. Unset, requests stay on the page's origin. Baked in at build time, and also added to the page's CSP `connect-src` |
+| `PREDICT_RATE_LIMIT_PER_MIN`          | `30`                          | `POST /api/predict` requests per client IP per minute                                                                                                                                                                           |
+| `TRUST_PROXY_HOPS`                    | `0`                           | Reverse proxies in front of the API (`1` behind one reverse proxy). A hop count, never `true`, so a client cannot forge its rate-limit key                                                                                      |
+| `KAFKA_BROKERS`                       | `127.0.0.1:9092`              | Kafka bootstrap servers (streaming layer only). Use `127.0.0.1`, not `localhost`, on Windows                                                                                                                                    |
+| `KAFKA_CLIENT_ID`                     | `flight-delay`                | Kafka client id                                                                                                                                                                                                                 |
+| `KAFKA_CONSUMER_GROUP`                | `flight-stream`               | Consumer group of `stream:consume`                                                                                                                                                                                              |
+| `KAFKA_TOPIC_RAW` / `KAFKA_TOPIC_DLQ` | `flights.raw` / `flights.dlq` | Replayed events and the dead-letter queue                                                                                                                                                                                       |
+| `KAFKA_SESSION_TIMEOUT_MS`            | `10000`                       | Consumer group session timeout; 10 s lets the consumer rejoin about 20 s sooner after a broker restart than the client's 30 s (docs/STREAMING.md)                                                                               |
+| `STREAM_WINDOW_SIZE`                  | `2000`                        | Flights in the Live page's rolling window (100 to 20,000)                                                                                                                                                                       |
 
 ## Testing and development
 
@@ -338,44 +335,8 @@ server/   Express API, ingestion, aggregation pipelines, feature export, ONNX in
 shared/   zod schemas and TypeScript types shared by the API and the dashboard
 web/      React + Vite dashboard
 ml/       train.py (the only Python file), requirements.txt, artifacts/ (committed model)
-deploy/   production Docker Compose stack, Dockerfile, Caddyfile, secrets script, runbook
 docs/     design decisions, schema, Big Data justification, measurements, readiness, screenshots
 ```
-
-## Production deployment
-
-`deploy/` holds a production stack: Docker Compose with Caddy in front. The full runbook is [deploy/README.md](deploy/README.md), and the test record is [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md).
-
-```bash
-bash deploy/make-secrets.sh                                     # random passwords into deploy/secrets/ (git-ignored)
-docker compose -f deploy/docker-compose.prod.yml up -d --build --wait
-```
-
-Then load the data, either by restoring a `mongodump` or by running the batch steps through the `tools` service (both in the runbook). Open https://localhost:8443.
-
-- **Services:**
-  - Caddy (TLS, security headers and CSP, the dashboard, `/api` proxy);
-  - the API;
-  - the Kafka consumer;
-  - a one-shot `kafka-init`;
-  - MongoDB 7 and Kafka on an internal network with no published ports.
-- **Exposure:** only Caddy is published, on `127.0.0.1` by default.
-- **Security:**
-  - MongoDB requires authentication. The app uses `flight_app`, which has `readWrite` on `flight_delay` and nothing else.
-  - Credentials are Docker secrets; none is in a container's environment.
-  - App containers run as a non-root user, read-only, with no Linux capabilities.
-  - The API trusts exactly one proxy hop.
-- **TLS:** `TLS_ISSUER=internal` (the default) uses Caddy's local CA. An email address switches to a public certificate via ACME for a real domain (`SITE_ADDRESS`).
-- **Verified locally on 2026-10-24** (Docker Desktop, Windows):
-  - TLS verification, the HTTP redirect and the security headers;
-  - MongoDB authentication and least privilege;
-  - every API endpoint through Caddy, with `/predict` matching the dev server;
-  - the per-client rate limit, including forged `X-Forwarded-For`;
-  - a 2,000-flight Kafka replay;
-  - the dashboard under the production CSP with no console errors;
-  - persistence across `down` and `up`.
-
-The stack has not been deployed publicly. That needs a domain, a public certificate and opened ports.
 
 ## Known limitations
 
@@ -385,18 +346,16 @@ The stack has not been deployed publicly. That needs a domain, a public certific
 - **Kafka is a single broker** with replication factor 1: there is no fault tolerance.
   - **Tested:** a hard kill of the broker lost no acknowledged message.
   - **Untested:** power loss.
-- **Kafka has no authentication or encryption.** In production it relies on the internal network.
+- **Kafka has no authentication or encryption.** The broker is bound to `127.0.0.1` only.
 - **The Kafka client has two known defects**, both in `@confluentinc/kafka-javascript` 1.11.0:
   - Offset commits can be reported before the broker stores them. The consumer reads every commit back.
   - An admin call can crash its process after a broker restart. The API isolates it in a child process; the consumer is restarted by its supervisor.
 - **One MongoDB case is untested:** a server that keeps answering health checks but hangs a single write. A fully frozen MongoDB was tested: the driver detected it and the consumer lost nothing.
 - **Throughput was measured on one laptop.** About 2.4k flights/s with live scoring in one consumer process.
-- **No operations tooling:** no scheduled backups, monitoring or log shipping. Only Docker Desktop on Windows and amd64 images were tested.
+- **Local only.** The app runs on one machine through Docker Compose (MongoDB, Kafka) and `npm run dev`; there is no hosted deployment, scheduled backup or monitoring.
 
 ## Documentation
 
-- [deploy/README.md](deploy/README.md): the production deployment runbook.
-- [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md): readiness verdict, deployment test record, accepted limitations and remaining risks.
 - [docs/BIGDATA_JUSTIFICATION.md](docs/BIGDATA_JUSTIFICATION.md): volume, variety, velocity, scalability (sharding design), and MongoDB compared with Hadoop/Spark/SQL.
 - [docs/SCHEMA.md](docs/SCHEMA.md): every collection, its fields, the indexes and why each exists.
 - [docs/EXPLAIN_RESULTS.md](docs/EXPLAIN_RESULTS.md): `explain("executionStats")` before/after indexes, plus API timings.
@@ -421,4 +380,4 @@ The stack has not been deployed publicly. That needs a domain, a public certific
 - **`npm start` fails with "Cannot find module … dist/server.js".** Run `npm run build:server` first. `npm run dev` runs from source.
 - **The API logs "MongoDB not reachable yet; retrying".** It retries for about 45 s at startup, then exits so its supervisor can restart it. Check that MongoDB is running and that `MONGODB_URI` is correct.
 
-The dataset (`data/`), `.env`, the deployment secrets (`deploy/secrets/`) and the training export are not tracked by Git.
+The dataset (`data/`), `.env` and the training export are not tracked by Git.
