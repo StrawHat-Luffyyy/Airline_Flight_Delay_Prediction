@@ -13,6 +13,33 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--workspace=@flight-delay/web"],
       "port": 5173
+    },
+    {
+      "name": "split-api",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--enable-source-maps", "server/dist/server.js"],
+      "env": {
+        "NODE_ENV": "production",
+        "PORT": "3555",
+        "HOST": "0.0.0.0",
+        "CORS_ORIGIN": "http://127.0.0.1:4173/",
+        "TRUST_PROXY_HOPS": "0"
+      },
+      "port": 3555
+    },
+    {
+      "name": "split-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "preview",
+        "--workspace=@flight-delay/web",
+        "--",
+        "--host=127.0.0.1",
+        "--port=4173",
+        "--strictPort"
+      ],
+      "port": 4173
     }
   ]
 }

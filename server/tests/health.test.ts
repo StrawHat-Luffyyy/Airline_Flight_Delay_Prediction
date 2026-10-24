@@ -65,3 +65,34 @@ describe('CORS', () => {
     expect(response.headers['access-control-allow-origin']).not.toBe('http://evil.example');
   });
 });
+
+describe('CORS with several origins', () => {
+  const app = createApp({
+    pingMongo: async () => true,
+    kafkaProbe: kafkaUp,
+    corsOrigin: ['https://dashboard.example.org', 'https://stats.example.org'],
+  });
+
+  it('answers each listed origin with that origin', async () => {
+    for (const origin of ['https://dashboard.example.org', 'https://stats.example.org']) {
+      const response = await request(app).get('/api/health').set('Origin', origin);
+      expect(response.headers['access-control-allow-origin']).toBe(origin);
+    }
+  });
+
+  it('allows no other origin', async () => {
+    const response = await request(app).get('/api/health').set('Origin', 'https://evil.example');
+    expect(response.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('passes the JSON preflight the dashboard sends before POST /api/predict', async () => {
+    const response = await request(app)
+      .options('/api/predict')
+      .set('Origin', 'https://dashboard.example.org')
+      .set('Access-Control-Request-Method', 'POST')
+      .set('Access-Control-Request-Headers', 'content-type');
+    expect(response.status).toBe(204);
+    expect(response.headers['access-control-allow-origin']).toBe('https://dashboard.example.org');
+    expect(response.headers['access-control-allow-methods']).toContain('POST');
+  });
+});

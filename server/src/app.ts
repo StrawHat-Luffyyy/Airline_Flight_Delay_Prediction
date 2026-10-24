@@ -28,7 +28,8 @@ const DEFAULT_CACHE_TTL_MS = 10 * 60 * 1000;
 
 export interface AppOptions {
   pingMongo?: () => Promise<boolean>;
-  corsOrigin?: string;
+  /** Allowed browser origins; defaults to CORS_ORIGIN. */
+  corsOrigin?: string | string[];
   /** Database accessor for the API routes (tests inject a seeded test database). */
   getDb?: () => Db;
   /** TTL of the in-memory response cache; 0 disables it. Default 10 minutes. */

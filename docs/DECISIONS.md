@@ -1446,3 +1446,14 @@ The stack is Docker Compose + Caddy, in `deploy/`, built and tested locally only
 
 **Left in the database:** the empty collection `authcheck` in the production `flight_delay`, from the app user's write test. The guard hook blocks dropping it, so it is for the user to remove.
 
+
+## API origin, CORS and PORT (2026-10-24)
+
+A cloud deployment (Vercel + Render) was prepared and then dropped: the project runs on localhost. These changes stayed, because they are correct locally too.
+
+- **`VITE_API_BASE_URL`** (web build) lets the dashboard call an API on another origin. It is unset by default, which keeps the same-origin `/api` the Vite proxy and Caddy use. Only the URL's origin is kept, so a trailing slash or `/api` suffix cannot double the path, and a malformed value fails the build.
+- **The built page carries its CSP as a `<meta>` tag.** It is the Caddy policy, with the configured API origin added to `connect-src`. `frame-ancestors` has no effect in a `<meta>` policy and stays in the Caddyfile header. Under Caddy both policies apply and are identical.
+- **`CORS_ORIGIN` takes a comma-separated list and reduces each entry to its origin.**
+  - The bug fixed: a trailing slash (`https://dashboard.example.org/`) made the API echo a value the browser never matches, which blocked every request.
+  - `*` and other non-http(s) values are refused.
+- **`PORT` defaults to 3001.** Only the API listens. Before this change, a consumer started without `PORT` failed env validation.

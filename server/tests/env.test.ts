@@ -13,7 +13,7 @@ describe('parseEnv', () => {
     expect(parseEnv(valid)).toEqual({
       ...valid,
       PORT: 3001,
-      CORS_ORIGIN: 'http://localhost:5173',
+      CORS_ORIGIN: ['http://localhost:5173'],
       HOST: '127.0.0.1',
       PREDICT_RATE_LIMIT_PER_MIN: 30,
       TRUST_PROXY_HOPS: 0,
@@ -26,6 +26,30 @@ describe('parseEnv', () => {
       KAFKA_SESSION_TIMEOUT_MS: 10000,
       KAFKA_SECURITY_PROTOCOL: 'plaintext',
     });
+  });
+
+  it('reduces CORS_ORIGIN to bare origins, so a pasted trailing slash cannot block the browser', () => {
+    expect(
+      parseEnv({ ...valid, CORS_ORIGIN: 'https://dashboard.example.org/' }).CORS_ORIGIN,
+    ).toEqual(['https://dashboard.example.org']);
+  });
+
+  it('accepts several comma-separated CORS origins', () => {
+    expect(
+      parseEnv({
+        ...valid,
+        CORS_ORIGIN: 'https://dashboard.example.org, https://stats.example.org',
+      }).CORS_ORIGIN,
+    ).toEqual(['https://dashboard.example.org', 'https://stats.example.org']);
+  });
+
+  it('rejects a CORS origin that is not an http(s) URL, or a wildcard', () => {
+    expect(() => parseEnv({ ...valid, CORS_ORIGIN: 'dashboard.example.org' })).toThrow(
+      /CORS_ORIGIN/,
+    );
+    expect(() => parseEnv({ ...valid, CORS_ORIGIN: '*' })).toThrow(/CORS_ORIGIN/);
+    expect(() => parseEnv({ ...valid, CORS_ORIGIN: 'ftp://x.example' })).toThrow(/CORS_ORIGIN/);
+    expect(() => parseEnv({ ...valid, CORS_ORIGIN: ',' })).toThrow(/CORS_ORIGIN/);
   });
 
   it('needs no Kafka settings, and splits a broker list', () => {
@@ -54,7 +78,12 @@ describe('parseEnv', () => {
   });
 
   it('names every missing variable in the error', () => {
-    expect(() => parseEnv({})).toThrow(/MONGODB_URI[\s\S]*MONGODB_DB[\s\S]*PORT[\s\S]*NODE_ENV/);
+    expect(() => parseEnv({})).toThrow(/MONGODB_URI[\s\S]*MONGODB_DB[\s\S]*NODE_ENV/);
+  });
+
+  it('needs no PORT, which processes without an HTTP port (the consumer) do not set', () => {
+    expect(parseEnv({ ...valid, PORT: undefined }).PORT).toBe(3001);
+    expect(parseEnv({ ...valid, PORT: '10000' }).PORT).toBe(10000);
   });
 
   it('reads MONGODB_URI from the file MONGODB_URI_FILE names (a Docker secret), trimmed', () => {

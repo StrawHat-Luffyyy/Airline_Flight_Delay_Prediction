@@ -5,14 +5,44 @@ import { fromRepoRoot } from '../paths.js';
 
 dotenv.config({ path: fromRepoRoot('.env'), quiet: true });
 
+function isHttpUrl(value: string): boolean {
+  try {
+    return /^https?:$/.test(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+}
+
 const envSchema = z
   .object({
     MONGODB_URI: z.string().url(),
     MONGODB_DB: z.string().min(1),
-    PORT: z.coerce.number().int().min(1).max(65535),
+    // Only the API listens; processes without an HTTP port (the consumer, the CLIs) need not set it.
+    PORT: z.coerce.number().int().min(1).max(65535).default(3001),
     NODE_ENV: z.enum(['development', 'test', 'production']),
-    // Browser origin allowed by CORS. The Vite dev server proxies /api, so this only matters for direct calls.
-    CORS_ORIGIN: z.string().url().default('http://localhost:5173'),
+    // Browser origins allowed by CORS, comma-separated. The Vite dev server proxies /api, so this
+    // matters for direct calls: a dashboard served from another origin (VITE_API_BASE_URL). Each entry is
+    // reduced to its origin, because a browser compares Access-Control-Allow-Origin exactly and a pasted
+    // trailing slash (`https://dashboard.example.org/`) would otherwise block every request.
+    CORS_ORIGIN: z
+      .string()
+      .default('http://localhost:5173')
+      .transform((value) =>
+        value
+          .split(',')
+          .map((origin) => origin.trim())
+          .filter((origin) => origin !== ''),
+      )
+      .pipe(
+        z
+          .array(
+            z
+              .string()
+              .refine(isHttpUrl, 'expected an http(s) URL')
+              .transform((origin) => new URL(origin).origin),
+          )
+          .min(1),
+      ),
     // Interface the API binds to. Loopback by default: the app is local-only (PROJECT_OVERVIEW §2).
     HOST: z.string().min(1).default('127.0.0.1'),
     // POST /api/predict requests per client IP per minute (the only write-like, CPU-bound endpoint).

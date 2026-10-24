@@ -1,5 +1,9 @@
 import { ErrorResponseSchema } from '@flight-delay/shared';
 import type { z } from 'zod';
+import { apiUrl, parseApiBaseUrl } from './base-url';
+
+/** The API origin baked in at build time (VITE_API_BASE_URL); '' = same origin. */
+const API_BASE_URL = parseApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 /** Every failure the UI can see from the API, normalised to one shape. */
 export class ApiError extends Error {
@@ -43,7 +47,7 @@ async function request<S extends z.ZodType>(
 ): Promise<z.output<S>> {
   let response: Response;
   try {
-    response = await fetch(path, init);
+    response = await fetch(apiUrl(API_BASE_URL, path), init);
   } catch {
     throw new ApiError(0, 'NETWORK', 'Could not reach the API. Check that the server is running.');
   }
