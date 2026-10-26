@@ -62,8 +62,18 @@
 
 The system follows a **Lambda-style** layout: a batch layer for history, a speed layer for the replayed stream, and a serving layer that reads only MongoDB and the model.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/architecture-dark.svg" />
+    <img src="docs/diagrams/architecture-light.svg" alt="Architecture: CSV ingest into MongoDB, stats and delay_lookup, offline LightGBM to ONNX, Kafka speed layer into stream_flights, Express API and React dashboard" width="640" />
+  </picture>
+</p>
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
-flowchart LR
+flowchart TB
   subgraph Sources
     csv[("flights.csv<br/>airlines.csv<br/>airports.csv")]
   end
@@ -109,7 +119,19 @@ flowchart LR
   api --> web
 ```
 
+</details>
+
 ### Request path for a prediction
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/predict-request-dark.svg" />
+    <img src="docs/diagrams/predict-request-light.svg" alt="Sequence of a POST /api/predict request: validation, MongoDB lookups, ONNX scoring, response" width="900" />
+  </picture>
+</p>
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 sequenceDiagram
@@ -130,6 +152,8 @@ sequenceDiagram
   M-->>API: probability
   API-->>UI: { probability, label, threshold, modelVersion, derived, topFactors }
 ```
+
+</details>
 
 The Kafka consumer calls **the same predictor** as `POST /api/predict`, so a streamed flight and a manual prediction cannot drift apart.
 
@@ -363,6 +387,16 @@ Deployed: **`lightgbm-20261013093139-12f165c2`**, binary classifier for "arrives
 
 **Features (pre-departure only):** day of week, scheduled hour, holiday week, airline, origin, destination, distance, scheduled block time, and five smoothed historical delay rates (airline, origin, destination, origin × hour, route).
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/model-split-dark.svg" />
+    <img src="docs/diagrams/model-split-light.svg" alt="Time-based split: train Jan-Sep with September validation, test Oct-Dec scored once" width="760" />
+  </picture>
+</p>
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart LR
   subgraph Train["Train: Jan-Sep · 4,299,046 flights"]
@@ -372,6 +406,8 @@ flowchart LR
   test["Test: Oct-Dec · 1,411,835 flights<br/>scored once"]
   Train -->|refit, frozen threshold 0.207| test
 ```
+
+</details>
 
 **Held-out test results** (Oct-Dec, from [ml/artifacts/metrics.json](ml/artifacts/metrics.json)); threshold 0.207 maximises F1 on September:
 
