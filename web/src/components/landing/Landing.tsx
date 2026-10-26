@@ -156,7 +156,7 @@ export function Landing() {
       {/* The orbit: fixed behind every chapter. */}
       <div
         role="img"
-        aria-label="A globe framed on the United States at night. Each airport with 2,000 or more departures in 2015 rises as a column as tall as its departures, coloured by its delay rate against the national rate: amber above, blue below. Amber arcs are the routes most often late and blue arcs the most punctual; lights move along them in proportion to their flights. The same routes are listed in the routes section."
+        aria-label="A globe framed on the United States at night. Each airport with 2,000 or more departures in 2015 stands as a control tower as tall as its departures, coloured by its delay rate against the national rate: amber above, blue below. Amber arcs are the routes most often late and blue arcs the most punctual; an aircraft flies each one, and lights move along them in proportion to their flights. The same routes are listed in the routes section."
         className="fixed inset-0 z-0"
       >
         <div aria-hidden="true" className="landing-orbit-hint absolute inset-0" />

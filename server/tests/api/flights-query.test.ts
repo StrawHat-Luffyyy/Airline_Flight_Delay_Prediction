@@ -53,4 +53,16 @@ describe('FlightsQuerySchema (GET /api/flights query)', () => {
       'from must be on or before to.',
     );
   });
+
+  it('rejects dates that are not on the calendar', () => {
+    expect(issues({ from: '2015-02-30', to: '2015-03-01' })).toContain(
+      'from must be a calendar date (YYYY-MM-DD)',
+    );
+    expect(issues({ from: '2015-12-01', to: '2015-99-99' })).toContain(
+      'to must be a calendar date (YYYY-MM-DD)',
+    );
+    expect(FlightsQuerySchema.safeParse({ from: '2016-02-29', to: '2016-02-29' }).success).toBe(
+      true,
+    );
+  });
 });

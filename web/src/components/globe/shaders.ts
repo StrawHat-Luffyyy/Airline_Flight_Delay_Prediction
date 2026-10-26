@@ -103,3 +103,47 @@ export const pointFragment = /* glsl */ `
     gl_FragColor = vec4(uColor, core * core * vAlpha);
   }
 `;
+
+/**
+ * Surface lighting for the solid 3D layer (aircraft, towers), matching the planet: the same sun
+ * fixed in view space (`uSun`), a view-space hemisphere ambient (cool from above, faintly warm from
+ * below), a Blinn glint for the low evening sun and a cool rim. `day` (0..1) is whether the ground
+ * under the object faces the sun, so the night side is lit by the sky alone; `haze` (0..1) is how
+ * close to the limb it sits, where the atmosphere softens it toward the limb colour.
+ */
+export const LIT_GLSL = /* glsl */ `
+  uniform vec3 uSun;
+  const vec3 SUN_TINT = vec3(1.0, 0.84, 0.66);
+  const vec3 SKY_TINT = vec3(0.13, 0.15, 0.2);
+  const vec3 FLOOR_TINT = vec3(0.07, 0.055, 0.045);
+  const vec3 RIM_TINT = vec3(0.66, 0.72, 0.8);
+  vec3 litSurface(vec3 albedo, vec3 n, vec3 v, float day, float gloss, float shine) {
+    float ndl = max(dot(n, uSun), 0.0) * day;
+    vec3 ambient = mix(FLOOR_TINT, SKY_TINT, n.y * 0.5 + 0.5);
+    vec3 h = normalize(uSun + v);
+    float glint = pow(max(dot(n, h), 0.0), gloss) * shine * ndl;
+    float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0) * (0.3 + 0.7 * day);
+    return albedo * (ambient + SUN_TINT * ndl * 1.3) + SUN_TINT * glint + RIM_TINT * rim * 0.16;
+  }
+  vec3 airHaze(vec3 color, float haze) {
+    return mix(color, vec3(0.66, 0.72, 0.8) * 0.32, haze * 0.55);
+  }
+`;
+
+/**
+ * Shared by the ground shadows: the sun in the globe's own frame (the inverse of the model-view
+ * rotation; the rig only rotates and translates), how high it stands over the surface normal `n`,
+ * and the horizontal direction pointing away from it, along which a shadow falls.
+ */
+export const SHADOW_GLSL = /* glsl */ `
+  uniform vec3 uSun;
+  vec3 localSun() {
+    return normalize(transpose(mat3(modelViewMatrix)) * uSun);
+  }
+  vec3 awayFromSun(vec3 n, vec3 sun) {
+    vec3 flat_ = sun - n * dot(n, sun);
+    float len = length(flat_);
+    if (len < 1e-4) return normalize(cross(n, vec3(0.0, 1.0, 0.0)));
+    return -flat_ / len;
+  }
+`;

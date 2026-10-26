@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
-
 export const MISSING_SELECTIVE_FILTER =
   'Provide airline, origin, route, or a from+to date range; dest alone would scan the whole collection.';
 
@@ -33,8 +31,8 @@ export const FlightsQuerySchema = z
       .string()
       .regex(/^[A-Z0-9]{3}-[A-Z0-9]{3}$/, 'route must look like LAX-SFO')
       .optional(),
-    from: z.string().regex(ISO_DAY, 'from must be YYYY-MM-DD').optional(),
-    to: z.string().regex(ISO_DAY, 'to must be YYYY-MM-DD').optional(),
+    from: z.iso.date('from must be a calendar date (YYYY-MM-DD)').optional(),
+    to: z.iso.date('to must be a calendar date (YYYY-MM-DD)').optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),
     cursor: z.string().min(1).optional(),
   })

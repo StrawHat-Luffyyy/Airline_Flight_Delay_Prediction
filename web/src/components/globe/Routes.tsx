@@ -1,7 +1,8 @@
 /**
  * Route arcs: a thin core with a comet trail, a soft halo tube that makes it glow without a
- * post-processing pass, an invisible fat tube for picking, one aircraft per arc riding the pulse
- * head, and a stream of moving lights whose density follows the route's real 2015 flight count.
+ * post-processing pass, an invisible fat tube for picking, one airliner per arc riding the pulse
+ * head (lit, with its ground shadow and navigation lights), and a stream of moving lights whose
+ * density follows the route's real 2015 flight count.
  * Amber = most often late, blue = most punctual (DESIGN.md Paired Encoding Rule); a selected
  * airport's network has no delay figure per route, so it is drawn in warm ink.
  */
@@ -13,16 +14,17 @@ import {
   BufferGeometry,
   CatmullRomCurve3,
   Color,
-  DoubleSide,
+  InstancedBufferAttribute,
   type InstancedMesh,
   Matrix4,
   type ShaderMaterial,
-  Shape,
-  ShapeGeometry,
   TubeGeometry,
   Vector3,
 } from 'three';
+import { SUN } from './Earth';
+import { attitude, bankAngle, presence } from './flight';
 import { flowCount, type ArcKind, type RouteArc } from './geo';
+import { airlinerGeometry, airlinerShadowGeometry, NAV_LIGHTS } from './models';
 import { AMBER_HEX, BLUE_HEX, NETWORK_HEX } from './palette';
 import {
   arcPhase,
@@ -30,10 +32,12 @@ import {
   drawProgress,
   forgetDraw,
   linkLive,
+  LIT_GLSL,
   LIVE,
   PULSE_SPAN,
   PULSE_SPEED,
   pulseHead,
+  SHADOW_GLSL,
 } from './shaders';
 import { clearHover, getHighlightRoute, getInteraction, setHover, setSelected } from './store';
 
@@ -41,6 +45,7 @@ export const AMBER = new Color(AMBER_HEX);
 export const BLUE = new Color(BLUE_HEX);
 /** A selected airport's destinations: no delay figure per route, so not a data colour. */
 export const NETWORK = new Color(NETWORK_HEX);
+const WHITE = new Color('#fff6e6');
 
 export function arcColor(kind: ArcKind): Color {
   if (kind === 'late') return AMBER;
@@ -262,94 +267,292 @@ function Arc({
   );
 }
 
-/** A small swept-wing silhouette, nose along +y, flat in the xy plane. */
-function aircraftGeometry(): ShapeGeometry {
-  const shape = new Shape();
-  shape.moveTo(0, 1);
-  shape.lineTo(0.16, 0.25);
-  shape.lineTo(1, -0.15);
-  shape.lineTo(1, -0.32);
-  shape.lineTo(0.14, -0.12);
-  shape.lineTo(0.1, -0.7);
-  shape.lineTo(0.38, -0.92);
-  shape.lineTo(0.38, -1);
-  shape.lineTo(0, -0.88);
-  shape.lineTo(-0.38, -1);
-  shape.lineTo(-0.38, -0.92);
-  shape.lineTo(-0.1, -0.7);
-  shape.lineTo(-0.14, -0.12);
-  shape.lineTo(-1, -0.32);
-  shape.lineTo(-1, -0.15);
-  shape.lineTo(-0.16, 0.25);
-  shape.closePath();
-  return new ShapeGeometry(shape);
-}
+/** Airliner length on the globe, in radii (about 15 px across the lower 48 in the hero framing). */
+const AIRCRAFT_SCALE = 0.0074;
+/** How far either side of the aircraft the tangent is sampled to measure a turn, as a fraction of u. */
+const TURN_STEP = 0.01;
 
-const AIRCRAFT_SCALE = 0.0085;
-const WHITE = new Color('#fff6e6');
+const planeVertex = /* glsl */ `
+  attribute float aPart;
+  attribute vec3 aTint;
+  uniform vec3 uSun;
+  varying vec3 vNormal;
+  varying vec3 vView;
+  varying vec3 vTint;
+  varying float vPart;
+  varying float vDay;
+  varying float vHaze;
+  void main() {
+    vec4 mv = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+    vNormal = normalize(mat3(modelViewMatrix) * mat3(instanceMatrix) * normal);
+    vView = normalize(-mv.xyz);
+    vec3 ground = normalize(mat3(modelViewMatrix) * instanceMatrix[3].xyz);
+    vDay = smoothstep(-0.06, 0.16, dot(ground, uSun));
+    vHaze = pow(1.0 - clamp(dot(ground, vView), 0.0, 1.0), 3.0);
+    vTint = aTint;
+    vPart = aPart;
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+/**
+ * A painted body (warm white, glossy), the fin and winglets in the route's colour (lit, with a
+ * little glow so the colour still reads on the night side), and darker metal nacelles.
+ */
+const planeFragment = /* glsl */ `
+  ${LIT_GLSL}
+  uniform float uArcs;
+  varying vec3 vNormal;
+  varying vec3 vView;
+  varying vec3 vTint;
+  varying float vPart;
+  varying float vDay;
+  varying float vHaze;
+  void main() {
+    vec3 n = normalize(vNormal);
+    vec3 v = normalize(vView);
+    float livery = 1.0 - step(0.5, abs(vPart - 1.0));
+    float metal = step(1.5, vPart);
+    vec3 albedo = mix(vec3(0.9, 0.89, 0.86), vTint, livery);
+    albedo = mix(albedo, vec3(0.36, 0.37, 0.4), metal);
+    vec3 color = litSurface(albedo, n, v, vDay, mix(60.0, 24.0, metal), mix(0.9, 0.5, metal));
+    // A moonlit floor, so the aircraft never vanish into the dark land on the night side.
+    color += albedo * 0.12 + vTint * livery * 0.45;
+    gl_FragColor = vec4(airHaze(color, vHaze), uArcs);
+  }
+`;
 
-/** One aircraft per arc, at the pulse head, flying along the great circle. */
+/** The ground shadow: the silhouette, cast away from the evening sun and blurred out with height. */
+const planeShadowVertex = /* glsl */ `
+  ${SHADOW_GLSL}
+  attribute vec3 aPos;
+  attribute vec3 aFwd;
+  attribute float aScale;
+  varying float vAlpha;
+  void main() {
+    vec3 n = normalize(aPos);
+    float height = max(0.0, length(aPos) - 1.0);
+    vec3 sun = localSun();
+    float sinE = dot(n, sun);
+    vec3 away = awayFromSun(n, sun);
+    float reach = min(height * sqrt(max(0.0, 1.0 - sinE * sinE)) / max(sinE, 0.08), 0.2);
+    vec3 g = normalize(n + away * reach);
+    vec3 f = normalize(aFwd - g * dot(aFwd, g));
+    vec3 r = cross(f, g);
+    float blur = 1.0 + height * 55.0;
+    vec3 p = g * 1.0016 + (r * position.x + f * position.y) * aScale * blur;
+    vAlpha = smoothstep(0.03, 0.2, sinE) / (blur * blur) * step(1e-6, aScale);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  }
+`;
+const planeShadowFragment = /* glsl */ `
+  uniform float uArcs;
+  varying float vAlpha;
+  void main() {
+    gl_FragColor = vec4(0.0, 0.0, 0.0, vAlpha * 0.6 * uArcs);
+  }
+`;
+
+/** Navigation lights: steady red and green wingtips, a white tail strobe and a red roof beacon. */
+const navVertex = /* glsl */ `
+  attribute vec3 aColor;
+  attribute float aStrobe;
+  attribute float aSeed;
+  attribute float aVis;
+  uniform float uTime;
+  uniform float uPixelRatio;
+  uniform float uArcs;
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    float f = fract(uTime * 0.85 + aSeed);
+    float flash = exp(-f * 55.0) + 0.8 * exp(-abs(f - 0.13) * 55.0);
+    float level = mix(0.85, flash * 1.6, aStrobe);
+    vColor = aColor;
+    vAlpha = level * aVis * uArcs;
+    gl_PointSize = min(14.0, (3.2 + aStrobe * flash * 3.0) * uPixelRatio * (3.2 / -mv.z));
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+const navFragment = /* glsl */ `
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    float d = length(gl_PointCoord - 0.5) * 2.0;
+    float glow = exp(-d * d * 6.0);
+    float core = smoothstep(0.3, 0.0, d);
+    gl_FragColor = vec4(mix(vColor, vec3(1.0), core * 0.5), (glow * 0.8 + core * 0.6) * vAlpha);
+  }
+`;
+
+/**
+ * One airliner per arc, at the pulse head, flying the great circle: the nose follows the track
+ * tangent (climbing out, levelling off, descending in), the wings bank into any turn plus a faint
+ * roll of light turbulence, and it grows in on take-off and shrinks away on landing. Each casts a
+ * ground shadow away from the evening sun (crisp near the airports, blurred out at cruise) and
+ * carries navigation lights. Three draw calls for every aircraft together.
+ */
 function Aircraft({ curves }: { curves: readonly ArcCurve[] }) {
-  const meshRef = useRef<InstancedMesh>(null);
-  const geometry = useMemo(() => aircraftGeometry(), []);
-  useEffect(() => () => geometry.dispose(), [geometry]);
+  const pixelRatio = useThree((state) => state.viewport.dpr);
+  const planes = useRef<InstancedMesh>(null);
+  const count = Math.max(1, curves.length);
+  const geometry = useMemo(() => {
+    const geo = airlinerGeometry();
+    const tints = curves.flatMap(({ arc }) =>
+      new Color().copy(arcColor(arc.kind)).lerp(WHITE, 0.12).toArray(),
+    );
+    geo.setAttribute('aTint', new InstancedBufferAttribute(new Float32Array(tints), 3));
+    return geo;
+  }, [curves]);
+  const shadowGeometry = useMemo(() => {
+    const geo = airlinerShadowGeometry();
+    geo.setAttribute('aPos', new InstancedBufferAttribute(new Float32Array(count * 3), 3));
+    geo.setAttribute('aFwd', new InstancedBufferAttribute(new Float32Array(count * 3), 3));
+    geo.setAttribute('aScale', new InstancedBufferAttribute(new Float32Array(count), 1));
+    return geo;
+  }, [count]);
+  const lightGeometry = useMemo(() => {
+    const slots = curves.flatMap((_, index) => NAV_LIGHTS.map((light) => ({ index, light })));
+    const geo = new BufferGeometry();
+    geo.setAttribute('position', new BufferAttribute(new Float32Array(slots.length * 3), 3));
+    geo.setAttribute('aVis', new BufferAttribute(new Float32Array(slots.length), 1));
+    geo.setAttribute(
+      'aColor',
+      new BufferAttribute(
+        new Float32Array(slots.flatMap(({ light }) => new Color(light.color).toArray())),
+        3,
+      ),
+    );
+    geo.setAttribute(
+      'aStrobe',
+      new BufferAttribute(new Float32Array(slots.map(({ light }) => (light.strobe ? 1 : 0))), 1),
+    );
+    geo.setAttribute(
+      'aSeed',
+      new BufferAttribute(new Float32Array(slots.map(({ index }) => arcPhase(index * 3 + 1))), 1),
+    );
+    return geo;
+  }, [curves]);
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      shadowGeometry.dispose();
+      lightGeometry.dispose();
+    },
+    [geometry, shadowGeometry, lightGeometry],
+  );
+  const planeUniforms = useMemo(() => ({ uArcs: LIVE.uArcs, uSun: { value: SUN.value } }), []);
+  const shadowUniforms = useMemo(() => ({ uArcs: LIVE.uArcs, uSun: { value: SUN.value } }), []);
+  const lightUniforms = useMemo(
+    () => ({ uTime: LIVE.uTime, uArcs: LIVE.uArcs, uPixelRatio: { value: pixelRatio } }),
+    [pixelRatio],
+  );
   const scratch = useMemo(
     () => ({
       point: new Vector3(),
       tangent: new Vector3(),
+      before: new Vector3(),
+      after: new Vector3(),
       up: new Vector3(),
       right: new Vector3(),
+      light: new Vector3(),
       matrix: new Matrix4(),
       scale: new Matrix4(),
-      color: new Color(),
     }),
     [],
   );
 
   useFrame((state) => {
-    const instanced = meshRef.current;
+    const instanced = planes.current;
     if (!instanced) return;
     const t = state.clock.elapsedTime;
     const lit = getHighlightRoute();
     const airport = getInteraction().selectedAirport;
-    const { point, tangent, up, right, matrix, scale, color } = scratch;
+    const { point, tangent, before, after, up, right, light, matrix, scale } = scratch;
+    const shadowPos = shadowGeometry.getAttribute('aPos') as InstancedBufferAttribute;
+    const shadowFwd = shadowGeometry.getAttribute('aFwd') as InstancedBufferAttribute;
+    const shadowScale = shadowGeometry.getAttribute('aScale') as InstancedBufferAttribute;
+    const lightPos = lightGeometry.getAttribute('position') as BufferAttribute;
+    const lightVis = lightGeometry.getAttribute('aVis') as BufferAttribute;
     curves.forEach(({ arc, curve, order }, index) => {
       const head = pulseHead(t, arcPhase(order));
       const drawn = drawProgress(arc.id, order, t, false);
-      const visible = head <= Math.min(1, drawn) && !isDimmed(arc, lit, airport);
-      const s = visible ? AIRCRAFT_SCALE * (lit === arc.id ? 1.35 : 1) : 0;
+      const shown = head <= Math.min(1, drawn) && !isDimmed(arc, lit, airport);
       const u = Math.min(1, head);
+      const grow = shown ? presence(u) : 0;
+      const s = AIRCRAFT_SCALE * (lit === arc.id ? 1.3 : 1) * grow;
       curve.getPointAt(u, point);
-      curve.getTangentAt(u, tangent).normalize();
+      curve.getTangentAt(u, tangent);
+      curve.getTangentAt(Math.max(0, u - TURN_STEP), before);
+      curve.getTangentAt(Math.min(1, u + TURN_STEP), after);
       up.copy(point).normalize();
       right.crossVectors(tangent, up).normalize();
-      matrix.makeBasis(right, tangent, up).setPosition(point);
-      scale.makeScale(s, s, s);
-      matrix.multiply(scale);
+      const turn = bankAngle(before, after, right, curve.getLength() * TURN_STEP * 2);
+      // Light turbulence: two slow, out-of-step swells, never the same on two aircraft.
+      const seed = order * 1.7;
+      const chop = Math.sin(t * 1.3 + seed) * 0.03 + Math.sin(t * 0.47 + seed * 2.3) * 0.045;
+      attitude(point, tangent, turn + chop, matrix);
+      matrix.multiply(scale.makeScale(s, s, s));
       instanced.setMatrixAt(index, matrix);
-      color.copy(arcColor(arc.kind)).lerp(WHITE, 0.3);
-      instanced.setColorAt(index, color);
+      shadowPos.setXYZ(index, point.x, point.y, point.z);
+      shadowFwd.setXYZ(index, tangent.x, tangent.y, tangent.z);
+      shadowScale.setX(index, s);
+      NAV_LIGHTS.forEach((nav, k) => {
+        light.set(...nav.at).applyMatrix4(matrix);
+        lightPos.setXYZ(index * NAV_LIGHTS.length + k, light.x, light.y, light.z);
+        lightVis.setX(index * NAV_LIGHTS.length + k, grow);
+      });
     });
     instanced.count = curves.length;
     instanced.instanceMatrix.needsUpdate = true;
-    if (instanced.instanceColor) instanced.instanceColor.needsUpdate = true;
+    for (const attribute of [shadowPos, shadowFwd, shadowScale, lightPos, lightVis]) {
+      attribute.needsUpdate = true;
+    }
   });
 
   return (
-    <instancedMesh
-      ref={meshRef}
-      args={[geometry, undefined, Math.max(1, curves.length)]}
-      renderOrder={4}
-      frustumCulled={false}
-    >
-      <meshBasicMaterial
-        side={DoubleSide}
-        transparent
-        depthWrite={false}
-        toneMapped={false}
-        blending={AdditiveBlending}
-      />
-    </instancedMesh>
+    <>
+      <instancedMesh
+        args={[shadowGeometry, undefined, count]}
+        count={curves.length}
+        renderOrder={1}
+        frustumCulled={false}
+      >
+        <shaderMaterial
+          ref={linkLive}
+          vertexShader={planeShadowVertex}
+          fragmentShader={planeShadowFragment}
+          uniforms={shadowUniforms}
+          transparent
+          depthWrite={false}
+        />
+      </instancedMesh>
+      <instancedMesh
+        ref={planes}
+        args={[geometry, undefined, count]}
+        renderOrder={5}
+        frustumCulled={false}
+      >
+        <shaderMaterial
+          ref={linkLive}
+          vertexShader={planeVertex}
+          fragmentShader={planeFragment}
+          uniforms={planeUniforms}
+          transparent
+        />
+      </instancedMesh>
+      <points geometry={lightGeometry} renderOrder={6} frustumCulled={false}>
+        <shaderMaterial
+          ref={linkLive}
+          vertexShader={navVertex}
+          fragmentShader={navFragment}
+          uniforms={lightUniforms}
+          transparent
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </points>
+    </>
   );
 }
 

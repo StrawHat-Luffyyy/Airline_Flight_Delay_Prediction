@@ -282,7 +282,7 @@ const RAMP = `linear-gradient(90deg, ${BLUE_HEX}, ${NEUTRAL_HEX}, ${AMBER_HEX})`
 const TONE_SPREAD = 0.08;
 
 /**
- * What the beacons encode, with the real thresholds: column height is departures, colour is the
+ * What the towers encode, with the real thresholds: tower height is departures, colour is the
  * delay rate against the national rate. Only shown once the figures it names have loaded.
  */
 export function GlobeLegend({
@@ -292,7 +292,7 @@ export function GlobeLegend({
   reduced,
 }: {
   airportStats: AirportStats;
-  /** Airports with coordinates: only these get a column, so only these are counted. */
+  /** Airports with coordinates: only these get a tower, so only these are counted. */
   airports: ReadonlyMap<string, AirportPoint>;
   interactive: boolean;
   /** Under reduced motion nothing moves along the routes, so the key does not mention it. */
@@ -317,7 +317,7 @@ export function GlobeLegend({
           <span className="h-4 w-[3px] rounded-[1px] bg-ink" />
         </span>
         <span>
-          Column height: 2015 departures, {formatInteger(drawn)} airports with{' '}
+          Tower height: 2015 departures, {formatInteger(drawn)} airports with{' '}
           {formatInteger(AIRPORT_MIN_FLIGHTS)}+{complete ? '' : ' (partial list)'}
         </span>
       </p>
@@ -336,7 +336,7 @@ export function GlobeLegend({
       </div>
       <p className="mt-2.5 hidden lg:block">
         {reduced ? '' : 'Moving lights: one per 1,000 flights on a route. '}
-        {interactive ? 'Click a column for its busiest routes.' : ''}
+        {interactive ? 'Click a tower for its busiest routes.' : ''}
       </p>
     </aside>
   );
