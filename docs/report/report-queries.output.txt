@@ -1,0 +1,387 @@
+### C1 $out sample count
+700
+### C2 insertOne
+{
+ "acknowledged": true,
+ "insertedId": "ORD-LAX-UA1665-2015-01-01"
+}
+### C3 insertMany
+{
+ "acknowledged": true,
+ "insertedIds": {
+  "0": "6ae04d39525aa828aebb730d",
+  "1": "6ae04d39525aa828aebb730e",
+  "2": "6ae04d39525aa828aebb730f"
+ }
+}
+### C3 count after
+704
+### R1 find AA March first 3
+[
+ {
+  "date": "2015-03-01T00:00:00.000Z",
+  "flightNumber": 2400,
+  "route": "LAX-DFW",
+  "arrDelay": null
+ },
+ {
+  "date": "2015-03-01T00:00:00.000Z",
+  "flightNumber": 258,
+  "route": "LAX-MIA",
+  "arrDelay": -14
+ },
+ {
+  "date": "2015-03-01T00:00:00.000Z",
+  "flightNumber": 1234,
+  "route": "LAS-ORD",
+  "arrDelay": 35
+ }
+]
+### R1 explain
+{
+ "index": "airline_1_date_1",
+ "nReturned": 45966,
+ "keys": 45966,
+ "docs": 45966,
+ "ms": 106
+}
+### R2 count delayed December
+96772
+### R3 delay rate by airline December
+[
+ {
+  "_id": "NK",
+  "flights": 10473,
+  "delayRate": 0.2995
+ },
+ {
+  "_id": "B6",
+  "flights": 23197,
+  "delayRate": 0.2945
+ },
+ {
+  "_id": "VX",
+  "flights": 5470,
+  "delayRate": 0.2812
+ },
+ {
+  "_id": "OO",
+  "flights": 45984,
+  "delayRate": 0.2453
+ },
+ {
+  "_id": "F9",
+  "flights": 8018,
+  "delayRate": 0.2406
+ }
+]
+### R4 stats_route worst 3 (>=1000 flights)
+[
+ {
+  "_id": "DCA-JFK",
+  "flights": 1027,
+  "delayRate": 0.3515881708652793
+ },
+ {
+  "_id": "ORD-COS",
+  "flights": 1027,
+  "delayRate": 0.33867735470941884
+ },
+ {
+  "_id": "LGA-CMH",
+  "flights": 1556,
+  "delayRate": 0.3326345213137666
+ }
+]
+### U1 updateMany pipeline delayBand
+{
+ "acknowledged": true,
+ "insertedId": null,
+ "matchedCount": 704,
+ "modifiedCount": 704,
+ "upsertedCount": 0
+}
+### U1 verify
+[
+ {
+  "_id": "15-59 min late",
+  "n": 100
+ },
+ {
+  "_id": "60+ min late",
+  "n": 34
+ },
+ {
+  "_id": "no-outcome",
+  "n": 14
+ },
+ {
+  "_id": "on-time",
+  "n": 556
+ }
+]
+### U2 key and deliveries before
+{
+ "key": "2015-12-01|AA|1230|SEA|5",
+ "deliveries": 4,
+ "prediction": {
+  "probability": 0.11387836933135986,
+  "label": "on-time",
+  "threshold": 0.20697104012783935,
+  "modelVersion": "lightgbm-20261013093139-12f165c2"
+ }
+}
+### U2 redelivery result
+{
+ "acknowledged": true,
+ "insertedId": null,
+ "matchedCount": 1,
+ "modifiedCount": 1,
+ "upsertedCount": 0
+}
+### U2 after
+{
+ "deliveries": 5,
+ "prediction": {
+  "probability": 0.11387836933135986,
+  "label": "on-time",
+  "threshold": 0.20697104012783935,
+  "modelVersion": "lightgbm-20261013093139-12f165c2"
+ },
+ "count": 1
+}
+### D1 cancelled before
+10
+### D1 deleteMany cancelled
+{
+ "acknowledged": true,
+ "deletedCount": 10
+}
+### D1 remaining
+694
+### D2 sweep
+{
+ "acknowledged": true,
+ "deletedCount": 1
+}
+### D2 remaining
+8
+### P1 partitions by split and month
+[
+ {
+  "_id": {
+   "split": "train",
+   "month": 1
+  },
+  "flights": 469968
+ },
+ {
+  "_id": {
+   "split": "train",
+   "month": 2
+  },
+  "flights": 429191
+ },
+ {
+  "_id": {
+   "split": "train",
+   "month": 3
+  },
+  "flights": 504312
+ },
+ {
+  "_id": {
+   "split": "train",
+   "month": 4
+  },
+  "flights": 485151
+ },
+ {
+  "_id": {
+   "split": "train",
+   "month": 5
+  },
+  "flights": 496993
+ },
+ {
+  "_id": {
+   "split": "train",
+   "month": 6
+  },
+  "flights": 503897
+ },
+ {
+  "_id": {
+   "split": "train",
+   "month": 7
+  },
+  "flights": 520718
+ },
+ {
+  "_id": {
+   "split": "train",
+   "month": 8
+  },
+  "flights": 510536
+ },
+ {
+  "_id": {
+   "split": "train",
+   "month": 9
+  },
+  "flights": 464946
+ },
+ {
+  "_id": {
+   "split": "test",
+   "month": 10
+  },
+  "flights": 486165
+ },
+ {
+  "_id": {
+   "split": "test",
+   "month": 11
+  },
+  "flights": 467972
+ },
+ {
+  "_id": {
+   "split": "test",
+   "month": 12
+  },
+  "flights": 479230
+ }
+]
+### P2 partition pruning explain
+{
+ "plan": [
+  "COUNT",
+  "COUNT_SCAN"
+ ],
+ "index": "isDelayed_1_month_1",
+ "keys": 96773,
+ "docs": 0,
+ "ms": 22
+}
+### P3 top origins
+[
+ {
+  "_id": "ATL",
+  "flights": 379424
+ },
+ {
+  "_id": "ORD",
+  "flights": 313536
+ },
+ {
+  "_id": "DFW",
+  "flights": 260595
+ },
+ {
+  "_id": "DEN",
+  "flights": 214191
+ },
+ {
+  "_id": "LAX",
+  "flights": 212401
+ }
+]
+### P3 shard-key cardinality
+[
+ {
+  "_id": null,
+  "distinctKeys": 111162,
+  "maxPerKey": 1168,
+  "avgPerKey": 52.34773573703244
+ }
+]
+### P3 avgObjSize
+674
+### B1 $bucket arrDelay
+[
+ {
+  "_id": -100000,
+  "flights": 1098212
+ },
+ {
+  "_id": -15,
+  "flights": 2402687
+ },
+ {
+  "_id": 0,
+  "flights": 1149670
+ },
+ {
+  "_id": 15,
+  "flights": 412835
+ },
+ {
+  "_id": 30,
+  "flights": 325013
+ },
+ {
+  "_id": 60,
+  "flights": 209335
+ },
+ {
+  "_id": 120,
+  "flights": 68395
+ },
+ {
+  "_id": 180,
+  "flights": 47861
+ }
+]
+### B1 equals stats_delay_buckets
+true
+### B2 $bucketAuto distance
+[
+ {
+  "_id": {
+   "min": 31,
+   "max": 329
+  },
+  "flights": 1143907,
+  "delayRate": 0.1795
+ },
+ {
+  "_id": {
+   "min": 329,
+   "max": 547
+  },
+  "flights": 1151651,
+  "delayRate": 0.1827
+ },
+ {
+  "_id": {
+   "min": 547,
+   "max": 822
+  },
+  "flights": 1144097,
+  "delayRate": 0.186
+ },
+ {
+  "_id": {
+   "min": 822,
+   "max": 1199
+  },
+  "flights": 1145063,
+  "delayRate": 0.1959
+ },
+ {
+  "_id": {
+   "min": 1199,
+   "max": 4983
+  },
+  "flights": 1129290,
+  "delayRate": 0.1866
+ }
+]
+### cleanup
+[
+ "admin",
+ "config",
+ "flight_delay",
+ "local"
+]

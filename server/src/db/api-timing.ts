@@ -17,10 +17,12 @@ import { collections } from './collections.js';
 import { summarizeExplain, type ExplainSummary } from './explain.js';
 import {
   CausesQuerySchema,
+  CompareQuerySchema,
   DelayRateQuerySchema,
   FlightsQuerySchema,
   TrendQuerySchema,
 } from '@flight-delay/shared';
+import { compareTotalsPipeline } from '../analytics/compare.js';
 import { HEATMAP_SOURCE, heatmapPipeline } from '../analytics/heatmap.js';
 import { ROUTES_SOURCE, routesPipeline } from '../analytics/routes.js';
 
@@ -91,6 +93,20 @@ function checks(page2Cursor: string | null): ApiCheck[] {
       explain: aggregate(trendSource(query), trendPipeline(query)),
     };
   });
+  // The totals read; airline and airport comparisons also run a monthly read in parallel.
+  const compareInputs: Record<string, string>[] = [
+    { type: 'airline', ids: 'AA,DL,UA,WN' },
+    { type: 'airport', ids: 'ATL,ORD,DFW,LAX' },
+    { type: 'route', ids: 'LAX-SFO,SFO-LAX,JFK-LAX,LAX-JFK' },
+  ];
+  const comparisons = compareInputs.map((raw) => {
+    const totals = compareTotalsPipeline(CompareQuerySchema.parse(raw));
+    return {
+      path: `/api/analytics/compare?${new URLSearchParams(raw).toString()}`,
+      source: totals.collection,
+      explain: aggregate(totals.collection, totals.pipeline),
+    };
+  });
   const flightQueries: Record<string, string>[] = [
     { airline: 'AA' },
     { origin: 'ATL' },
@@ -143,6 +159,7 @@ function checks(page2Cursor: string | null): ApiCheck[] {
       source: HEATMAP_SOURCE,
       explain: aggregate(HEATMAP_SOURCE, heatmapPipeline()),
     },
+    ...comparisons,
     ...flights,
     ...(page2Cursor
       ? [

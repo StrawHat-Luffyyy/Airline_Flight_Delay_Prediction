@@ -1478,3 +1478,41 @@ The user decided to keep the code fixes and remove the deployment work. This sup
 - `TRUST_PROXY_HOPS`, the MongoDB connect retry, csv-parse 7, the `delay_lookup` fingerprint check, and `--retry-refused`.
 - The missing-topic status fix, the realistic integration-test timeouts, and the CI Kafka service with its bundle boot step.
 - The other session's committed config fixes (CORS origin list, optional `PORT`, `VITE_API_BASE_URL`, the CSP `<meta>` tag). Their comments no longer refer to the deleted Caddyfile.
+
+## Report query script (2026-10-27)
+
+- **`docs/report/report-queries.js` is a mongosh script, an exception to "no non-TS code besides `ml/train.py`".**
+  - It is report evidence, not application code. Nothing imports it, it is not linted or built, and the examiner runs it as-is in the container's `mongosh`.
+  - A TypeScript version would hide the queries behind the Node driver, and the report must show the exact shell syntax.
+- **Writes go only to `flight_delay_demo`.** That database is filled from real documents and dropped at the end; `flight_delay` is only read.
+- **Its output is saved as evidence** in `docs/report/report-queries.output.txt` (run on 2026-10-27, about 70 s).
+- **`docs/report/viva-runbook.mongosh.js` holds every MONGOSH block of `docs/report/PROJECT_REPORT.md`, in order**, for pasting at the prompt or piping into an interactive mongosh (`Get-Content ... | docker exec -i ... mongosh flight_delay`). It is not a `mongosh --file` script: file mode rejects `show dbs` and prints nothing per line. Its piped output matched every OUTPUT block of the report on 2026-10-27.
+- **The PDF, `docs/report/PROJECT_REPORT.pdf`, is rendered from `PROJECT_REPORT.md`** through HTML and headless Chrome (`--print-to-pdf`). The renderer is not kept in the repo, to stay within the TypeScript-only rule; if the Markdown changes, regenerate the PDF the same way or by printing the Markdown preview.
+
+## Comparison Engine (2026-10-28)
+
+`GET /api/analytics/compare` and the Compare page put 2-4 airlines, airports or routes side by side.
+
+- **Reads pre-aggregated stats only; no new collection.** Never `flights`.
+  - **Airlines:** `stats_daily` for totals and cause minutes (`airline_1_date_1`), and the same collection for the monthly series.
+  - **Airports:** `stats_airport_hour` for totals and causes, `stats_daily_origin` for months (`origin_1_date_1`).
+  - **Routes:** `stats_route` (`_id`). Measured on the full dataset: 60 ms cold for 4 airlines (including the label load), 132 ms for 4 airports, 17 ms for 4 routes, 2 ms cached. The routes figure is pino-http `responseTime`.
+- **Airports are compared on departures (origin)**, as the Explorer ranking and the airport cause breakdown are. Arrivals by airport would need `stats_route` grouped by `dest`, with no cause minutes, so they were left out to keep one definition.
+- **`stats_airport_hour` has no `airport` index.** Matching four airports scans its 4,259 small documents in about 2 ms (explain, 2026-10-28), as `causes?by=airport` already does. An index would not change the response time.
+- **Rates come from summed counts:**
+  - `delayRate = delayed / completed`;
+  - `avgArrDelay = arrDelaySum / completed`;
+  - `cancelRate = cancelled / flights`;
+  - `divertRate = diverted / flights`.
+  
+  Each is null when its denominator is 0. `DERIVED_RATES` is reused, and stored per-document rates are never averaged.
+- **Routes have no cause or monthly section.** `stats_route` stores outcome counts only. The response says so in `availability` instead of inventing numbers. Adding cause sums to `stats_route` would cost one more `build:stats` run; it is left as a follow-up.
+- **Differences are measured from the first id (the baseline):** counts and minutes as plain differences, rates as fractions shown in percentage points.
+- **Reliable sample = `flights >= minFlights`** (default 500, the Explorer's threshold).
+  - Entities below it are flagged `low` and their values are dimmed. Entities with no stats document are `none`, with zero counts and null rates.
+  - Neither can be marked lowest. A metric has no "lowest" unless at least two entities are reliable.
+  - Ties are exact: equal fractions such as 1/3 and 2/6 give the same double.
+- **Unknown codes answer 422 `UNKNOWN_ENTITY`, as `/predict` does; a malformed query answers 400.** The query schema is `.strict()`, ids must be upper-case and unique, and a route cannot start and end at the same airport.
+- **The selection lives in the URL** (`?type=&ids=&min=`), so a comparison can be shared or reloaded. Malformed URL ids are dropped rather than failing the page.
+- **Header:** adding a seventh tab left the data strip no room beside the tabs below about 1,260 px, so it now takes its own line below `xl` (it overflowed and was clipped at 800 px).
+- **`docs/EXPLAIN_RESULTS.md` was not regenerated.** `api-timing.ts` now lists the three compare reads, so the next `npm run explain:report` includes them. That run rescans `flights` before and after indexing and rewrites every existing number, so it was not run for this change.

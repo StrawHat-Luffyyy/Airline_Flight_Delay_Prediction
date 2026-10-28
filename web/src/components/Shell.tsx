@@ -9,6 +9,7 @@ const TABS = [
   { to: '/overview', label: 'Overview' },
   { to: '/causes', label: 'Causes' },
   { to: '/explorer', label: 'Explorer' },
+  { to: '/compare', label: 'Compare' },
   { to: '/predict', label: 'Predict' },
   { to: '/model', label: 'Model' },
   { to: '/live', label: 'Live' },
@@ -110,7 +111,7 @@ export function Shell() {
       >
         Skip to content
       </a>
-      <header className="flex flex-wrap items-center gap-x-10 gap-y-2 border-b border-rule px-5 py-3 md:h-16 md:flex-nowrap md:px-10 md:py-0">
+      <header className="flex flex-wrap items-center gap-x-10 gap-y-2 border-b border-rule px-5 py-3 md:px-10 xl:h-16 xl:flex-nowrap xl:py-0">
         <Link to="/" className="font-display text-[22px] leading-none whitespace-nowrap">
           Flight Delay Prediction
         </Link>
@@ -120,7 +121,8 @@ export function Shell() {
         >
           <Tabs />
         </nav>
-        <div className="ml-auto w-full md:w-auto">
+        {/* Below xl the seven tabs leave no room beside them, so the strip takes its own line. */}
+        <div className="ml-auto w-full xl:w-auto">
           <DataStrip />
         </div>
       </header>

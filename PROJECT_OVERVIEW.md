@@ -250,6 +250,7 @@ All query/params validated with zod; errors in the shape `{ error: { code, messa
 | GET | `/analytics/trend?airline=&origin=&granularity=day\|month` | Time series from `stats_daily` |
 | GET | `/analytics/cascade` | Late-aircraft share by hour |
 | GET | `/analytics/heatmap` | Delay rate per (day of week × scheduled hour) cell, from `stats_dow_hour` (added in Phase 6 for the Explorer heatmap) |
+| GET | `/analytics/compare?type=airline\|airport\|route&ids=&minFlights=500` | 2-4 entities side by side from `stats_daily`, `stats_airport_hour`, `stats_daily_origin`, `stats_route`: totals, rates, differences from the first id, causes and months where stored (added after Phase 8 for the Compare page) |
 | GET | `/routes?origin=` | Destinations flown from an origin in 2015, from `stats_route` (added after Phase 7 so the Predict form only offers scorable routes) |
 | GET | `/flights?airline=&origin=&dest=&from=&to=&limit=&cursor=` | Browse raw flights (index-backed) |
 | POST | `/predict` | Body: `{date, airline, origin, dest, schedDepHour}` -> `{probability, label, threshold, topFactors[]}` |

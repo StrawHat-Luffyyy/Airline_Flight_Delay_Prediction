@@ -3,6 +3,7 @@ import type { Db } from 'mongodb';
 import {
   CancellationsQuerySchema,
   CausesQuerySchema,
+  CompareQuerySchema,
   DelayRateQuerySchema,
   FlightsQuerySchema,
   RoutesQuerySchema,
@@ -10,6 +11,7 @@ import {
   type DataQuality,
 } from '@flight-delay/shared';
 import { getCauses } from '../analytics/causes.js';
+import { getComparison } from '../analytics/compare.js';
 import { loadDataQuality, loadLabels, type Labels } from '../analytics/common.js';
 import { getDelayRate } from '../analytics/delay-rate.js';
 import { getFlights } from '../analytics/flights.js';
@@ -69,6 +71,15 @@ export function apiRouter({ getDb, cacheTtlMs }: ApiRouterOptions): Router {
     response.json(
       await cached(`delay-rate:${JSON.stringify(query)}`, async () =>
         getDelayRate(getDb(), query, await labels(), await quality()),
+      ),
+    );
+  });
+
+  router.get('/analytics/compare', async (request, response) => {
+    const query = parseQuery(CompareQuerySchema, request.query);
+    response.json(
+      await cached(`compare:${JSON.stringify(query)}`, async () =>
+        getComparison(getDb(), query, await labels(), await quality()),
       ),
     );
   });

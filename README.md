@@ -347,6 +347,7 @@ Base path: `/api`. All inputs are validated with zod.
 | `GET`  | `/analytics/cancellations`      | `by=overall\|airline\|month`                                                                           |
 | `GET`  | `/analytics/delay-distribution` | Arrival-delay histogram (`$bucket`)                                                                    |
 | `GET`  | `/analytics/heatmap`            | Delay rate per (day of week, scheduled hour)                                                           |
+| `GET`  | `/analytics/compare`            | `type=airline\|airport\|route`, `ids` = 2-4 comma-separated codes (first = baseline), `minFlights` (default 500) |
 
 ### Flights and routes
 

@@ -2,6 +2,7 @@ import {
   CancellationsResponseSchema,
   CascadeResponseSchema,
   CausesResponseSchema,
+  CompareResponseSchema,
   DelayDistributionResponseSchema,
   DelayRateResponseSchema,
   FeatureImportanceResponseSchema,
@@ -16,6 +17,7 @@ import {
   TrendResponseSchema,
   type CancellationsQuery,
   type CausesQuery,
+  type CompareType,
   type DelayRateQuery,
   type PredictRequest,
   type TrendQuery,
@@ -79,6 +81,28 @@ export function useDelayRate(params: DelayRateParams) {
       ),
     placeholderData: (previous, previousQuery) =>
       previous !== undefined && previousQuery?.queryKey[1] === by ? previous : undefined,
+  });
+}
+
+/**
+ * Side-by-side comparison of 2-4 entities (ids in order; the first is the baseline). Disabled
+ * until two are chosen. Keeps the previous comparison while an edit of the same type loads, so the
+ * page dims in place instead of dropping to a skeleton; a new type never reuses old columns.
+ */
+export function useCompare(type: CompareType, ids: readonly string[], minFlights: number) {
+  const list = ids.join(',');
+  return useQuery({
+    queryKey: ['compare', type, list, minFlights],
+    enabled: ids.length >= 2,
+    queryFn: ({ signal }) =>
+      apiGet(
+        '/api/analytics/compare',
+        CompareResponseSchema,
+        { type, ids: list, minFlights },
+        signal,
+      ),
+    placeholderData: (previous, previousQuery) =>
+      previous !== undefined && previousQuery?.queryKey[1] === type ? previous : undefined,
   });
 }
 
