@@ -12,7 +12,7 @@
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![LightGBM → ONNX](https://img.shields.io/badge/LightGBM-ONNX-005CED?logo=onnx&logoColor=white)
 
-<img src="docs/screenshots/landing-lighting-hero.png" alt="Landing page: a 3D globe of US airports and the most and least delay-prone routes" width="900" />
+<img src="docs/screenshots/globe-3d-hero-desktop.png" alt="Landing page: a 3D night globe of the US with an air-traffic-control tower per busy airport and an airliner flying each of the most and least delay-prone routes" width="900" />
 
 </div>
 
@@ -31,6 +31,7 @@
 - [The model](#the-model)
 - [Streaming layer](#streaming-layer)
 - [Dashboard](#dashboard)
+- [MongoDB hands-on: report and viva runbook](#mongodb-hands-on-report-and-viva-runbook)
 - [Testing and quality](#testing-and-quality)
 - [Measured performance](#measured-performance)
 - [Known limitations](#known-limitations)
@@ -39,12 +40,13 @@
 
 ## What it does
 
-|              |                                                                                                                                                                   |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Predicts** | Whether a flight will arrive 15+ minutes late (the US DOT definition), using **only information known before departure**.                                         |
-| **Explains** | Where and when delays concentrate (airline, airport, route, month, hour, weekday) and what causes them (carrier, weather, NAS, security, late-arriving aircraft). |
-| **Streams**  | Replays December 2015 through Kafka, scores every flight as it arrives, and compares each prediction with what actually happened.                                 |
-| **Shows**    | All of it through a typed REST API and a seven-page React dashboard. Every number on screen comes from the database or the model, never from mock data.           |
+|              |                                                                                                                                                                                |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Predicts** | Whether a flight will arrive 15+ minutes late (the US DOT definition), using **only information known before departure**.                                                      |
+| **Explains** | Where and when delays concentrate (airline, airport, route, month, hour, weekday) and what causes them (carrier, weather, NAS, security, late-arriving aircraft).              |
+| **Compares** | Two to four airlines, airports or routes side by side, with every difference measured from a chosen baseline.                                                                  |
+| **Streams**  | Replays December 2015 through Kafka, scores every flight as it arrives, and compares each prediction with what actually happened.                                              |
+| **Shows**    | All of it through a typed REST API and a React dashboard: a 3D landing page and seven tabs. Every number on screen comes from the database or the model, never from mock data. |
 
 ## Engineering highlights
 
@@ -55,6 +57,7 @@
 - **One model, two runtimes.** Trained in Python (LightGBM), exported to ONNX and run in Node with `onnxruntime-node`. A parity test requires Node and Python probabilities to agree on 100 test rows **within 1e-4**.
 - **Exactly-once effect on an at-least-once stream.** The Kafka consumer upserts by a natural flight key, so redelivery is harmless. Measured: **479,230 events in = 479,230 stored = 479,230 distinct keys**, zero duplicates after a mid-batch hard kill, and a re-replay that adds nothing.
 - **Defensive against its own dependencies.** Two defects found in the Kafka client (commits reported before the broker stored them; an admin call that can crash its process after a broker restart) are handled by reading every commit back and isolating admin probes in a child process, with a reproducible check (`stream:commit-check`).
+- **A 3D globe where every encoding is data.** Each airport with 2,000+ departures is an instanced air-traffic-control tower whose height is its 2015 departures and whose colour is its delay rate against the national rate. One procedural airliner flies each route arc, pitching along the track and banking into curves. The models are built from a few hundred triangles at runtime (nothing is downloaded), each layer is one instanced draw call, and shadows are cast in the vertex shader from the same sun as the planet, with no shadow map.
 - **One contract, end to end.** `shared/` holds zod schemas used by both the API and the dashboard. Env vars, query strings and request bodies are validated at the boundary; TypeScript is strict everywhere, with no `any`.
 - **Production-minded API.** helmet, CORS allow-list, per-IP rate limiting on `/predict` with proxy-hop-aware keys, structured pino logs, a uniform error envelope, graceful `503`s when MongoDB is down, and a 10-minute response cache.
 
@@ -195,13 +198,14 @@ All application code is TypeScript. The only other code is the training script, 
 ├── shared/src/                zod schemas + types shared by API and dashboard
 ├── web/src/                   React + Vite dashboard
 │   ├── api/                   typed API client and TanStack Query hooks
-│   ├── pages/                 Overview, Causes, Explorer, Predict, Model, Live
-│   └── components/            landing globe (R3F), charts, predict form, shell
+│   ├── pages/                 Overview, Causes, Explorer, Compare, Predict, Model, Live
+│   └── components/            landing globe (R3F: procedural aircraft and towers), charts, predict form, shell
 ├── ml/
 │   ├── train.py               baseline, logistic regression, LightGBM → ONNX
 │   ├── requirements.txt       pinned Python dependencies
 │   └── artifacts/             committed model.onnx, encoders.json, metrics.json, parity sample
 ├── docs/                      schema, decisions, explain results, streaming evidence, screenshots
+│   └── report/                project report (PDF + Markdown), mongosh runbook and query evidence
 ├── .github/workflows/ci.yml   typecheck, lint, format, tests, builds, boot check
 ├── docker-compose.yml         MongoDB 7 + Kafka 4.3.1
 └── PROJECT_OVERVIEW.md        the original specification
@@ -337,17 +341,19 @@ Base path: `/api`. All inputs are validated with zod.
 
 ### Analytics
 
-| Method | Endpoint                        | Parameters                                                                                             |
-| ------ | ------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `GET`  | `/analytics/summary`            | Flights, delay rate, average arrival delay, cancel rate                                                |
-| `GET`  | `/analytics/causes`             | `by=overall\|airline\|airport\|month\|hour`, `limit` ≤ 100                                             |
-| `GET`  | `/analytics/delay-rate`         | `by=airline\|origin\|route\|dow\|hour`, `minFlights` (default 500), `limit` ≤ 100, `order=worst\|best` |
-| `GET`  | `/analytics/trend`              | Optional `airline` and/or `origin`, `granularity=day\|month`                                           |
-| `GET`  | `/analytics/cascade`            | Late-aircraft share of delay minutes by departure hour                                                 |
-| `GET`  | `/analytics/cancellations`      | `by=overall\|airline\|month`                                                                           |
-| `GET`  | `/analytics/delay-distribution` | Arrival-delay histogram (`$bucket`)                                                                    |
-| `GET`  | `/analytics/heatmap`            | Delay rate per (day of week, scheduled hour)                                                           |
+| Method | Endpoint                        | Parameters                                                                                                       |
+| ------ | ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/analytics/summary`            | Flights, delay rate, average arrival delay, cancel rate                                                          |
+| `GET`  | `/analytics/causes`             | `by=overall\|airline\|airport\|month\|hour`, `limit` ≤ 100                                                       |
+| `GET`  | `/analytics/delay-rate`         | `by=airline\|origin\|route\|dow\|hour`, `minFlights` (default 500), `limit` ≤ 100, `order=worst\|best`           |
+| `GET`  | `/analytics/trend`              | Optional `airline` and/or `origin`, `granularity=day\|month`                                                     |
+| `GET`  | `/analytics/cascade`            | Late-aircraft share of delay minutes by departure hour                                                           |
+| `GET`  | `/analytics/cancellations`      | `by=overall\|airline\|month`                                                                                     |
+| `GET`  | `/analytics/delay-distribution` | Arrival-delay histogram (`$bucket`)                                                                              |
+| `GET`  | `/analytics/heatmap`            | Delay rate per (day of week, scheduled hour)                                                                     |
 | `GET`  | `/analytics/compare`            | `type=airline\|airport\|route`, `ids` = 2-4 comma-separated codes (first = baseline), `minFlights` (default 500) |
+
+**`/analytics/compare`** reads only the pre-aggregated stats (`stats_daily`, `stats_airport_hour`, `stats_daily_origin`, `stats_route`), never `flights`. Rates are derived from summed counts, never by averaging stored rates. Differences are measured from the first id, with rates in percentage points, and entities below `minFlights` are flagged as unreliable samples. Airports are compared on departures. Routes return totals and rates only, because `stats_route` stores no cause or monthly data; the response says so in `availability`. An unknown code answers `422 UNKNOWN_ENTITY`. Measured on the full dataset with a cold cache: 60 ms for 4 airlines, 132 ms for 4 airports, 17 ms for 4 routes ([docs/DECISIONS.md](docs/DECISIONS.md), "Comparison Engine").
 
 ### Flights and routes
 
@@ -419,7 +425,7 @@ flowchart LR
 | **LightGBM (deployed)**     | **0.628** | **0.235** | **0.218** | **0.582** | **0.318** |
 
 > [!NOTE]
-> This is an honest, modest model, and the dashboard says so. Delays depend heavily on what a pre-departure model cannot see: weather on the day and earlier delays of the same aircraft. At the deployed threshold it flags about 43% of flights, and a flagged flight is about 1.35× as likely to be delayed as an average one.
+> This is an honest, modest model, and the dashboard says so. Delays depend heavily on what a pre-departure model cannot see: weather on the day and earlier delays of the same aircraft. At the deployed threshold it flags about 43% of flights, and a flagged flight is about 1.36× as likely to be delayed as an average one (precision 0.218 against a 0.161 base rate).
 
 **Leakage controls**
 
@@ -473,15 +479,16 @@ With Kafka stopped, every other page and endpoint keeps working; the Live page a
 
 ## Dashboard
 
-| Page            | What it shows                                                                                                                                                             |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Landing** `/` | 3D globe of the real airports with the 10 most and 10 least delay-prone routes, behind a short scroll story. Falls back to text without WebGL and respects reduced motion |
-| **Overview**    | KPIs, monthly delay-rate trend with the train/test split marked, month board, worst airlines, cause shares, arrival-delay histogram                                       |
-| **Causes**      | Cause minutes by month or airline, the late-aircraft cascade by hour, cancellation reasons                                                                                |
-| **Explorer**    | Worst/best airlines, airports and routes with a minimum-flights filter, the raw flights behind a route, an hour × weekday heatmap                                         |
-| **Predict**     | Score a flight; shows probability against the threshold and which historical rates moved it                                                                               |
-| **Model**       | Baseline vs logistic regression vs LightGBM on the test months, confusion matrix, training setup, feature importance                                                      |
-| **Live**        | Kafka speed layer: state and reason, throughput, lag, DLQ size, rolling and whole-run precision / recall / accuracy with sample sizes. Polls every 5 s                    |
+| Page            | What it shows                                                                                                                                                                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Landing** `/` | 3D night globe behind a short scroll story. Each airport with 2,000+ departures is a lit control tower (height = departures, colour = delay rate), and an airliner flies each of the 10 most and 10 least delay-prone routes. Falls back to text without WebGL and respects reduced motion |
+| **Compare**     | 2-4 airlines, airports or routes side by side: head-to-head metrics with differences from the baseline, rate bars, delay-cause mix and delay rate by month. The selection lives in the URL, so a comparison can be shared                                                                  |
+| **Overview**    | KPIs, monthly delay-rate trend with the train/test split marked, month board, worst airlines, cause shares, arrival-delay histogram                                                                                                                                                        |
+| **Causes**      | Cause minutes by month or airline, the late-aircraft cascade by hour, cancellation reasons                                                                                                                                                                                                 |
+| **Explorer**    | Worst/best airlines, airports and routes with a minimum-flights filter, the raw flights behind a route, an hour × weekday heatmap                                                                                                                                                          |
+| **Predict**     | Score a flight; shows probability against the threshold and which historical rates moved it                                                                                                                                                                                                |
+| **Model**       | Baseline vs logistic regression vs LightGBM on the test months, confusion matrix, training setup, feature importance                                                                                                                                                                       |
+| **Live**        | Kafka speed layer: state and reason, throughput, lag, DLQ size, rolling and whole-run precision / recall / accuracy with sample sizes. Polls every 5 s                                                                                                                                     |
 
 <table>
   <tr>
@@ -500,9 +507,36 @@ With Kafka stopped, every other page and endpoint keeps working; the Live page a
     <td align="center"><b>Model</b></td>
     <td align="center"><b>Live</b></td>
   </tr>
+  <tr>
+    <td><img src="docs/screenshots/compare-desktop.png" alt="Compare page with four airlines side by side" /></td>
+    <td><img src="docs/screenshots/globe-3d-zoomed-desktop.png" alt="Landing globe zoomed in on control towers and aircraft" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Compare</b></td>
+    <td align="center"><b>Landing globe, zoomed in</b></td>
+  </tr>
 </table>
 
 Every page at desktop and mobile width: [docs/screenshots/](docs/screenshots/).
+
+## MongoDB hands-on: report and viva runbook
+
+[docs/report/PROJECT_REPORT.pdf](docs/report/PROJECT_REPORT.pdf) is the project report. It demonstrates MongoDB CRUD and two Big Data Analytics applications, partitioning and bucketing, on the real database. Every query in it mirrors something the application does, and every output was captured from the real database on 2026-10-27. Each command block is labelled with where to type it: **PowerShell** (`docker` commands) or **mongosh** (queries, at the `flight_delay>` prompt).
+
+| Part         | What it shows                                                                                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CRUD         | `$out`, `insertOne`, `insertMany`; `find` + `explain`, aggregation; pipeline `updateMany`, the consumer's idempotent upsert; `deleteMany` and the stale-build sweep |
+| Partitioning | The time-based train/test partition, partition pruning (`COUNT_SCAN`, 0 documents examined), and a shard-key check for `{ origin, date }`                           |
+| Bucketing    | `$bucket` arrival-delay histogram (matches the stored `stats_delay_buckets` exactly) and `$bucketAuto` distance quintiles                                           |
+
+Writes go only to a throwaway `flight_delay_demo` database, which is dropped at the end. To run every query at once (PowerShell, from the repository root, with the `mongo` container up):
+
+```powershell
+$c = "2015flightdelaysandcancellations-mongo-1"
+Get-Content docs/report/viva-runbook.mongosh.js | docker exec -i $c mongosh flight_delay
+```
+
+Or open a shell with `docker compose exec mongo mongosh flight_delay` and paste the blocks one at a time from [docs/report/viva-runbook.mongosh.js](docs/report/viva-runbook.mongosh.js).
 
 ## Testing and quality
 
@@ -516,16 +550,16 @@ npm run build:server   # API, consumer and topic-init bundle → server/dist
 npm start              # run the built API
 ```
 
-**520 tests in 63 files** (2026-10-25). Without MongoDB and Kafka running, 446 pass and the 74 integration tests skip themselves; CI provides both services so nothing skips there.
+**572 tests in 68 files** (2026-10-31). Without MongoDB and Kafka running, 489 pass and the 83 integration tests skip themselves; CI provides both services so nothing skips there.
 
-| Layer                   | What is covered                                                                                                                                                               |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Unit**                | Aggregation-pipeline builders (pure functions returning `Document[]`), ingestion transforms (HHMM times, nulls), encoders, feature list, the scorer's pre-departure guarantee |
-| **API**                 | Routes through Supertest: validation, error envelope, rate limiting, health, hardening                                                                                        |
-| **ML parity**           | TypeScript encoder + `onnxruntime-node` vs Python probabilities on 100 rows, within 1e-4                                                                                      |
-| **MongoDB integration** | Seeded throwaway databases (`flight_delay_*_test`) for analytics, indexes, lookup, export, registry and stream store                                                          |
-| **Kafka integration**   | Real consumer against a real broker: 60 events over 3 partitions plus a malformed one, each stored once, offsets committed to the end, replay adds nothing                    |
-| **Failure drills**      | Broker restarts, hard kills and a frozen MongoDB, run by hand and recorded in `docs/measurements/`                                                                            |
+| Layer                   | What is covered                                                                                                                                                                                                                           |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Unit**                | Aggregation-pipeline builders (pure functions returning `Document[]`), ingestion transforms (HHMM times, nulls), encoders, feature list, the scorer's pre-departure guarantee, comparison maths, globe flight attitude and model geometry |
+| **API**                 | Routes through Supertest: validation, error envelope, rate limiting, health, hardening                                                                                                                                                    |
+| **ML parity**           | TypeScript encoder + `onnxruntime-node` vs Python probabilities on 100 rows, within 1e-4                                                                                                                                                  |
+| **MongoDB integration** | Seeded throwaway databases (`flight_delay_*_test`) for analytics, comparison, indexes, lookup, export, registry and stream store                                                                                                          |
+| **Kafka integration**   | Real consumer against a real broker: 60 events over 3 partitions plus a malformed one, each stored once, offsets committed to the end, replay adds nothing                                                                                |
+| **Failure drills**      | Broker restarts, hard kills and a frozen MongoDB, run by hand and recorded in `docs/measurements/`                                                                                                                                        |
 
 **CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs on pushes to `main` and on pull requests with `mongo:7` and `apache/kafka:4.3.1` service containers. Reachability checks fail the job instead of letting integration tests skip silently. Steps: typecheck → lint → format check → tests → both production builds → boot the API bundle and hit `/api/health`.
 
@@ -548,6 +582,7 @@ Every pair was checked to return identical results. Analytics endpoints read the
 
 - **The model is modest:** test ROC-AUC 0.628, PR-AUC 0.235 against a 0.161 baseline, by design limited to pre-departure information.
 - **The data stops at 2015.** Predictions are meaningful only for routes flown that year (`422 UNKNOWN_ROUTE` otherwise).
+- **Route comparisons have no cause or monthly breakdown,** because `stats_route` stores outcome counts only. Airports are compared on departures, not arrivals.
 - **The speed layer is a replay.** Each event carries its outcome, which in reality would arrive hours later.
 - **Kafka is a single broker** with replication factor 1 and no authentication or encryption; it is bound to `127.0.0.1`. A hard kill lost no acknowledged message; power loss is untested.
 - **Kafka client defects** in `@confluentinc/kafka-javascript` 1.11.0 are worked around, not fixed (commit read-back, child-process admin probes).
@@ -557,17 +592,20 @@ Every pair was checked to return identical results. Analytics endpoints read the
 
 ## Documentation
 
-| Document                                                       | Contents                                                                       |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)                     | The original specification                                                     |
-| [docs/SCHEMA.md](docs/SCHEMA.md)                               | Every collection, its fields and indexes, and why each exists; sharding design |
-| [docs/BIGDATA_JUSTIFICATION.md](docs/BIGDATA_JUSTIFICATION.md) | Volume, variety, velocity, scalability; MongoDB vs Hadoop / Spark / SQL        |
-| [docs/EXPLAIN_RESULTS.md](docs/EXPLAIN_RESULTS.md)             | `explain("executionStats")` before/after indexes, API timings                  |
-| [docs/STREAMING.md](docs/STREAMING.md)                         | Speed-layer acceptance measurements and limits                                 |
-| [docs/PERF.md](docs/PERF.md)                                   | `/api/stream/status` and `/api/health` timings with Kafka up and down          |
-| [docs/DECISIONS.md](docs/DECISIONS.md)                         | Design decisions and measurements, phase by phase                              |
-| [docs/PHASE8_STATUS.md](docs/PHASE8_STATUS.md)                 | Streaming-layer build history and open items                                   |
-| [docs/FRONTEND_AUDIT.md](docs/FRONTEND_AUDIT.md)               | Audit of the AI Studio scaffold the dashboard replaced                         |
+| Document                                                         | Contents                                                                                                   |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)                       | The original specification                                                                                 |
+| [docs/report/PROJECT_REPORT.pdf](docs/report/PROJECT_REPORT.pdf) | Project report: CRUD, partitioning, bucketing, model; Docker and mongosh guide (Markdown source alongside) |
+| [docs/PROJECT_WALKTHROUGH.md](docs/PROJECT_WALKTHROUGH.md)       | Full walkthrough: architecture, MongoDB, Kafka, setup and code (PDF alongside)                             |
+| [docs/MEMBER2_PREP.md](docs/MEMBER2_PREP.md)                     | Viva preparation: analytics, REST API and the Overview, Causes and Explorer pages (PDF alongside)          |
+| [docs/SCHEMA.md](docs/SCHEMA.md)                                 | Every collection, its fields and indexes, and why each exists; sharding design                             |
+| [docs/BIGDATA_JUSTIFICATION.md](docs/BIGDATA_JUSTIFICATION.md)   | Volume, variety, velocity, scalability; MongoDB vs Hadoop / Spark / SQL                                    |
+| [docs/EXPLAIN_RESULTS.md](docs/EXPLAIN_RESULTS.md)               | `explain("executionStats")` before/after indexes, API timings                                              |
+| [docs/STREAMING.md](docs/STREAMING.md)                           | Speed-layer acceptance measurements and limits                                                             |
+| [docs/PERF.md](docs/PERF.md)                                     | `/api/stream/status` and `/api/health` timings with Kafka up and down                                      |
+| [docs/DECISIONS.md](docs/DECISIONS.md)                           | Design decisions and measurements, phase by phase                                                          |
+| [docs/PHASE8_STATUS.md](docs/PHASE8_STATUS.md)                   | Streaming-layer build history and open items                                                               |
+| [docs/FRONTEND_AUDIT.md](docs/FRONTEND_AUDIT.md)                 | Audit of the AI Studio scaffold the dashboard replaced                                                     |
 
 ## Troubleshooting
 
